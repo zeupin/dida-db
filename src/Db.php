@@ -4,7 +4,7 @@
  * http://dida.zeupin.com
  */
 
-namespace Dida;
+namespace Dida\Db;
 
 use \PDO;
 use \PDOException;
@@ -15,7 +15,7 @@ use \PDOException;
 class Db
 {
     /* initial configurations */
-    protected $cfg = [
+    private $cfg = [
         /* required parameters */
         'dsn'      => null, // PDO DNS
         'username' => null, // The database username
