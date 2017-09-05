@@ -15,7 +15,7 @@ use \PDOException;
 class Db
 {
     /* initial configurations */
-    protected $cfg = [
+    private $cfg = [
         /* required parameters */
         'dsn'      => null, // PDO DNS
         'username' => null, // The database username
