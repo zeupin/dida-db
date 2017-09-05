@@ -17,7 +17,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Dida\\Db\\": "src/"
+      "Dida\\": "src/"
     }
   }
 }
