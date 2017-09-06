@@ -74,6 +74,8 @@
 ```php
 [
     'dsn' => 'sqlsrv:Server=localhost;Database=testdb',
+    'username' => 'db_username',
+    'password' => 'db_password',
 ]
 ```
 
@@ -82,6 +84,8 @@
 ```php
 [
     'dsn' => 'sqlsrv:Server=localhost,1521;Database=testdb',
+    'username' => 'db_username',
+    'password' => 'db_password',
 ]
 ```
 
@@ -90,6 +94,8 @@
 ```php
 [
     'dsn' => 'sqlsrv:Server=12345abcde.database.windows.net;Database=testdb',
+    'username' => 'db_username',
+    'password' => 'db_password',
 ]
 ```
 
@@ -98,5 +104,36 @@
 ```php
 [
     'dsn' => 'dblib:host=localhost:1512;dbname=testdb;charset=utf8',
+    'username' => 'db_username',
+    'password' => 'db_password',
 ]
 ```
+
+## Oracle
+
+```php
+[
+    'dsn' => 'oci:dbname=//db.example.com:1521/testdb',
+    'username' => 'db_username',
+    'password' => 'db_password',
+]
+```
+
+## PostgreSQL
+
+```php
+[
+    'dsn' => 'pgsql:host=db.example.com;port=31075;dbname=testdb;',
+    'username' => 'db_username',
+    'password' => 'db_password',
+]
+```
+
+## ODBC
+
+```php
+[
+    'dsn' => 'odbc:Driver={Microsoft Access Driver (*.mdb)};DBQ=D:\\data\\testdb.mdb;Uid=admin',
+]
+```
+
