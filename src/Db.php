@@ -8,6 +8,7 @@ namespace Dida;
 
 use \PDO;
 use \PDOException;
+use \Exception;
 
 /**
  * Db
@@ -15,12 +16,15 @@ use \PDOException;
 class Db
 {
     /* initial configurations */
-    private $cfg = [
-        /* required parameters */
+    protected $cfg = [
+        /* pdo parameters */
         'dsn'      => null, // PDO DNS
         'username' => null, // The database username
         'password' => null, // The database password
         'options'  => [], // PDO driver options
+
+        /* required parameters */
+        'workdir' => null, // Set the work directory.
 
         /* optional parameters */
         'dbname'      => null, // The database name
@@ -44,13 +48,21 @@ class Db
     public function __construct($cfg = [])
     {
         $this->cfg = array_merge($this->cfg, $cfg);
+
+        // Work directory.
+        $workdir = $this->cfg['workdir'];
+        if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
+            throw new Exception("You must specify the cfg['workdir'] to a valid writable directory");
+        }
+        $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
     }
 
 
     /**
      * Connects the database
      *
-     * @return bool true if success, false if failed.
+     * @return bool TRUE on success.
+     *               FALSE on failure.
      */
     public function connect()
     {
@@ -71,7 +83,7 @@ class Db
 
 
     /**
-     * Checks the connection
+     * Check the connection.
      *
      * @param bool $strict_mode Strict mode
      */
@@ -108,5 +120,39 @@ class Db
     public function disconnect()
     {
         $this->pdo = null;
+    }
+
+
+    /**
+     * Query a SQL.
+     * The operation will not change the data.
+     */
+    public function query($sql, $data = null)
+    {
+        if ($data === null) {
+            return $this->pdo->query($sql);
+        } elseif (is_array($data)) {
+            $stmt = $this->pdo->prepare($sql);
+            return $stmt->execute($data);
+        } else {
+            return false;
+        }
+    }
+
+
+    /**
+     * Execute a SQL.
+     * The operation might change the data.
+     */
+    public function execute($sql, $data = null)
+    {
+        if ($data === null) {
+            return $this->pdo->exec($sql);
+        } elseif (is_array($data)) {
+            $stmt = $this->pdo->prepare($sql);
+            return $stmt->execute($data);
+        } else {
+            return false;
+        }
     }
 }
