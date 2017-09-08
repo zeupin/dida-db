@@ -10,6 +10,7 @@ use \PDO;
 
 /**
  * Mysql Schema Trait
+ * Schema generation/reflection features for MySQL
  */
 trait MysqlSchemaTrait
 {
@@ -104,9 +105,60 @@ EOT;
         ]);
         $result = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $row['BASE_TYPE'] = $this->getBaseType($row['DATA_TYPE']);
             $result[$row['COLUMN_NAME']] = $row;
         }
         return $result;
+    }
+
+
+    /**
+     * Converts DATA_TYPE to BASE_TYPE.
+     */
+    public function getBaseType($datatype)
+    {
+        switch ($datatype) {
+            /* string type */
+            case 'varchar':
+            case 'char':
+            case 'text':
+            case 'mediumtext':
+            case 'longtext':
+                return 'string';
+
+            /* numeric type */
+            case 'int':
+            case 'tinyint':
+            case 'smallint':
+            case 'mediumint':
+            case 'bigint':
+            case 'float':
+            case 'double':
+            case 'decimal':
+            case 'timestamp':
+                return 'numeric';
+
+            /* time type */
+            case 'datetime':
+            case 'date':
+                return 'time';
+
+            /* enum */
+            case 'enum':
+                return 'enum';
+
+            /* set */
+            case 'set':
+                return 'set';
+
+            /* binary */
+            case 'varbinary':
+                return 'varbinary';
+                
+            /* unknown type */
+            default:
+                return '';
+        }
     }
 
 
@@ -122,7 +174,7 @@ EOT;
             return false;
         }
 
-        $target_dir = $this->cfg['workdir'] . '~SCHEMA' . DIRECTORY_SEPARATOR;
+        $target_dir = $this->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR;
         if (!file_exists($target_dir)) {
             if (!mkdir($target_dir, 0777)) {
                 return false;
@@ -130,14 +182,14 @@ EOT;
         }
 
         $tablenames = $this->listTableNames($schema);
-        $this->saveContents($target_dir . "$schema.~TABLENAMES.php", $this->exportVar($tablenames));
+        $this->saveContents($target_dir . "~TABLENAMES.php", $this->exportVar($tablenames));
 
         foreach ($tablenames as $table) {
             $info = [
                 'TABLE'   => $this->getTableInfo($schema, $table),
                 "COLUMNS" => $this->getColumnsInfo($schema, $table),
             ];
-            $this->saveContents($target_dir . "$schema.$table.php", $this->exportVar($info));
+            $this->saveContents($target_dir . "$table.php", $this->exportVar($info));
         }
     }
 
