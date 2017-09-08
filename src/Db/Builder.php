@@ -21,7 +21,7 @@ abstract class Builder
     protected $def = null;
 
     /* 支持的SQL运算集 */
-    public static $opertor_set = [
+    protected static $opertor_set = [
         /* ==,!= */
         'EQ'               => 'EQ',
         '='                => 'EQ',
@@ -69,14 +69,18 @@ abstract class Builder
         'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
     ];
 
-
-
-
+    /* sql templates */
+    protected static $tpl_COUNT = 'SELECT COUNT(%FIELDS%) FROM %TABLE%%WHERE%';
 
     /* conditions */
     protected $conditions = [];
-    protected $conditions_expression = null;
+    protected $conditions_changed = false;
+    protected $conditions_expression = '';
     protected $conditions_parameters = [];
+
+    /* final sql */
+    protected $sql_statement = '';
+    protected $sql_parameters = [];
 
 
     /**
@@ -88,6 +92,148 @@ abstract class Builder
         $this->db = $db;
         $this->table = $table;
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $table . '.php');
+    }
+
+
+    /**
+     * Brackets a string value.
+     * 
+     * @param string $string
+     * @return string
+     */
+    public static function bracket($string)
+    {
+        if ($string === '') {
+            return '';
+        }
+
+        if (substr($string, 0, 1) === '(' && substr($string, -1, 1) === ')') {
+            return $string;
+        }
+
+        return "($string)";
+    }
+
+
+    public function where($condition)
+    {
+        $this->conditions_changed = true;
+
+        if (is_string($condition)) {
+            $this->where_SQL($condition);
+            return $this;
+        }
+    }
+
+
+    public function where_SQL($sql)
+    {
+        $this->conditions[] = self::bracket($sql);
+    }
+
+
+    public function count($fields = '*')
+    {
+        $this->build_WHERE();
+        $this->build_COUNT();
+        return $this;
+    }
+
+
+    /**
+     * Action: Returns the SQL expression.
+     */
+    public function sql()
+    {
+        return $this->sql_statement;
+    }
+
+
+    /**
+     * Action: Gets a record from the recordset.
+     */
+    public function get()
+    {
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql_statement);
+            if ($stmt === false) {
+                return false;
+            } else {
+                return $stmt->fetch();
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql_statement);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                return $stmt->fetch();
+            }
+        }
+    }
+
+
+    /**
+     * Action: Gets all records from the recordset.
+     */
+    public function getAll()
+    {
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql_statement);
+            if ($stmt === false) {
+                return false;
+            } else {
+                return $stmt->fetchAll();
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql_statement);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                return $stmt->fetchAll();
+            }
+        }
+    }
+
+
+    protected function build_COUNT($fields = '*')
+    {
+        $data = [
+            '%TABLE%'  => $this->quoteTable($this->table),
+            "%FIELDS%" => $fields,
+            '%WHERE%'  => $this->conditions_expression,
+        ];
+        $this->sql_statement = self::assemble(self::$tpl_COUNT, $data);
+    }
+
+
+    protected static function assemble($tpl, $data)
+    {
+        $vars = array_keys($data);
+        try {
+            $result = str_replace($vars, $data, $tpl);
+            return $result;
+        } catch (Exception $ex) {
+            return false;
+        }
+    }
+
+
+    protected function build_WHERE()
+    {
+        if (!$this->conditions_changed) {
+            return;
+        }
+
+        $where = implode(' AND ', $this->conditions);
+        if ($where === '') {
+            $this->conditions_expression = '';
+        } else {
+            $this->conditions_expression = " WHERE $where";
+        }
+
+        $this->conditions_changed = false;
     }
 
 
