@@ -69,6 +69,18 @@ abstract class Builder
     protected $def = null;
 
 
+    /**
+     * @param \Dida\Db $db
+     * @param string $table
+     */
+    public function __construct($db, $table)
+    {
+        $this->db = $db;
+        $this->table = $table;
+        $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $table . '.php');
+    }
+
+
     protected function quoteTable($table)
     {
         return '"' . $table . '"';
