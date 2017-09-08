@@ -39,6 +39,9 @@ class Db
     /* PDO Exception instance */
     public $pdoexception = null;
 
+    /* work directory */
+    public $workdir = null;
+
 
     /**
      * Construct
@@ -55,6 +58,7 @@ class Db
             throw new Exception("You must specify the cfg['workdir'] to a valid writable directory");
         }
         $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
+        $this->workdir = $this->cfg['workdir'];
     }
 
 
