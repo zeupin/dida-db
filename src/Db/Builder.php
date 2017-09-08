@@ -11,9 +11,16 @@ namespace Dida\Db;
  */
 abstract class Builder
 {
-    /*
-     * 支持的SQL运算集
+    /**
+     * @var \Dida\Db
      */
+    protected $db = null;
+
+    /* table & its defination */
+    protected $table = null;
+    protected $def = null;
+
+    /* 支持的SQL运算集 */
     public static $opertor_set = [
         /* ==,!= */
         'EQ'               => 'EQ',
@@ -61,12 +68,15 @@ abstract class Builder
         'TIME BETWEEN'     => 'TIME_BETWEEN',
         'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
     ];
-    /**
-     * @var \Dida\Db
-     */
-    protected $db = null;
-    protected $table = null;
-    protected $def = null;
+
+
+
+
+
+    /* conditions */
+    protected $conditions = [];
+    protected $conditions_expression = null;
+    protected $conditions_parameters = [];
 
 
     /**
@@ -117,6 +127,15 @@ abstract class Builder
     }
 
 
+    protected function op_RAW($field, $op, $data)
+    {
+        return [
+            'expression' => $data,
+            'parameters' => [],
+        ];
+    }
+
+
     protected function op_COMMON($field, $op, $data)
     {
         $expression = '';
@@ -129,6 +148,14 @@ abstract class Builder
                     '%FIELD%' => $field,
                     '%OP%'    => $op,
                     '%VALUE%' => $this->quoteString($value),
+                ];
+                break;
+
+            case 'time':
+                $array = [
+                    '%FIELD%' => $field,
+                    '%OP%'    => $op,
+                    '%VALUE%' => $this->quoteTime($value),
                 ];
                 break;
 
@@ -184,15 +211,6 @@ abstract class Builder
         $result = $this->op_COMMON($field, '=', $data);
         return [
             'expression' => 'NOT ' . $result['expression'],
-            'parameters' => [],
-        ];
-    }
-
-
-    protected function op_RAW($field, $op, $data)
-    {
-        return [
-            'expression' => $data,
             'parameters' => [],
         ];
     }
