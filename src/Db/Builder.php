@@ -149,17 +149,21 @@ abstract class Builder
 
     /**
      * Specify the WHERE condition(s).
-     *
-     * @param mixed $condition
-     * @param mixed $type
      */
     public function where($condition, $type = null)
     {
         $this->where_changed = true;
 
-        // treat $condition as a SQL statement
+        // [string]
+        // treats it as a WHERE expression directly
         if (is_string($condition)) {
             return $this->whereSQL($condition);
+        }
+
+        // [array]
+        //
+        if (is_array($condition)) {
+
         }
     }
 
@@ -188,7 +192,7 @@ abstract class Builder
             throw new Exception("Invalid operator \"$op\" in " . var_export($condition, true));
         }
 
-        $method_name = 'op_' . $op;
+        $method_name = 'op_' . self::$opertor_set[$op];
         $this->where_items[] = $this->$method_name($field, $op, $data);
 
         return $this;
@@ -347,7 +351,7 @@ abstract class Builder
 
         $data = array_merge(self::$SELECT_KEYS, $data);
 
-        $this->sql_statement = self::assemble(self::$SELECT_TMPL, $data);
+        $this->sql_statement = self::replaceTemplate(self::$SELECT_TMPL, $data);
         $this->sql_parameters = $this->where_parameters;
     }
 
@@ -405,20 +409,19 @@ abstract class Builder
 
     protected function op_COMMON($field, $op, $data)
     {
-        $expression = '';
-
         $tpl = '(%field% %op% %value%)';
+
         $expression = '';
         $parameters = [];
 
-        if ($his->prepare) {
+        if ($this->prepare) {
             $array = [
                 '%field%' => $this->quoteField($field),
                 '%op%'    => $op,
                 '%value%' => '?',
             ];
-            $expression = $this->assemble($tpl, $array);
-            $parameters[] = $value;
+            $expression = $this->replaceTemplate($tpl, $array);
+            $parameters[] = $data;
 
             return [
                 'expression' => $expression,
@@ -431,7 +434,7 @@ abstract class Builder
                 $array = [
                     '%field%' => $field,
                     '%op%'    => $op,
-                    '%value%' => $this->quoteString($value),
+                    '%value%' => $this->quoteString($data),
                 ];
                 break;
 
@@ -439,7 +442,7 @@ abstract class Builder
                 $array = [
                     '%field%' => $field,
                     '%op%'    => $op,
-                    '%value%' => $this->quoteTime($value),
+                    '%value%' => $this->quoteTime($data),
                 ];
                 break;
 
@@ -447,12 +450,12 @@ abstract class Builder
                 $array = [
                     '%field%' => $field,
                     '%op%'    => $op,
-                    '%value%' => $value
+                    '%value%' => $data
                 ];
         }
 
         $return = [
-            'expression' => $this->assemble($tpl, $array),
+            'expression' => $this->replaceTemplate($tpl, $array),
             'parameters' => [],
         ];
         return $return;
@@ -519,7 +522,7 @@ abstract class Builder
     }
 
 
-    protected static function assemble($tpl, $data)
+    public static function replaceTemplate($tpl, $data)
     {
         $vars = array_keys($data);
         try {
