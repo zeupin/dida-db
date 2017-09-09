@@ -16,16 +16,21 @@ abstract class Builder
      */
     protected $db = null;
 
-    /* table & its defination */
+    /* table and its defination */
     protected $table = null;
     protected $def = null;
 
+    /* verb and its data */
+    protected $verb = 'select';
+    protected $verb_data = ['*'];
+
     /* 支持的SQL运算集 */
     protected static $opertor_set = [
-        /* ==,!= */
+        /* equal */
         'EQ'               => 'EQ',
         '='                => 'EQ',
         '=='               => 'EQ',
+        /* not equal */
         'NEQ'              => 'NEQ',
         '<>'               => 'NEQ',
         '!='               => 'NEQ',
@@ -72,11 +77,11 @@ abstract class Builder
     /* sql templates */
     protected static $tpl_COUNT = 'SELECT COUNT(%FIELDS%) FROM %TABLE%%WHERE%';
 
-    /* conditions */
-    protected $conditions = [];
-    protected $conditions_changed = false;
-    protected $conditions_expression = '';
-    protected $conditions_parameters = [];
+    /* WHERE */
+    protected $where_changed = true;
+    protected $where_items = [];
+    protected $where_expression = '';
+    protected $where_parameters = [];
 
     /* final sql */
     protected $sql_statement = '';
@@ -97,7 +102,7 @@ abstract class Builder
 
     /**
      * Brackets a string value.
-     * 
+     *
      * @param string $string
      * @return string
      */
@@ -115,27 +120,116 @@ abstract class Builder
     }
 
 
-    public function where($condition)
+    protected static function assemble($tpl, $data)
     {
-        $this->conditions_changed = true;
+        $vars = array_keys($data);
+        try {
+            $result = str_replace($vars, $data, $tpl);
+            return $result;
+        } catch (Exception $ex) {
+            return false;
+        }
+    }
 
+
+    /**
+     * Specify the WHERE condition(s).
+     *
+     * @param mixed $condition
+     * @param mixed $type
+     */
+    public function where($condition, $type = null)
+    {
+        $this->where_changed = true;
+
+        // treat $condition as a SQL statement
         if (is_string($condition)) {
-            $this->where_SQL($condition);
+            $this->whereSQL($condition);
             return $this;
         }
     }
 
 
-    public function where_SQL($sql)
+    public function whereSQL($sql)
     {
-        $this->conditions[] = self::bracket($sql);
+        $this->where_changed = true;
+
+        $this->where_items[] = [
+            'expression' => self::bracket($sql),
+            'parameters' => [],
+        ];
+    }
+
+
+    public function whereONE($condition)
+    {
+        $this->where_changed = true;
+
+        list($field, $op, $data) = $condition;
+
+        // Checks whether $op is valid.
+        if (!array_key_exists($op, self::$opertor_set)) {
+            throw new Exception("Invalid operator \"$op\" in ". var_export($condition, true));
+        }
+
+        $method_name = 'op_'. $op;
+        $this->where_items[] = $this->$method_name($field, $op, $data);
+    }
+
+
+    protected function build()
+    {
+        $this->build_WHERE();
+
+        switch ($this->verb) {
+            case 'count':
+                $this->build_COUNT();
+                break;
+        }
+    }
+
+
+    /**
+     * Builds the WHERE expression.
+     */
+    protected function build_WHERE()
+    {
+        // if not changed, do nothing
+        if (!$this->where_changed) {
+            return;
+        }
+
+        // links the where_items
+        $expression = [];
+        $parameters = [];
+        foreach ($this->where_items as $item) {
+            $expression[] = $item['expression'];
+            $params=$item['parameters'];
+            foreach($params as $param) {
+                $parameters[] = $param;
+            }
+        }
+
+        $where = implode(' AND ', $expression);
+
+        if (empty($expression)) {
+            $this->where_expression = '';
+            $this->where_parameters = [];
+        } else {
+            $this->where_expression = " WHERE $where";
+            $this->where_parameters = $parameters;
+        }
+
+        // build completed
+        $this->where_changed = false;
     }
 
 
     public function count($fields = '*')
     {
-        $this->build_WHERE();
-        $this->build_COUNT();
+        $this->verb = 'count';
+        $this->verb_data = $fields;
+
         return $this;
     }
 
@@ -145,6 +239,8 @@ abstract class Builder
      */
     public function sql()
     {
+        $this->action();
+
         return $this->sql_statement;
     }
 
@@ -154,6 +250,8 @@ abstract class Builder
      */
     public function get()
     {
+        $this->action();
+
         if (count($this->sql_parameters) === 0) {
             $stmt = $this->db->pdo->query($this->sql_statement);
             if ($stmt === false) {
@@ -178,6 +276,8 @@ abstract class Builder
      */
     public function getAll()
     {
+        $this->action();
+
         if (count($this->sql_parameters) === 0) {
             $stmt = $this->db->pdo->query($this->sql_statement);
             if ($stmt === false) {
@@ -197,43 +297,24 @@ abstract class Builder
     }
 
 
-    protected function build_COUNT($fields = '*')
+    protected function action()
     {
+        $this->build();
+    }
+
+
+    protected function build_COUNT()
+    {
+        $fields = $this->verb_data;
+
         $data = [
             '%TABLE%'  => $this->quoteTable($this->table),
             "%FIELDS%" => $fields,
-            '%WHERE%'  => $this->conditions_expression,
+            '%WHERE%'  => $this->where_expression,
         ];
+
         $this->sql_statement = self::assemble(self::$tpl_COUNT, $data);
-    }
-
-
-    protected static function assemble($tpl, $data)
-    {
-        $vars = array_keys($data);
-        try {
-            $result = str_replace($vars, $data, $tpl);
-            return $result;
-        } catch (Exception $ex) {
-            return false;
-        }
-    }
-
-
-    protected function build_WHERE()
-    {
-        if (!$this->conditions_changed) {
-            return;
-        }
-
-        $where = implode(' AND ', $this->conditions);
-        if ($where === '') {
-            $this->conditions_expression = '';
-        } else {
-            $this->conditions_expression = " WHERE $where";
-        }
-
-        $this->conditions_changed = false;
+        $this->sql_parameters = $this->where_parameters;
     }
 
 
@@ -313,9 +394,9 @@ abstract class Builder
                 ];
         }
 
-        $vars = array_keys($array);
+        $keys = array_keys($array);
         $return = [
-            'expression' => str_replace($vars, $array, $tpl),
+            'expression' => str_replace($keys, $array, $tpl),
             'parameters' => [],
         ];
         return $return;
