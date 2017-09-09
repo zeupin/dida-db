@@ -20,11 +20,46 @@ abstract class Builder
     protected $table = null;
     protected $def = null;
 
-    /* verb and its data */
-    protected $verb = 'select';
-    protected $verb_data = ['*'];
+    /* prepare mode */
+    protected $prepare = false;
 
-    /* 支持的SQL运算集 */
+    /* sql templates */
+    protected static $SELECT_TMPL = 'SELECT%distinct% %fields% FROM %table%%join%%where%%group%%having%%order%%limit%%union%';
+    protected static $INSERT_TMPL = 'INSERT INTO %table% (%fields%) VALUES %data%';
+    protected static $UPDATE_TMPL = 'UPDATE %table% SET %data%%join%%where%';
+    protected static $DELETE_TMPL = 'DELETE FROM %table%%using%%join%%where%';
+
+    /* sql template keys */
+    protected static $SELECT_KEYS = [
+        '%distinct%' => '',
+        '%fields%'   => '',
+        '%table%'    => '',
+        '%join%'     => '',
+        '%where%'    => '',
+        '%group%'    => '',
+        '%having%'   => '',
+        '%order%'    => '',
+        '%limit%'    => '',
+        '%union%'    => '',
+    ];
+    protected static $INSERT_KEYS = [
+        '%table%'  => '',
+        '%fields%' => '',
+        '%data%'   => '',
+    ];
+    protected static $UPDATE_KEYS = [
+        '%table%' => '',
+        '%data%'  => '',
+        '%join%'  => '',
+        '%where%' => '',
+    ];
+    protected static $DELETE_KEYS = [
+        '%table%' => '',
+        '%join%'  => '',
+        '%where%' => '',
+    ];
+
+    /* 支持的SQL条件运算集 */
     protected static $opertor_set = [
         /* equal */
         'EQ'               => 'EQ',
@@ -74,8 +109,13 @@ abstract class Builder
         'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
     ];
 
-    /* sql templates */
-    protected static $tpl_COUNT = 'SELECT COUNT(%FIELDS%) FROM %TABLE%%WHERE%';
+    /* verb */
+    protected $verb = 'SELECT';
+
+    /* SELECT */
+    protected $select_fields = ['*'];
+    protected $select_fields_expression = '';
+    protected $select_distinct_expression = '';
 
     /* WHERE */
     protected $where_changed = true;
@@ -100,35 +140,10 @@ abstract class Builder
     }
 
 
-    /**
-     * Brackets a string value.
-     *
-     * @param string $string
-     * @return string
-     */
-    public static function bracket($string)
+    public function prepare($flag = true)
     {
-        if ($string === '') {
-            return '';
-        }
-
-        if (substr($string, 0, 1) === '(' && substr($string, -1, 1) === ')') {
-            return $string;
-        }
-
-        return "($string)";
-    }
-
-
-    protected static function assemble($tpl, $data)
-    {
-        $vars = array_keys($data);
-        try {
-            $result = str_replace($vars, $data, $tpl);
-            return $result;
-        } catch (Exception $ex) {
-            return false;
-        }
+        $this->prepare = $flag;
+        return $this;
     }
 
 
@@ -144,8 +159,7 @@ abstract class Builder
 
         // treat $condition as a SQL statement
         if (is_string($condition)) {
-            $this->whereSQL($condition);
-            return $this;
+            return $this->whereSQL($condition);
         }
     }
 
@@ -158,6 +172,8 @@ abstract class Builder
             'expression' => self::bracket($sql),
             'parameters' => [],
         ];
+
+        return $this;
     }
 
 
@@ -169,66 +185,29 @@ abstract class Builder
 
         // Checks whether $op is valid.
         if (!array_key_exists($op, self::$opertor_set)) {
-            throw new Exception("Invalid operator \"$op\" in ". var_export($condition, true));
+            throw new Exception("Invalid operator \"$op\" in " . var_export($condition, true));
         }
 
-        $method_name = 'op_'. $op;
+        $method_name = 'op_' . $op;
         $this->where_items[] = $this->$method_name($field, $op, $data);
+
+        return $this;
     }
 
 
-    protected function build()
+    public function select($fields = ['*'])
     {
-        $this->build_WHERE();
+        $this->verb = 'SELECT';
+        $this->select_fields = $fields;
 
-        switch ($this->verb) {
-            case 'count':
-                $this->build_COUNT();
-                break;
-        }
-    }
-
-
-    /**
-     * Builds the WHERE expression.
-     */
-    protected function build_WHERE()
-    {
-        // if not changed, do nothing
-        if (!$this->where_changed) {
-            return;
-        }
-
-        // links the where_items
-        $expression = [];
-        $parameters = [];
-        foreach ($this->where_items as $item) {
-            $expression[] = $item['expression'];
-            $params=$item['parameters'];
-            foreach($params as $param) {
-                $parameters[] = $param;
-            }
-        }
-
-        $where = implode(' AND ', $expression);
-
-        if (empty($expression)) {
-            $this->where_expression = '';
-            $this->where_parameters = [];
-        } else {
-            $this->where_expression = " WHERE $where";
-            $this->where_parameters = $parameters;
-        }
-
-        // build completed
-        $this->where_changed = false;
+        return $this;
     }
 
 
     public function count($fields = '*')
     {
-        $this->verb = 'count';
-        $this->verb_data = $fields;
+        $this->verb = 'SELECT';
+        $this->select_fields = ["COUNT($fields)"];
 
         return $this;
     }
@@ -303,18 +282,79 @@ abstract class Builder
     }
 
 
-    protected function build_COUNT()
+    protected function build()
     {
-        $fields = $this->verb_data;
+        $this->build_WHERE();
+
+        switch ($this->verb) {
+            case 'SELECT':
+                $this->build_SELECT();
+                break;
+        }
+    }
+
+
+    /**
+     * Builds the WHERE expression.
+     */
+    protected function build_WHERE()
+    {
+        // if not changed, do nothing
+        if (!$this->where_changed) {
+            return;
+        }
+
+        // links the where_items
+        $expression = [];
+        $parameters = [];
+        foreach ($this->where_items as $item) {
+            $expression[] = $item['expression'];
+            $params = $item['parameters'];
+            foreach ($params as $param) {
+                $parameters[] = $param;
+            }
+        }
+
+        $where = implode(' AND ', $expression);
+
+        if (empty($expression)) {
+            $this->where_expression = '';
+            $this->where_parameters = [];
+        } else {
+            $this->where_expression = " WHERE $where";
+            $this->where_parameters = $parameters;
+        }
+
+        // build completed
+        $this->where_changed = false;
+    }
+
+
+    protected function build_SELECT()
+    {
+        $this->build_WHERE();
+        $this->build_SELECT_FIELDS();
+
+        $table = $this->quoteTable($this->table);
+        $fields = $this->select_fields_expression;
+        $where = $this->where_expression;
 
         $data = [
-            '%TABLE%'  => $this->quoteTable($this->table),
-            "%FIELDS%" => $fields,
-            '%WHERE%'  => $this->where_expression,
+            '%table%'  => $table,
+            "%fields%" => $fields,
+            '%where%'  => $where,
         ];
 
-        $this->sql_statement = self::assemble(self::$tpl_COUNT, $data);
+        $data = array_merge(self::$SELECT_KEYS, $data);
+
+        $this->sql_statement = self::assemble(self::$SELECT_TMPL, $data);
         $this->sql_parameters = $this->where_parameters;
+    }
+
+
+    protected function build_SELECT_FIELDS()
+    {
+        $this->select_fields_expression = $this->calc_FIELDS($this->select_fields);
     }
 
 
@@ -367,36 +407,52 @@ abstract class Builder
     {
         $expression = '';
 
-        $tpl = '(%FIELD% %OP% %VALUE%)';
+        $tpl = '(%field% %op% %value%)';
+        $expression = '';
+        $parameters = [];
+
+        if ($his->prepare) {
+            $array = [
+                '%field%' => $this->quoteField($field),
+                '%op%'    => $op,
+                '%value%' => '?',
+            ];
+            $expression = $this->assemble($tpl, $array);
+            $parameters[] = $value;
+
+            return [
+                'expression' => $expression,
+                'parameters' => $parameters,
+            ];
+        }
 
         switch ($this->def['COLUMNS'][$field]['BASE_TYPE']) {
             case 'string':
                 $array = [
-                    '%FIELD%' => $field,
-                    '%OP%'    => $op,
-                    '%VALUE%' => $this->quoteString($value),
+                    '%field%' => $field,
+                    '%op%'    => $op,
+                    '%value%' => $this->quoteString($value),
                 ];
                 break;
 
             case 'time':
                 $array = [
-                    '%FIELD%' => $field,
-                    '%OP%'    => $op,
-                    '%VALUE%' => $this->quoteTime($value),
+                    '%field%' => $field,
+                    '%op%'    => $op,
+                    '%value%' => $this->quoteTime($value),
                 ];
                 break;
 
             default:
                 $array = [
-                    '%FIELD%' => $field,
-                    '%OP%'    => $op,
-                    '%VALUE%' => $value
+                    '%field%' => $field,
+                    '%op%'    => $op,
+                    '%value%' => $value
                 ];
         }
 
-        $keys = array_keys($array);
         $return = [
-            'expression' => str_replace($keys, $array, $tpl),
+            'expression' => $this->assemble($tpl, $array),
             'parameters' => [],
         ];
         return $return;
@@ -440,5 +496,51 @@ abstract class Builder
             'expression' => 'NOT ' . $result['expression'],
             'parameters' => [],
         ];
+    }
+
+
+    /**
+     * Brackets a string value.
+     *
+     * @param string $string
+     * @return string
+     */
+    public static function bracket($string)
+    {
+        if ($string === '') {
+            return '';
+        }
+
+        if (substr($string, 0, 1) === '(' && substr($string, -1, 1) === ')') {
+            return $string;
+        }
+
+        return "($string)";
+    }
+
+
+    protected static function assemble($tpl, $data)
+    {
+        $vars = array_keys($data);
+        try {
+            $result = str_replace($vars, $data, $tpl);
+            return $result;
+        } catch (Exception $ex) {
+            return false;
+        }
+    }
+
+
+    protected function calc_FIELDS($fields)
+    {
+        $return = [];
+        foreach ($fields as $as => $name) {
+            if (is_string($as)) {
+                $return[] = $name . " AS " . $this->quoteField($as);
+            } else {
+                $return[] = $name;
+            }
+        }
+        return implode(',', $return);
     }
 }
