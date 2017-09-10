@@ -61,6 +61,8 @@ abstract class Builder
 
     /* 支持的SQL条件运算集 */
     protected static $opertor_set = [
+        /* Raw SQL */
+        'SQL'              => 'SQL',
         /* equal */
         'EQ'               => 'EQ',
         '='                => 'EQ',
@@ -98,8 +100,6 @@ abstract class Builder
         'NULL'             => 'NULL',
         'NOT NULL'         => 'NOTNULL',
         'NOTNULL'          => 'NOTNULL',
-        /* RAW */
-        'RAW'              => 'RAW',
         /* 时间类型字段的运算 */
         'TIME >'           => 'TIME_GT',
         'TIME <'           => 'TIME_LT',
@@ -175,10 +175,10 @@ abstract class Builder
         $items = [];
 
         foreach ($array as $field => $value) {
-            $items[] = $this->op_EQ($field, '=', $value);
+            $items[] = $this->cond_EQ($field, '=', $value);
         }
 
-        $this->where_items[] = $this->combineWhereItems('AND', $items);
+        $this->where_items[] = $this->combineWhereItems($items, 'AND');
 
         return $this;
     }
@@ -198,11 +198,11 @@ abstract class Builder
 
 
     /**
-     * Set a WHERE condition.
+     * Set one WHERE condition.
      *
      * @param array $condition  [$field, $op, $data]
      */
-    public function whereONE($condition)
+    public function whereONE(array $condition)
     {
         $this->where_changed = true;
 
@@ -213,8 +213,33 @@ abstract class Builder
             throw new Exception("Invalid operator \"$op\" in " . var_export($condition, true));
         }
 
-        $method_name = 'op_' . self::$opertor_set[$op];
+        $method_name = 'cond_' . self::$opertor_set[$op];
         $this->where_items[] = $this->$method_name($field, $op, $data);
+
+        return $this;
+    }
+
+
+    /**
+     * Sets many WHERE conditions at one time.
+     *
+     * @param array $conditions  The conditions array like:
+     *      [
+     *          [$field, $op, $data],
+     *          [$field, $op, $data],
+     *          [$field, $op, $data],
+     *      ]
+     * @param string $logic
+     */
+    public function whereMANY(array $conditions, $logic = 'AND')
+    {
+        $items = [];
+        foreach ($conditions as $condition) {
+            $items[] = $this->cond($condition);
+        }
+        $result = $this->combineWhereItems($items, $logic);
+        $result['expression'] = $this->bracket($result['expression']);
+        $this->where_items[] = $result;
 
         return $this;
     }
@@ -344,7 +369,7 @@ abstract class Builder
         }
 
         // combine the where_items
-        $where = $this->combineWhereItems('AND', $this->where_items);
+        $where = $this->combineWhereItems($this->where_items, 'AND');
 
         if ($where['expression'] === '') {
             $this->where_expression = '';
@@ -422,7 +447,30 @@ abstract class Builder
     }
 
 
-    protected function op_RAW($field, $op, $data)
+    protected function cond($condition)
+    {
+        // check condition is valid
+        $cnt = count($condition);
+        if ($cnt === 3) {
+            list($field, $op, $data) = $condition;
+        } elseif ($cnt === 2) {
+            list($field, $op) = $condition;
+        } else {
+            throw new Exception("Invalid condition as " . var_export($condition, true));
+        }
+
+        // Checks whether $op is valid.
+        if (!array_key_exists($op, self::$opertor_set)) {
+            throw new Exception("Invalid operator \"$op\" in condition " . var_export($condition, true));
+        }
+
+        // calls the 'cond_*' function
+        $method_name = 'cond_' . self::$opertor_set[$op];
+        return $this->$method_name($field, $op, $data);
+    }
+
+
+    protected function cond_SQL($field, $op, $data)
     {
         return [
             'expression' => $data,
@@ -431,7 +479,7 @@ abstract class Builder
     }
 
 
-    protected function op_COMMON($field, $op, $data)
+    protected function cond_COMMON($field, $op, $data)
     {
         $tpl = '(%field% %op% %value%)';
 
@@ -486,39 +534,39 @@ abstract class Builder
     }
 
 
-    protected function op_EQ($field, $op, $data)
+    protected function cond_EQ($field, $op, $data)
     {
-        return $this->op_COMMON($field, '=', $data);
+        return $this->cond_COMMON($field, '=', $data);
     }
 
 
-    protected function op_GT($field, $op, $data)
+    protected function cond_GT($field, $op, $data)
     {
-        return $this->op_COMMON($field, '>', $data);
+        return $this->cond_COMMON($field, '>', $data);
     }
 
 
-    protected function op_LT($field, $op, $data)
+    protected function cond_LT($field, $op, $data)
     {
-        return $this->op_COMMON($field, '<', $data);
+        return $this->cond_COMMON($field, '<', $data);
     }
 
 
-    protected function op_EGT($field, $op, $data)
+    protected function cond_EGT($field, $op, $data)
     {
-        return $this->op_COMMON($field, '>=', $data);
+        return $this->cond_COMMON($field, '>=', $data);
     }
 
 
-    protected function op_ELT($field, $op, $data)
+    protected function cond_ELT($field, $op, $data)
     {
-        return $this->op_COMMON($field, '<=', $data);
+        return $this->cond_COMMON($field, '<=', $data);
     }
 
 
-    protected function op_NEQ($field, $op, $data)
+    protected function cond_NEQ($field, $op, $data)
     {
-        $result = $this->op_COMMON($field, '=', $data);
+        $result = $this->cond_COMMON($field, '=', $data);
         return [
             'expression' => 'NOT ' . $result['expression'],
             'parameters' => [],
@@ -536,10 +584,6 @@ abstract class Builder
     {
         if ($string === '') {
             return '';
-        }
-
-        if (substr($string, 0, 1) === '(' && substr($string, -1, 1) === ')') {
-            return $string;
         }
 
         return "($string)";
@@ -572,7 +616,7 @@ abstract class Builder
     }
 
 
-    protected function combineWhereItems($logic, $items)
+    protected function combineWhereItems($items, $logic = 'AND')
     {
         $expression = [];
         $parameters = [];
