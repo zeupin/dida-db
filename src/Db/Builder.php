@@ -206,15 +206,9 @@ abstract class Builder
     {
         $this->where_changed = true;
 
-        list($field, $op, $data) = $condition;
+        $result = $this->cond($condition);
 
-        // Checks whether $op is valid.
-        if (!array_key_exists($op, self::$opertor_set)) {
-            throw new Exception("Invalid operator \"$op\" in " . var_export($condition, true));
-        }
-
-        $method_name = 'cond_' . self::$opertor_set[$op];
-        $this->where_items[] = $this->$method_name($field, $op, $data);
+        $this->where_items[] = $result;
 
         return $this;
     }
@@ -460,6 +454,7 @@ abstract class Builder
         }
 
         // Checks whether $op is valid.
+        $op = strtoupper($op);
         if (!array_key_exists($op, self::$opertor_set)) {
             throw new Exception("Invalid operator \"$op\" in condition " . var_export($condition, true));
         }
@@ -569,6 +564,41 @@ abstract class Builder
         $result = $this->cond_COMMON($field, '=', $data);
         return [
             'expression' => 'NOT ' . $result['expression'],
+            'parameters' => [],
+        ];
+    }
+
+    protected function cond_IN($field, $op, $data)
+    {
+        if (empty($data)) {
+            throw new Exception('An empty array not allowed use in a IN expression');
+        }
+
+        $tpl = '(%field% IN (%in%))';
+        $expression = '';
+        $parameters = [];
+
+        $base_type= $this->def['COLUMNS'][$field]['BASE_TYPE'];
+        switch ($base_type) {
+            case 'string':
+                foreach ($data as $key => $value) {
+                $data[$key] = $this->quoteString($value);
+            }
+            case 'time':
+                foreach ($data as $key => $value) {
+                $data[$key] = $this->quoteTime($value);
+            }
+        }
+
+        $array = [
+            '%field%' => $this->quoteField($field),
+            '%in%' => implode(',', $data),
+        ];
+
+        $expression = $this->replaceTemplate($tpl, $array);
+
+        return [
+            'expression' => $expression,
             'parameters' => [],
         ];
     }
