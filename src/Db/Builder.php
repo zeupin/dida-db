@@ -229,6 +229,8 @@ abstract class Builder
         } else {
             $this->select_distinct_expression = '';
         }
+
+        return $this;
     }
 
 
