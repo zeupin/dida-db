@@ -115,6 +115,7 @@ abstract class Builder
     /* SELECT */
     protected $select_fields = ['*'];
     protected $select_fields_expression = '';
+    protected $select_distinct = false;
     protected $select_distinct_expression = '';
 
     /* WHERE */
@@ -150,7 +151,7 @@ abstract class Builder
     /**
      * Specify the WHERE condition(s).
      */
-    public function where($condition, $type = null)
+    public function where($condition)
     {
         $this->where_changed = true;
 
@@ -161,10 +162,25 @@ abstract class Builder
         }
 
         // [array]
-        //
         if (is_array($condition)) {
-
+            return $this->whereEQ($condition);
         }
+    }
+
+
+    public function whereEQ($array)
+    {
+        $this->where_changed = true;
+
+        $items = [];
+
+        foreach ($array as $field => $value) {
+            $items[] = $this->op_EQ($field, '=', $value);
+        }
+
+        $this->where_items[] = $this->combineWhereItems('AND', $items);
+
+        return $this;
     }
 
 
@@ -181,6 +197,11 @@ abstract class Builder
     }
 
 
+    /**
+     * Set a WHERE condition.
+     *
+     * @param array $condition  [$field, $op, $data]
+     */
     public function whereONE($condition)
     {
         $this->where_changed = true;
@@ -196,6 +217,18 @@ abstract class Builder
         $this->where_items[] = $this->$method_name($field, $op, $data);
 
         return $this;
+    }
+
+
+    public function distinct($flag = true)
+    {
+        $this->select_distinct = $flag;
+
+        if ($flag) {
+            $this->select_distinct_expression = ' DISTINCT';
+        } else {
+            $this->select_distinct_expression = '';
+        }
     }
 
 
@@ -308,25 +341,15 @@ abstract class Builder
             return;
         }
 
-        // links the where_items
-        $expression = [];
-        $parameters = [];
-        foreach ($this->where_items as $item) {
-            $expression[] = $item['expression'];
-            $params = $item['parameters'];
-            foreach ($params as $param) {
-                $parameters[] = $param;
-            }
-        }
+        // combine the where_items
+        $where = $this->combineWhereItems('AND', $this->where_items);
 
-        $where = implode(' AND ', $expression);
-
-        if (empty($expression)) {
+        if ($where['expression'] === '') {
             $this->where_expression = '';
             $this->where_parameters = [];
         } else {
-            $this->where_expression = " WHERE $where";
-            $this->where_parameters = $parameters;
+            $this->where_expression = " WHERE " . $where['expression'];
+            $this->where_parameters = $where['parameters'];
         }
 
         // build completed
@@ -340,13 +363,12 @@ abstract class Builder
         $this->build_SELECT_FIELDS();
 
         $table = $this->quoteTable($this->table);
-        $fields = $this->select_fields_expression;
-        $where = $this->where_expression;
 
         $data = [
-            '%table%'  => $table,
-            "%fields%" => $fields,
-            '%where%'  => $where,
+            '%table%'    => $table,
+            '%distinct%' => $this->select_distinct_expression,
+            "%fields%"   => $this->select_fields_expression,
+            '%where%'    => $this->where_expression,
         ];
 
         $data = array_merge(self::$SELECT_KEYS, $data);
@@ -545,5 +567,24 @@ abstract class Builder
             }
         }
         return implode(',', $return);
+    }
+
+
+    protected function combineWhereItems($logic, $items)
+    {
+        $expression = [];
+        $parameters = [];
+
+        foreach ($items as $item) {
+            $expression[] = $item['expression'];
+            foreach ($item['parameters'] as $value) {
+                $parameters[] = $value;
+            }
+        }
+
+        return [
+            'expression' => implode(" $logic ", $expression),
+            'parameters' => $parameters,
+        ];
     }
 }
