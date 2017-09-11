@@ -15,7 +15,11 @@ use \Exception;
  */
 class Db
 {
-    /* initial configurations */
+    /**
+     * Initial configurations
+     *
+     * @var array
+     */
     protected $cfg = [
         /* pdo parameters */
         'dsn'      => null, // PDO DNS
@@ -33,13 +37,24 @@ class Db
         'prefix'      => '', // default table prefix
     ];
 
-    /* PDO instance */
+    /**
+     * PDO instance
+     *
+     * @var \PDO
+     */
     public $pdo = null;
 
-    /* PDO Exception instance */
+    /**
+     * PDO Exception instance
+     *
+     * @var \PDOException
+     */
     public $pdoexception = null;
 
-    /* work directory */
+    /**
+     * work directory
+     * @var string
+     */
     public $workdir = null;
 
 
