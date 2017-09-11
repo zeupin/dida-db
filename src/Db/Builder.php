@@ -147,11 +147,11 @@ abstract class Builder
         'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
     ];
 
-    /* verb */
-    protected $verb = 'SELECT';
-
     /* build */
     protected $builded = false;
+
+    /* verb */
+    protected $verb = 'SELECT';
 
     /* SELECT */
     protected $select_fields = ['*'];
@@ -166,7 +166,7 @@ abstract class Builder
     protected $where_parameters = [];
 
     /* final sql */
-    public $sql_expression = '';
+    public $sql = '';
     public $sql_parameters = [];
 
 
@@ -318,6 +318,33 @@ abstract class Builder
     }
 
 
+    public function select($fields = ['*'])
+    {
+        $this->buildChanged();
+
+        $this->verb = 'SELECT';
+        $this->select_fields = $fields;
+
+        return $this;
+    }
+
+
+    public function count($fields = '*', $alias = null)
+    {
+        $this->buildChanged();
+
+        $this->verb = 'SELECT';
+
+        if (is_string($alias)) {
+            $this->select_fields = [$alias => "COUNT($fields)"];
+        } else {
+            $this->select_fields = ["COUNT($fields)"];
+        }
+
+        return $this;
+    }
+
+
     public function build()
     {
         if ($this->builded) {
@@ -375,7 +402,7 @@ abstract class Builder
             'where'    => $this->where_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
-        $this->sql_expression = implode('', $expression);
+        $this->sql = implode('', $expression);
 
         $parameters = [
             'where' => $this->where_parameters,
@@ -387,50 +414,17 @@ abstract class Builder
 
     protected function build_SELECT_FIELDS()
     {
-        $this->select_fields_expression = $this->calc_FIELDS($this->select_fields);
+        if (empty($this->select_fields)) {
+            $this->select_fields_expression = '*';
+        } else {
+            $this->select_fields_expression = $this->implodeFields($this->select_fields);
+        }
     }
 
 
     protected function buildChanged()
     {
         $this->builded = false;
-    }
-
-
-    public function select($fields = ['*'])
-    {
-        $this->buildChanged();
-
-        $this->verb = 'SELECT';
-        $this->select_fields = $fields;
-
-        return $this;
-    }
-
-
-    public function count($fields = '*', $alias = null)
-    {
-        $this->buildChanged();
-
-        $this->verb = 'SELECT';
-        if (is_null($alias)) {
-            $this->select_fields = ["COUNT($fields)"];
-        } else {
-            $this->select_fields = [$alias => "COUNT($fields)"];
-        }
-
-        return $this;
-    }
-
-
-    /**
-     * Action: Returns the SQL expression.
-     */
-    public function sql()
-    {
-        $this->build();
-
-        return $this->sql_expression;
     }
 
 
@@ -445,14 +439,14 @@ abstract class Builder
             $fetch_style = $this->pdo_default_fetch_mode;
         }
         if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql_expression);
+            $stmt = $this->db->pdo->query($this->sql);
             if ($stmt === false) {
                 return false;
             } else {
                 return $stmt->fetch($fetch_style);
             }
         } else {
-            $stmt = $this->db->pdo->prepare($this->sql_expression);
+            $stmt = $this->db->pdo->prepare($this->sql);
             if ($stmt === false) {
                 return false;
             } else {
@@ -474,14 +468,14 @@ abstract class Builder
             $fetch_style = $this->pdo_default_fetch_mode;
         }
         if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql_expression);
+            $stmt = $this->db->pdo->query($this->sql);
             if ($stmt === false) {
                 return false;
             } else {
                 return $stmt->fetchAll($fetch_style);
             }
         } else {
-            $stmt = $this->db->pdo->prepare($this->sql_expression);
+            $stmt = $this->db->pdo->prepare($this->sql);
             if ($stmt === false) {
                 return false;
             } else {
@@ -684,14 +678,14 @@ abstract class Builder
     }
 
 
-    protected function calc_FIELDS($fields)
+    protected function implodeFields($fields)
     {
         $return = [];
-        foreach ($fields as $as => $name) {
+        foreach ($fields as $as => $field) {
             if (is_string($as)) {
-                $return[] = $name . " AS " . $this->quoteField($as);
+                $return[] = $field . " AS " . $this->quoteField($as);
             } else {
-                $return[] = $name;
+                $return[] = $field;
             }
         }
         return implode(',', $return);
