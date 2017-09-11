@@ -23,4 +23,16 @@ class MysqlBuilder extends Builder
     {
         return '`' . $field . '`';
     }
+
+
+    protected function quoteString($value)
+    {
+        return $this->db->pdo->quote($value);
+    }
+
+
+    protected function quoteTime($value)
+    {
+        return '"' . $value . '"';
+    }
 }

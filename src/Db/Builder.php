@@ -6,6 +6,8 @@
 
 namespace Dida\Db;
 
+use \PDO;
+
 /**
  * Builder
  */
@@ -23,11 +25,7 @@ abstract class Builder
     /* prepare mode */
     protected $prepare = false;
 
-    /* sql templates */
-    protected static $SELECT_TMPL = 'SELECT%distinct% %fields% FROM %table%%join%%where%%group%%having%%order%%limit%%union%';
-    protected static $INSERT_TMPL = 'INSERT INTO %table% (%fields%) VALUES %data%';
-    protected static $UPDATE_TMPL = 'UPDATE %table% SET %data%%join%%where%';
-    protected static $DELETE_TMPL = 'DELETE FROM %table%%using%%join%%where%';
+    /* SELECT template */
     protected $SELECT_expression = [
         0          => 'SELECT ',
         'distinct' => '',
@@ -43,48 +41,60 @@ abstract class Builder
         'union'    => '',
     ];
     protected $SELECT_parameters = [
-        'distinct' => [],
-        'fields'   => [],
-        'table'    => [],
-        'join'     => [],
-        'where'    => [],
-        'group'    => [],
-        'having'   => [],
-        'orderby'  => [],
-        'limit'    => [],
-        'union'    => [],
+        'fields'  => [],
+        'table'   => [],
+        'join'    => [],
+        'where'   => [],
+        'group'   => [],
+        'having'  => [],
+        'orderby' => [],
+        'limit'   => [],
+        'union'   => [],
     ];
 
+    /* INSERT template */
+    protected $INSERT_expression = [
+        0        => 'INSERT INTO ',
+        'table'  => '',
+        'fields' => '',
+        1        => ' VALUES ',
+        'data'   => '',
+    ];
+    protected $INSERT_parameters = [
+        'table'  => [],
+        'fields' => [],
+        'data'   => [],
+    ];
 
-    /* sql template keys */
-    protected static $SELECT_KEYS = [
-        '%distinct%' => '',
-        '%fields%'   => '',
-        '%table%'    => '',
-        '%join%'     => '',
-        '%where%'    => '',
-        '%group%'    => '',
-        '%having%'   => '',
-        '%order%'    => '',
-        '%limit%'    => '',
-        '%union%'    => '',
+    /* UPDATE template */
+    protected $UPDATE_expression = [
+        0       => 'UPDATE ',
+        'table' => '',
+        1       => ' SET ',
+        'data'  => '',
+        'join'  => '',
+        'where' => '',
     ];
-    protected static $INSERT_KEYS = [
-        '%table%'  => '',
-        '%fields%' => '',
-        '%data%'   => '',
+    protected $UPDATE_parameters = [
+        'table' => [],
+        'data'  => [],
+        'join'  => [],
+        'where' => [],
     ];
-    protected static $UPDATE_KEYS = [
-        '%table%' => '',
-        '%data%'  => '',
-        '%join%'  => '',
-        '%where%' => '',
+
+    /* DELETE template */
+    protected $DELETE_expression = [
+        0       => 'DELETE FROM ',
+        'table' => '',
+        'join'  => '',
+        'where' => '',
     ];
-    protected static $DELETE_KEYS = [
-        '%table%' => '',
-        '%join%'  => '',
-        '%where%' => '',
+    protected $DELETE_parameters = [
+        'table' => [],
+        'join'  => [],
+        'where' => [],
     ];
+
 
     /* 支持的SQL条件运算集 */
     protected static $opertor_set = [
@@ -156,6 +166,18 @@ abstract class Builder
     public $sql_parameters = [];
 
 
+    protected abstract function quoteTable($table);
+
+
+    protected abstract function quoteField($field);
+
+
+    protected abstract function quoteString($value);
+
+
+    protected abstract function quoteTime($value);
+
+
     /**
      * @param \Dida\Db $db
      * @param string $table
@@ -183,7 +205,6 @@ abstract class Builder
         $this->where_changed = true;
 
         // [string]
-        // treats it as a WHERE expression directly
         if (is_string($condition)) {
             return $this->whereSQL($condition);
         }
@@ -429,42 +450,6 @@ abstract class Builder
     }
 
 
-    protected function quoteTable($table)
-    {
-        return '"' . $table . '"';
-    }
-
-
-    protected function quoteField($field)
-    {
-        return '"' . $field . '"';
-    }
-
-
-    protected function quoteString($value, $charlist = "\"\'\\")
-    {
-        /*
-         * Returns FALSE if the PDO driver does not support the quote() method (notably PDO_ODBC).
-         */
-        $result = $this->db->pdo->quote($value);
-
-        /*
-         * Replaces with the addcslashes() function.
-         */
-        if ($result === false) {
-            return '"' . addcslashes($value, $charlist) . '"';
-        } else {
-            return $result;
-        }
-    }
-
-
-    protected function quoteTime($value)
-    {
-        return '"' . $value . '"';
-    }
-
-
     protected function cond($condition)
     {
         // check condition is valid
@@ -501,9 +486,13 @@ abstract class Builder
 
     protected function cond_COMMON($field, $op, $data)
     {
-        $tpl = ['(', 'field' => '', ' ', 'op' => '', ' ', 'value' => '', ')'];
-        $tpl['field'] = $this->quoteField($field);
-        $tpl['op'] = $op;
+        $tpl = [
+            '(',
+            'field' => $this->quoteField($field),
+            'op'    => " $op ",
+            'value' => '',
+            ')'
+        ];
 
         $expression = '';
         $parameters = [];
@@ -544,7 +533,7 @@ abstract class Builder
         if (is_array($data)) {
             return $this->cond_IN($field, 'IN', $data);
         }
-        
+
         return $this->cond_COMMON($field, '=', $data);
     }
 
@@ -589,11 +578,16 @@ abstract class Builder
             throw new Exception('An empty array not allowed use in a IN expression');
         }
 
-        $tpl = [ '(', 'field' => '', ' IN (', 'list' => '', '))'];
+        $tpl = [
+            '(',
+            'field' => $this->quoteField($field),
+            'op'    => " $op ",
+            '(',
+            'list'  => '',
+            '))'
+        ];
         $expression = '';
         $parameters = [];
-
-        $tpl['field'] = $this->quoteField($field);
 
         if ($this->prepare) {
             $marks = array_fill(0, count($data), '?');
@@ -635,27 +629,10 @@ abstract class Builder
      * Brackets a string value.
      *
      * @param string $string
-     * @return string
      */
     public static function bracket($string)
     {
-        if ($string === '') {
-            return '';
-        }
-
-        return "($string)";
-    }
-
-
-    public static function replaceTemplate($tpl, $data)
-    {
-        $vars = array_keys($data);
-        try {
-            $result = str_replace($vars, $data, $tpl);
-            return $result;
-        } catch (Exception $ex) {
-            return false;
-        }
+        return ($string === '') ? '' : "($string)";
     }
 
 
