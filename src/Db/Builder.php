@@ -501,53 +501,38 @@ abstract class Builder
 
     protected function cond_COMMON($field, $op, $data)
     {
-        $tpl = '(%field% %op% %value%)';
+        $tpl = ['(', 'field' => '', ' ', 'op' => '', ' ', 'value' => '', ')'];
+        $tpl['field'] = $this->quoteField($field);
+        $tpl['op'] = $op;
 
         $expression = '';
         $parameters = [];
 
         if ($this->prepare) {
-            $array = [
-                '%field%' => $this->quoteField($field),
-                '%op%'    => $op,
-                '%value%' => '?',
-            ];
-            $expression = $this->replaceTemplate($tpl, $array);
+            $tpl['value'] = '?';
+            $expression = implode('', $tpl);
             $parameters[] = $data;
-
-            return [
+            $return = [
                 'expression' => $expression,
                 'parameters' => $parameters,
             ];
+            return $return;
         }
 
         switch ($this->def['COLUMNS'][$field]['BASE_TYPE']) {
             case 'string':
-                $array = [
-                    '%field%' => $field,
-                    '%op%'    => $op,
-                    '%value%' => $this->quoteString($data),
-                ];
+                $tpl['value'] = $this->quoteString($data);
                 break;
-
             case 'time':
-                $array = [
-                    '%field%' => $field,
-                    '%op%'    => $op,
-                    '%value%' => $this->quoteTime($data),
-                ];
+                $tpl['value'] = $this->quoteTime($data);
                 break;
-
             default:
-                $array = [
-                    '%field%' => $field,
-                    '%op%'    => $op,
-                    '%value%' => $data
-                ];
+                $tpl['value'] = $data;
         }
 
+        $expression = implode('', $tpl);
         $return = [
-            'expression' => $this->replaceTemplate($tpl, $array),
+            'expression' => $expression,
             'parameters' => [],
         ];
         return $return;
@@ -556,6 +541,10 @@ abstract class Builder
 
     protected function cond_EQ($field, $op, $data)
     {
+        if (is_array($data)) {
+            return $this->cond_IN($field, 'IN', $data);
+        }
+        
         return $this->cond_COMMON($field, '=', $data);
     }
 
