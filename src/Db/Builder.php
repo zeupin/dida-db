@@ -161,7 +161,7 @@ abstract class Builder
 
     /* WHERE */
     protected $where_changed = true;
-    protected $where_items = [];
+    protected $where_parts = [];
     protected $where_expression = '';
     protected $where_parameters = [];
 
@@ -226,13 +226,13 @@ abstract class Builder
     {
         $this->whereChanged();
 
-        $items = [];
+        $parts = [];
 
         foreach ($array as $field => $value) {
-            $items[] = $this->cond_EQ($field, '=', $value);
+            $parts[] = $this->cond_EQ($field, '=', $value);
         }
 
-        $this->where_items[] = $this->combineWhereItems($items, 'AND');
+        $this->where_parts[] = $this->combineConditionParts($parts, 'AND');
 
         return $this;
     }
@@ -242,7 +242,7 @@ abstract class Builder
     {
         $this->whereChanged();
 
-        $this->where_items[] = [
+        $this->where_parts[] = [
             'expression' => self::bracket($sql),
             'parameters' => [],
         ];
@@ -260,8 +260,8 @@ abstract class Builder
     {
         $this->whereChanged();
 
-        $result = $this->cond($condition);
-        $this->where_items[] = $result;
+        $part = $this->cond($condition);
+        $this->where_parts[] = $part;
 
         return $this;
     }
@@ -282,13 +282,13 @@ abstract class Builder
     {
         $this->whereChanged();
 
-        $items = [];
+        $parts = [];
         foreach ($conditions as $condition) {
-            $items[] = $this->cond($condition);
+            $parts[] = $this->cond($condition);
         }
-        $result = $this->combineWhereItems($items, $logic);
-        $result['expression'] = $this->bracket($result['expression']);
-        $this->where_items[] = $result;
+        $part = $this->combineConditionParts($parts, $logic);
+        $part['expression'] = $this->bracket($part['expression']);
+        $this->where_parts[] = $part;
 
         return $this;
     }
@@ -374,8 +374,8 @@ abstract class Builder
             return;
         }
 
-        // combine the where_items
-        $where = $this->combineWhereItems($this->where_items, 'AND');
+        // combine the where_parts
+        $where = $this->combineConditionParts($this->where_parts, 'AND');
 
         if ($where['expression'] === '') {
             $this->where_expression = '';
@@ -537,11 +537,11 @@ abstract class Builder
             $tpl['value'] = '?';
             $expression = implode('', $tpl);
             $parameters[] = $data;
-            $return = [
+            $part = [
                 'expression' => $expression,
                 'parameters' => $parameters,
             ];
-            return $return;
+            return $part;
         }
 
         switch ($this->def['COLUMNS'][$field]['BASE_TYPE']) {
@@ -556,11 +556,11 @@ abstract class Builder
         }
 
         $expression = implode('', $tpl);
-        $return = [
+        $part = [
             'expression' => $expression,
             'parameters' => [],
         ];
-        return $return;
+        return $part;
     }
 
 
@@ -631,11 +631,11 @@ abstract class Builder
             $expression = implode('', $tpl);
             $parameters = array_values($data);
 
-            $return = [
+            $part = [
                 'expression' => $expression,
                 'parameters' => $parameters,
             ];
-            return $return;
+            return $part;
         }
 
         $base_type = $this->def['COLUMNS'][$field]['BASE_TYPE'];
@@ -652,12 +652,12 @@ abstract class Builder
                 break;
         }
         $tpl['list'] = implode(',', $data);
-        $expression = implode('', $tpl);
 
-        return [
-            'expression' => $expression,
+        $part = [
+            'expression' => implode('', $tpl),
             'parameters' => [],
         ];
+        return $part;
     }
 
 
@@ -692,10 +692,10 @@ abstract class Builder
     }
 
 
-    protected function combineWhereItems($items, $logic = 'AND')
+    protected function combineConditionParts($parts, $logic = 'AND')
     {
-        $expression = array_column($items, 'expression');
-        $parameters = array_column($items, 'parameters');
+        $expression = array_column($parts, 'expression');
+        $parameters = array_column($parts, 'parameters');
 
         return [
             'expression' => implode(" $logic ", $expression),
