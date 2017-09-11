@@ -28,6 +28,33 @@ abstract class Builder
     protected static $INSERT_TMPL = 'INSERT INTO %table% (%fields%) VALUES %data%';
     protected static $UPDATE_TMPL = 'UPDATE %table% SET %data%%join%%where%';
     protected static $DELETE_TMPL = 'DELETE FROM %table%%using%%join%%where%';
+    protected $SELECT_expression = [
+        0          => 'SELECT ',
+        'distinct' => '',
+        'fields'   => '',
+        1          => ' FROM ',
+        'table'    => '',
+        'join'     => '',
+        'where'    => '',
+        'group'    => '',
+        'having'   => '',
+        'orderby'  => '',
+        'limit'    => '',
+        'union'    => '',
+    ];
+    protected $SELECT_parameters = [
+        'distinct' => [],
+        'fields'   => [],
+        'table'    => [],
+        'join'     => [],
+        'where'    => [],
+        'group'    => [],
+        'having'   => [],
+        'orderby'  => [],
+        'limit'    => [],
+        'union'    => [],
+    ];
+
 
     /* sql template keys */
     protected static $SELECT_KEYS = [
@@ -125,8 +152,8 @@ abstract class Builder
     protected $where_parameters = [];
 
     /* final sql */
-    protected $sql_statement = '';
-    protected $sql_parameters = [];
+    public $sql_expression = '';
+    public $sql_parameters = [];
 
 
     /**
@@ -207,7 +234,6 @@ abstract class Builder
         $this->where_changed = true;
 
         $result = $this->cond($condition);
-
         $this->where_items[] = $result;
 
         return $this;
@@ -244,7 +270,7 @@ abstract class Builder
         $this->select_distinct = $flag;
 
         if ($flag) {
-            $this->select_distinct_expression = ' DISTINCT';
+            $this->select_distinct_expression = 'DISTINCT ';
         } else {
             $this->select_distinct_expression = '';
         }
@@ -253,94 +279,7 @@ abstract class Builder
     }
 
 
-    public function select($fields = ['*'])
-    {
-        $this->verb = 'SELECT';
-        $this->select_fields = $fields;
-
-        return $this;
-    }
-
-
-    public function count($fields = '*')
-    {
-        $this->verb = 'SELECT';
-        $this->select_fields = ["COUNT($fields)"];
-
-        return $this;
-    }
-
-
-    /**
-     * Action: Returns the SQL expression.
-     */
-    public function sql()
-    {
-        $this->action();
-
-        return $this->sql_statement;
-    }
-
-
-    /**
-     * Action: Gets a record from the recordset.
-     */
-    public function get()
-    {
-        $this->action();
-
-        if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql_statement);
-            if ($stmt === false) {
-                return false;
-            } else {
-                return $stmt->fetch();
-            }
-        } else {
-            $stmt = $this->db->pdo->prepare($this->sql_statement);
-            if ($stmt === false) {
-                return false;
-            } else {
-                $stmt->execute($this->sql_parameters);
-                return $stmt->fetch();
-            }
-        }
-    }
-
-
-    /**
-     * Action: Gets all records from the recordset.
-     */
-    public function getAll()
-    {
-        $this->action();
-
-        if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql_statement);
-            if ($stmt === false) {
-                return false;
-            } else {
-                return $stmt->fetchAll();
-            }
-        } else {
-            $stmt = $this->db->pdo->prepare($this->sql_statement);
-            if ($stmt === false) {
-                return false;
-            } else {
-                $stmt->execute($this->sql_parameters);
-                return $stmt->fetchAll();
-            }
-        }
-    }
-
-
-    protected function action()
-    {
-        $this->build();
-    }
-
-
-    protected function build()
+    public function build()
     {
         $this->build_WHERE();
 
@@ -349,6 +288,8 @@ abstract class Builder
                 $this->build_SELECT();
                 break;
         }
+
+        return $this;
     }
 
 
@@ -383,25 +324,108 @@ abstract class Builder
         $this->build_WHERE();
         $this->build_SELECT_FIELDS();
 
-        $table = $this->quoteTable($this->table);
-
-        $data = [
-            '%table%'    => $table,
-            '%distinct%' => $this->select_distinct_expression,
-            "%fields%"   => $this->select_fields_expression,
-            '%where%'    => $this->where_expression,
+        $expression = [
+            'table'    => $this->quoteTable($this->table),
+            'distinct' => $this->select_distinct_expression,
+            "fields"   => $this->select_fields_expression,
+            'where'    => $this->where_expression,
         ];
+        $expression = array_merge($this->SELECT_expression, $expression);
+        $this->sql_expression = implode('', $expression);
 
-        $data = array_merge(self::$SELECT_KEYS, $data);
-
-        $this->sql_statement = self::replaceTemplate(self::$SELECT_TMPL, $data);
-        $this->sql_parameters = $this->where_parameters;
+        $parameters = [
+            'where' => $this->where_parameters,
+        ];
+        $parameters = array_merge($this->SELECT_parameters, $parameters);
+        $this->sql_parameters = $this->combineParameterArray($parameters);
     }
 
 
     protected function build_SELECT_FIELDS()
     {
         $this->select_fields_expression = $this->calc_FIELDS($this->select_fields);
+    }
+
+
+    /**
+     * Action: Returns the SQL expression.
+     */
+    public function sql()
+    {
+        $this->build();
+
+        return $this->sql_expression;
+    }
+
+
+    public function select($fields = ['*'])
+    {
+        $this->verb = 'SELECT';
+        $this->select_fields = $fields;
+
+        return $this;
+    }
+
+
+    public function count($fields = '*')
+    {
+        $this->verb = 'SELECT';
+        $this->select_fields = ["COUNT($fields)"];
+
+        return $this;
+    }
+
+
+    /**
+     * Action: Gets a record from the recordset.
+     */
+    public function get()
+    {
+        $this->build();
+
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql_expression);
+            if ($stmt === false) {
+                return false;
+            } else {
+                return $stmt->fetch();
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql_expression);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                return $stmt->fetch();
+            }
+        }
+    }
+
+
+    /**
+     * Action: Gets all records from the recordset.
+     */
+    public function getAll()
+    {
+        $this->build();
+
+
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql_expression);
+            if ($stmt === false) {
+                return false;
+            } else {
+                return $stmt->fetchAll();
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql_expression);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                return $stmt->fetchAll();
+            }
+        }
     }
 
 
@@ -449,6 +473,7 @@ abstract class Builder
             list($field, $op, $data) = $condition;
         } elseif ($cnt === 2) {
             list($field, $op) = $condition;
+            $data = null;
         } else {
             throw new Exception("Invalid condition as " . var_export($condition, true));
         }
@@ -568,34 +593,47 @@ abstract class Builder
         ];
     }
 
+
     protected function cond_IN($field, $op, $data)
     {
         if (empty($data)) {
             throw new Exception('An empty array not allowed use in a IN expression');
         }
 
-        $tpl = '(%field% IN (%in%))';
+        $tpl = [ '(', 'field' => '', ' IN (', 'list' => '', '))'];
         $expression = '';
         $parameters = [];
 
-        $base_type= $this->def['COLUMNS'][$field]['BASE_TYPE'];
+        $tpl['field'] = $this->quoteField($field);
+
+        if ($this->prepare) {
+            $marks = array_fill(0, count($data), '?');
+            $tpl['list'] = implode(',', $marks);
+            $expression = implode('', $tpl);
+            $parameters = array_values($data);
+
+            $return = [
+                'expression' => $expression,
+                'parameters' => $parameters,
+            ];
+            return $return;
+        }
+
+        $base_type = $this->def['COLUMNS'][$field]['BASE_TYPE'];
         switch ($base_type) {
             case 'string':
                 foreach ($data as $key => $value) {
-                $data[$key] = $this->quoteString($value);
-            }
+                    $data[$key] = $this->quoteString($value);
+                }
+                break;
             case 'time':
                 foreach ($data as $key => $value) {
-                $data[$key] = $this->quoteTime($value);
-            }
+                    $data[$key] = $this->quoteTime($value);
+                }
+                break;
         }
-
-        $array = [
-            '%field%' => $this->quoteField($field),
-            '%in%' => implode(',', $data),
-        ];
-
-        $expression = $this->replaceTemplate($tpl, $array);
+        $tpl['list'] = implode(',', $data);
+        $expression = implode('', $tpl);
 
         return [
             'expression' => $expression,
@@ -648,19 +686,22 @@ abstract class Builder
 
     protected function combineWhereItems($items, $logic = 'AND')
     {
-        $expression = [];
-        $parameters = [];
-
-        foreach ($items as $item) {
-            $expression[] = $item['expression'];
-            foreach ($item['parameters'] as $value) {
-                $parameters[] = $value;
-            }
-        }
+        $expression = array_column($items, 'expression');
+        $parameters = array_column($items, 'parameters');
 
         return [
             'expression' => implode(" $logic ", $expression),
-            'parameters' => $parameters,
+            'parameters' => $this->combineParameterArray($parameters),
         ];
+    }
+
+
+    protected function combineParameterArray($array)
+    {
+        $ret = [];
+        foreach ($array as $parameters) {
+            $ret = array_merge($ret, array_values($parameters));
+        }
+        return $ret;
     }
 }
