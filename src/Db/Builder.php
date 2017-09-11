@@ -564,11 +564,11 @@ abstract class Builder
 
     protected function cond_NEQ($field, $op, $data)
     {
-        $result = $this->cond_COMMON($field, '=', $data);
-        return [
-            'expression' => 'NOT ' . $result['expression'],
-            'parameters' => [],
-        ];
+        if (is_array($data)) {
+            return $this->cond_NOTIN($field, $op, $data);
+        }
+
+        return $this->cond_COMMON($field, '<>', $data);
     }
 
 
@@ -622,6 +622,12 @@ abstract class Builder
             'expression' => $expression,
             'parameters' => [],
         ];
+    }
+
+
+    protected function cond_NOTIN($field, $op, $data)
+    {
+        return $this->cond_IN($field, 'NOT IN', $data);
     }
 
 
