@@ -17,6 +17,7 @@ abstract class Builder
      * @var \Dida\Db
      */
     protected $db = null;
+    protected $pdo_default_fetch_mode = null;
 
     /* table and its defination */
     protected $table = null;
@@ -149,6 +150,9 @@ abstract class Builder
     /* verb */
     protected $verb = 'SELECT';
 
+    /* build */
+    protected $builded = false;
+
     /* SELECT */
     protected $select_fields = ['*'];
     protected $select_fields_expression = '';
@@ -166,16 +170,16 @@ abstract class Builder
     public $sql_parameters = [];
 
 
-    protected abstract function quoteTable($table);
+    abstract protected function quoteTable($table);
 
 
-    protected abstract function quoteField($field);
+    abstract protected function quoteField($field);
 
 
-    protected abstract function quoteString($value);
+    abstract protected function quoteString($value);
 
 
-    protected abstract function quoteTime($value);
+    abstract protected function quoteTime($value);
 
 
     /**
@@ -185,6 +189,8 @@ abstract class Builder
     public function __construct($db, $table)
     {
         $this->db = $db;
+        $this->pdo_default_fetch_mode = $this->db->pdo->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
+
         $this->table = $table;
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $table . '.php');
     }
@@ -202,7 +208,7 @@ abstract class Builder
      */
     public function where($condition)
     {
-        $this->where_changed = true;
+        $this->whereChanged();
 
         // [string]
         if (is_string($condition)) {
@@ -218,7 +224,7 @@ abstract class Builder
 
     public function whereEQ($array)
     {
-        $this->where_changed = true;
+        $this->whereChanged();
 
         $items = [];
 
@@ -234,7 +240,7 @@ abstract class Builder
 
     public function whereSQL($sql)
     {
-        $this->where_changed = true;
+        $this->whereChanged();
 
         $this->where_items[] = [
             'expression' => self::bracket($sql),
@@ -252,7 +258,7 @@ abstract class Builder
      */
     public function whereONE(array $condition)
     {
-        $this->where_changed = true;
+        $this->whereChanged();
 
         $result = $this->cond($condition);
         $this->where_items[] = $result;
@@ -274,6 +280,8 @@ abstract class Builder
      */
     public function whereMANY(array $conditions, $logic = 'AND')
     {
+        $this->whereChanged();
+
         $items = [];
         foreach ($conditions as $condition) {
             $items[] = $this->cond($condition);
@@ -286,8 +294,18 @@ abstract class Builder
     }
 
 
+    protected function whereChanged()
+    {
+        $this->where_changed = true;
+
+        $this->buildChanged();
+    }
+
+
     public function distinct($flag = true)
     {
+        $this->buildChanged();
+
         $this->select_distinct = $flag;
 
         if ($flag) {
@@ -302,6 +320,10 @@ abstract class Builder
 
     public function build()
     {
+        if ($this->builded) {
+            return $this;
+        }
+
         $this->build_WHERE();
 
         switch ($this->verb) {
@@ -310,6 +332,7 @@ abstract class Builder
                 break;
         }
 
+        $this->builded = true;
         return $this;
     }
 
@@ -368,6 +391,38 @@ abstract class Builder
     }
 
 
+    protected function buildChanged()
+    {
+        $this->builded = false;
+    }
+
+
+    public function select($fields = ['*'])
+    {
+        $this->buildChanged();
+
+        $this->verb = 'SELECT';
+        $this->select_fields = $fields;
+
+        return $this;
+    }
+
+
+    public function count($fields = '*', $alias = null)
+    {
+        $this->buildChanged();
+
+        $this->verb = 'SELECT';
+        if (is_null($alias)) {
+            $this->select_fields = ["COUNT($fields)"];
+        } else {
+            $this->select_fields = [$alias => "COUNT($fields)"];
+        }
+
+        return $this;
+    }
+
+
     /**
      * Action: Returns the SQL expression.
      */
@@ -379,37 +434,22 @@ abstract class Builder
     }
 
 
-    public function select($fields = ['*'])
-    {
-        $this->verb = 'SELECT';
-        $this->select_fields = $fields;
-
-        return $this;
-    }
-
-
-    public function count($fields = '*')
-    {
-        $this->verb = 'SELECT';
-        $this->select_fields = ["COUNT($fields)"];
-
-        return $this;
-    }
-
-
     /**
-     * Action: Gets a record from the recordset.
+     * Action: Fetches a record from a recordset.
      */
-    public function get()
+    public function fetch($fetch_style = null)
     {
         $this->build();
 
+        if (is_null($fetch_style)) {
+            $fetch_style = $this->pdo_default_fetch_mode;
+        }
         if (count($this->sql_parameters) === 0) {
             $stmt = $this->db->pdo->query($this->sql_expression);
             if ($stmt === false) {
                 return false;
             } else {
-                return $stmt->fetch();
+                return $stmt->fetch($fetch_style);
             }
         } else {
             $stmt = $this->db->pdo->prepare($this->sql_expression);
@@ -417,26 +457,28 @@ abstract class Builder
                 return false;
             } else {
                 $stmt->execute($this->sql_parameters);
-                return $stmt->fetch();
+                return $stmt->fetch($fetch_style);
             }
         }
     }
 
 
     /**
-     * Action: Gets all records from the recordset.
+     * Action: Fetches all records from a recordset.
      */
-    public function getAll()
+    public function fetchAll($fetch_style = null)
     {
         $this->build();
 
-
+        if (is_null($fetch_style)) {
+            $fetch_style = $this->pdo_default_fetch_mode;
+        }
         if (count($this->sql_parameters) === 0) {
             $stmt = $this->db->pdo->query($this->sql_expression);
             if ($stmt === false) {
                 return false;
             } else {
-                return $stmt->fetchAll();
+                return $stmt->fetchAll($fetch_style);
             }
         } else {
             $stmt = $this->db->pdo->prepare($this->sql_expression);
@@ -444,7 +486,7 @@ abstract class Builder
                 return false;
             } else {
                 $stmt->execute($this->sql_parameters);
-                return $stmt->fetchAll();
+                return $stmt->fetchAll($fetch_style);
             }
         }
     }
