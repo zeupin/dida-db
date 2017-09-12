@@ -20,18 +20,21 @@ class Mysql extends Db implements SchemaInterface
     use MysqlSchemaTrait;
 
 
-    public function table($table, $with_prefix = true)
+    public function table($table, $prefix = null)
     {
         // Gets the real table name
-        $realtable = ($with_prefix) ? $this->cfg['prefix'] . $table : $table;
+        if (is_null($prefix)) {
+            $prefix = $this->cfg['prefix'];
+        }
+        $realtable =  $prefix . $table;
 
-        // get the table information
-        $table_info = $this->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $realtable . '.php';
-        if (!file_exists($table_info)) {
+        // the table defination file exists?
+        $table_def_file = $this->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $realtable . '.php';
+        if (!file_exists($table_def_file)) {
             return false;
         }
 
-        $t = new MysqlBuilder($this, $realtable);
+        $t = new MysqlBuilder($this, $table, $prefix);
         return $t;
     }
 }
