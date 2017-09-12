@@ -31,7 +31,7 @@ abstract class Builder
     protected $SELECT_expression = [
         0          => 'SELECT ',
         'distinct' => '',
-        'columns'   => '',
+        'columns'  => '',
         1          => ' FROM ',
         'table'    => '',
         'join'     => '',
@@ -43,7 +43,7 @@ abstract class Builder
         'union'    => '',
     ];
     protected $SELECT_parameters = [
-        'columns'  => [],
+        'columns' => [],
         'table'   => [],
         'join'    => [],
         'where'   => [],
@@ -56,16 +56,16 @@ abstract class Builder
 
     /* INSERT template */
     protected $INSERT_expression = [
-        0        => 'INSERT INTO ',
-        'table'  => '',
+        0         => 'INSERT INTO ',
+        'table'   => '',
         'columns' => '',
-        1        => ' VALUES ',
-        'data'   => '',
+        1         => ' VALUES ',
+        'data'    => '',
     ];
     protected $INSERT_parameters = [
-        'table'  => [],
+        'table'   => [],
         'columns' => [],
-        'data'   => [],
+        'data'    => [],
     ];
 
     /* UPDATE template */
@@ -206,63 +206,13 @@ abstract class Builder
 
 
     /**
-     * Specify the WHERE condition(s).
+     * Specify a WHERE condition.
      */
-    public function where($condition)
+    public function where($condition, $parameters = [])
     {
         $this->whereChanged();
 
-        // [string]
-        if (is_string($condition)) {
-            return $this->whereSQL($condition);
-        }
-
-        // [array]
-        if (is_array($condition)) {
-            return $this->whereEQ($condition);
-        }
-    }
-
-
-    public function whereEQ($array)
-    {
-        $this->whereChanged();
-
-        $parts = [];
-
-        foreach ($array as $column => $value) {
-            $parts[] = $this->cond_EQ($column, '=', $value);
-        }
-
-        $this->where_parts[] = $this->combineConditionParts($parts, 'AND');
-
-        return $this;
-    }
-
-
-    public function whereSQL($sql)
-    {
-        $this->whereChanged();
-
-        $this->where_parts[] = [
-            'expression' => self::bracket($sql),
-            'parameters' => [],
-        ];
-
-        return $this;
-    }
-
-
-    /**
-     * Set one WHERE condition.
-     *
-     * @param array $condition  [$column, $op, $data]
-     */
-    public function whereONE(array $condition)
-    {
-        $this->whereChanged();
-
-        $part = $this->cond($condition);
+        $part = $this->cond($condition, $parameters);
         $this->where_parts[] = $part;
 
         return $this;
@@ -280,7 +230,7 @@ abstract class Builder
      *      ]
      * @param string $logic
      */
-    public function whereMANY(array $conditions, $logic = 'AND')
+    public function whereMany(array $conditions, $logic = 'AND')
     {
         $this->whereChanged();
 
@@ -289,8 +239,23 @@ abstract class Builder
             $parts[] = $this->cond($condition);
         }
         $part = $this->combineConditionParts($parts, $logic);
-        $part['expression'] = $this->bracket($part['expression']);
         $this->where_parts[] = $part;
+
+        return $this;
+    }
+
+
+    public function whereEQ(array $array)
+    {
+        $this->whereChanged();
+
+        $parts = [];
+
+        foreach ($array as $column => $value) {
+            $parts[] = $this->cond_EQ($column, '=', $value);
+        }
+
+        $this->where_parts[] = $this->combineConditionParts($parts, 'AND');
 
         return $this;
     }
@@ -400,7 +365,7 @@ abstract class Builder
         $expression = [
             'table'    => $this->quoteTable($this->table),
             'distinct' => $this->select_distinct_expression,
-            "columns"   => $this->select_columns_expression,
+            "columns"  => $this->select_columns_expression,
             'where'    => $this->where_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
@@ -488,8 +453,20 @@ abstract class Builder
     }
 
 
-    protected function cond($condition)
+    protected function cond($condition, $parameters = [])
     {
+        if (is_string($condition)) {
+            $part = [
+                'expression' => $condition,
+                'parameters' => $parameters,
+            ];
+            return $part;
+        }
+
+        if (!is_array($condition)) {
+            throw new Exception("Invalid condition as " . var_export($condition, true));
+        }
+
         // check condition is valid
         $cnt = count($condition);
         if ($cnt === 3) {
@@ -527,8 +504,8 @@ abstract class Builder
         $tpl = [
             '(',
             'column' => $this->quoteColumn($column),
-            'op'    => " $op ",
-            'value' => '',
+            'op'     => " $op ",
+            'value'  => '',
             ')'
         ];
 
@@ -619,9 +596,9 @@ abstract class Builder
         $tpl = [
             '(',
             'column' => $this->quoteColumn($column),
-            'op'    => " $op ",
+            'op'     => " $op ",
             '(',
-            'list'  => '',
+            'list'   => '',
             '))'
         ];
         $expression = '';
@@ -699,9 +676,15 @@ abstract class Builder
         $expression = array_column($parts, 'expression');
         $parameters = array_column($parts, 'parameters');
 
+        $expression_cnt = count($expression);
+        $expression = implode(" $logic ", $expression);
+        if ($expression_cnt > 1) $expression = "($expression)";
+
+        $parameters = $this->combineParameterArray($parameters);
+
         return [
-            'expression' => implode(" $logic ", $expression),
-            'parameters' => $this->combineParameterArray($parameters),
+            'expression' => $expression,
+            'parameters' => $parameters,
         ];
     }
 
