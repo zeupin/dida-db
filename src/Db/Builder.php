@@ -174,7 +174,7 @@ abstract class Builder
     abstract protected function quoteTable($table);
 
 
-    abstract protected function quoteField($column);
+    abstract protected function quoteColumn($column);
 
 
     abstract protected function quoteString($value);
@@ -395,7 +395,7 @@ abstract class Builder
     protected function build_SELECT()
     {
         $this->build_WHERE();
-        $this->build_SELECT_FIELDS();
+        $this->build_SELECT_COLUMNS();
 
         $expression = [
             'table'    => $this->quoteTable($this->table),
@@ -414,12 +414,12 @@ abstract class Builder
     }
 
 
-    protected function build_SELECT_FIELDS()
+    protected function build_SELECT_COLUMNS()
     {
         if (empty($this->select_columns)) {
             $this->select_columns_expression = '*';
         } else {
-            $this->select_columns_expression = $this->implodeFields($this->select_columns);
+            $this->select_columns_expression = $this->implodeColumns($this->select_columns);
         }
     }
 
@@ -526,7 +526,7 @@ abstract class Builder
     {
         $tpl = [
             '(',
-            'column' => $this->quoteField($column),
+            'column' => $this->quoteColumn($column),
             'op'    => " $op ",
             'value' => '',
             ')'
@@ -618,7 +618,7 @@ abstract class Builder
 
         $tpl = [
             '(',
-            'column' => $this->quoteField($column),
+            'column' => $this->quoteColumn($column),
             'op'    => " $op ",
             '(',
             'list'  => '',
@@ -680,12 +680,12 @@ abstract class Builder
     }
 
 
-    protected function implodeFields($columns)
+    protected function implodeColumns($columns)
     {
         $return = [];
         foreach ($columns as $as => $column) {
             if (is_string($as)) {
-                $return[] = $column . " AS " . $this->quoteField($as);
+                $return[] = $column . " AS " . $this->quoteColumn($as);
             } else {
                 $return[] = $column;
             }

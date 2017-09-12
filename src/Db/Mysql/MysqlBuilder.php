@@ -19,9 +19,9 @@ class MysqlBuilder extends Builder
     }
 
 
-    protected function quoteField($field)
+    protected function quoteColumn($column)
     {
-        return '`' . $field . '`';
+        return '`' . $column . '`';
     }
 
 
