@@ -21,6 +21,7 @@ abstract class Builder
 
     /* table and its defination */
     protected $table = null;
+    protected $prefix = null;
     protected $def = null;
 
     /* prepare mode */
@@ -30,7 +31,7 @@ abstract class Builder
     protected $SELECT_expression = [
         0          => 'SELECT ',
         'distinct' => '',
-        'fields'   => '',
+        'columns'   => '',
         1          => ' FROM ',
         'table'    => '',
         'join'     => '',
@@ -42,7 +43,7 @@ abstract class Builder
         'union'    => '',
     ];
     protected $SELECT_parameters = [
-        'fields'  => [],
+        'columns'  => [],
         'table'   => [],
         'join'    => [],
         'where'   => [],
@@ -57,13 +58,13 @@ abstract class Builder
     protected $INSERT_expression = [
         0        => 'INSERT INTO ',
         'table'  => '',
-        'fields' => '',
+        'columns' => '',
         1        => ' VALUES ',
         'data'   => '',
     ];
     protected $INSERT_parameters = [
         'table'  => [],
-        'fields' => [],
+        'columns' => [],
         'data'   => [],
     ];
 
@@ -154,8 +155,8 @@ abstract class Builder
     protected $verb = 'SELECT';
 
     /* SELECT */
-    protected $select_fields = ['*'];
-    protected $select_fields_expression = '';
+    protected $select_columns = ['*'];
+    protected $select_columns_expression = '';
     protected $select_distinct = false;
     protected $select_distinct_expression = '';
 
@@ -173,7 +174,7 @@ abstract class Builder
     abstract protected function quoteTable($table);
 
 
-    abstract protected function quoteField($field);
+    abstract protected function quoteField($column);
 
 
     abstract protected function quoteString($value);
@@ -186,12 +187,13 @@ abstract class Builder
      * @param \Dida\Db $db
      * @param string $table
      */
-    public function __construct($db, $table)
+    public function __construct($db, $table, $prefix = '')
     {
         $this->db = $db;
         $this->pdo_default_fetch_mode = $this->db->pdo->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
 
-        $this->table = $table;
+        $this->table = $prefix . $table;
+        $this->prefix = $prefix;
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $table . '.php');
     }
 
@@ -228,8 +230,8 @@ abstract class Builder
 
         $parts = [];
 
-        foreach ($array as $field => $value) {
-            $parts[] = $this->cond_EQ($field, '=', $value);
+        foreach ($array as $column => $value) {
+            $parts[] = $this->cond_EQ($column, '=', $value);
         }
 
         $this->where_parts[] = $this->combineConditionParts($parts, 'AND');
@@ -254,7 +256,7 @@ abstract class Builder
     /**
      * Set one WHERE condition.
      *
-     * @param array $condition  [$field, $op, $data]
+     * @param array $condition  [$column, $op, $data]
      */
     public function whereONE(array $condition)
     {
@@ -272,9 +274,9 @@ abstract class Builder
      *
      * @param array $conditions  The conditions array like:
      *      [
-     *          [$field, $op, $data],
-     *          [$field, $op, $data],
-     *          [$field, $op, $data],
+     *          [$column, $op, $data],
+     *          [$column, $op, $data],
+     *          [$column, $op, $data],
      *      ]
      * @param string $logic
      */
@@ -318,27 +320,27 @@ abstract class Builder
     }
 
 
-    public function select($fields = ['*'])
+    public function select($columns = ['*'])
     {
         $this->buildChanged();
 
         $this->verb = 'SELECT';
-        $this->select_fields = $fields;
+        $this->select_columns = $columns;
 
         return $this;
     }
 
 
-    public function count($fields = '*', $alias = null)
+    public function count($columns = '*', $alias = null)
     {
         $this->buildChanged();
 
         $this->verb = 'SELECT';
 
         if (is_string($alias)) {
-            $this->select_fields = [$alias => "COUNT($fields)"];
+            $this->select_columns = [$alias => "COUNT($columns)"];
         } else {
-            $this->select_fields = ["COUNT($fields)"];
+            $this->select_columns = ["COUNT($columns)"];
         }
 
         return $this;
@@ -398,7 +400,7 @@ abstract class Builder
         $expression = [
             'table'    => $this->quoteTable($this->table),
             'distinct' => $this->select_distinct_expression,
-            "fields"   => $this->select_fields_expression,
+            "columns"   => $this->select_columns_expression,
             'where'    => $this->where_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
@@ -414,10 +416,10 @@ abstract class Builder
 
     protected function build_SELECT_FIELDS()
     {
-        if (empty($this->select_fields)) {
-            $this->select_fields_expression = '*';
+        if (empty($this->select_columns)) {
+            $this->select_columns_expression = '*';
         } else {
-            $this->select_fields_expression = $this->implodeFields($this->select_fields);
+            $this->select_columns_expression = $this->implodeFields($this->select_columns);
         }
     }
 
@@ -491,9 +493,9 @@ abstract class Builder
         // check condition is valid
         $cnt = count($condition);
         if ($cnt === 3) {
-            list($field, $op, $data) = $condition;
+            list($column, $op, $data) = $condition;
         } elseif ($cnt === 2) {
-            list($field, $op) = $condition;
+            list($column, $op) = $condition;
             $data = null;
         } else {
             throw new Exception("Invalid condition as " . var_export($condition, true));
@@ -507,11 +509,11 @@ abstract class Builder
 
         // calls the 'cond_*' function
         $method_name = 'cond_' . self::$opertor_set[$op];
-        return $this->$method_name($field, $op, $data);
+        return $this->$method_name($column, $op, $data);
     }
 
 
-    protected function cond_SQL($field, $op, $data)
+    protected function cond_SQL($column, $op, $data)
     {
         return [
             'expression' => $data,
@@ -520,11 +522,11 @@ abstract class Builder
     }
 
 
-    protected function cond_COMMON($field, $op, $data)
+    protected function cond_COMMON($column, $op, $data)
     {
         $tpl = [
             '(',
-            'field' => $this->quoteField($field),
+            'column' => $this->quoteField($column),
             'op'    => " $op ",
             'value' => '',
             ')'
@@ -544,7 +546,7 @@ abstract class Builder
             return $part;
         }
 
-        switch ($this->def['COLUMNS'][$field]['BASE_TYPE']) {
+        switch ($this->def['COLUMNS'][$column]['BASE_TYPE']) {
             case 'string':
                 $tpl['value'] = $this->quoteString($data);
                 break;
@@ -564,51 +566,51 @@ abstract class Builder
     }
 
 
-    protected function cond_EQ($field, $op, $data)
+    protected function cond_EQ($column, $op, $data)
     {
         if (is_array($data)) {
-            return $this->cond_IN($field, 'IN', $data);
+            return $this->cond_IN($column, 'IN', $data);
         }
 
-        return $this->cond_COMMON($field, '=', $data);
+        return $this->cond_COMMON($column, '=', $data);
     }
 
 
-    protected function cond_GT($field, $op, $data)
+    protected function cond_GT($column, $op, $data)
     {
-        return $this->cond_COMMON($field, '>', $data);
+        return $this->cond_COMMON($column, '>', $data);
     }
 
 
-    protected function cond_LT($field, $op, $data)
+    protected function cond_LT($column, $op, $data)
     {
-        return $this->cond_COMMON($field, '<', $data);
+        return $this->cond_COMMON($column, '<', $data);
     }
 
 
-    protected function cond_EGT($field, $op, $data)
+    protected function cond_EGT($column, $op, $data)
     {
-        return $this->cond_COMMON($field, '>=', $data);
+        return $this->cond_COMMON($column, '>=', $data);
     }
 
 
-    protected function cond_ELT($field, $op, $data)
+    protected function cond_ELT($column, $op, $data)
     {
-        return $this->cond_COMMON($field, '<=', $data);
+        return $this->cond_COMMON($column, '<=', $data);
     }
 
 
-    protected function cond_NEQ($field, $op, $data)
+    protected function cond_NEQ($column, $op, $data)
     {
         if (is_array($data)) {
-            return $this->cond_NOTIN($field, $op, $data);
+            return $this->cond_NOTIN($column, $op, $data);
         }
 
-        return $this->cond_COMMON($field, '<>', $data);
+        return $this->cond_COMMON($column, '<>', $data);
     }
 
 
-    protected function cond_IN($field, $op, $data)
+    protected function cond_IN($column, $op, $data)
     {
         if (empty($data)) {
             throw new Exception('An empty array not allowed use in a IN expression');
@@ -616,7 +618,7 @@ abstract class Builder
 
         $tpl = [
             '(',
-            'field' => $this->quoteField($field),
+            'column' => $this->quoteField($column),
             'op'    => " $op ",
             '(',
             'list'  => '',
@@ -638,7 +640,7 @@ abstract class Builder
             return $part;
         }
 
-        $base_type = $this->def['COLUMNS'][$field]['BASE_TYPE'];
+        $base_type = $this->def['COLUMNS'][$column]['BASE_TYPE'];
         switch ($base_type) {
             case 'string':
                 foreach ($data as $key => $value) {
@@ -661,9 +663,9 @@ abstract class Builder
     }
 
 
-    protected function cond_NOTIN($field, $op, $data)
+    protected function cond_NOTIN($column, $op, $data)
     {
-        return $this->cond_IN($field, 'NOT IN', $data);
+        return $this->cond_IN($column, 'NOT IN', $data);
     }
 
 
@@ -678,14 +680,14 @@ abstract class Builder
     }
 
 
-    protected function implodeFields($fields)
+    protected function implodeFields($columns)
     {
         $return = [];
-        foreach ($fields as $as => $field) {
+        foreach ($columns as $as => $column) {
             if (is_string($as)) {
-                $return[] = $field . " AS " . $this->quoteField($as);
+                $return[] = $column . " AS " . $this->quoteField($as);
             } else {
-                $return[] = $field;
+                $return[] = $column;
             }
         }
         return implode(',', $return);
