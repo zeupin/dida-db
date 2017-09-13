@@ -170,6 +170,10 @@ abstract class Builder
     public $sql = '';
     public $sql_parameters = [];
 
+    /* results  */
+    public $rowCount = null;
+    public $lastInsertId = null;
+
 
     abstract protected function quoteTable($table);
 
@@ -392,6 +396,47 @@ abstract class Builder
     protected function buildChanged()
     {
         $this->builded = false;
+    }
+
+
+    /**
+     * Executes a DELETE, INSERT, or UPDATE statement (with the parameters).
+     *
+     * @return bool  true on success, false on failure.
+     */
+    public function run()
+    {
+        $this->build();
+
+        // pre-processing
+        switch ($this->verb) {
+            case 'INSERT':
+                $this->lastInsertId = null;
+            case 'UPDATE':
+            case 'DELETE':
+                $this->rowCount = null;
+                break;
+            default :
+                return false;
+        }
+
+        // execute
+        if (count($this->sql_parameters)) {
+            $stmt = $this->db->pdo->prepare($this->sql);
+            $this->rowCount = $stmt->execute($this->sql_parameters);
+        } else {
+            $this->rowCount = $this->db->pdo->exec($this->sql);
+        }
+
+        // post-processing
+        switch ($this->verb) {
+            case 'INSERT':
+                $this->lastInsertId = $this->db->pdo->lastInsertId();
+                break;
+        }
+
+        // return true on success
+        return true;
     }
 
 
