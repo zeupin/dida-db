@@ -333,13 +333,31 @@ abstract class Builder
     }
 
 
+    public function delete()
+    {
+        $this->buildChanged();
+
+        $this->verb = 'DELETE';
+
+        return $this;
+    }
+
+
+    public function truncate()
+    {
+        $this->buildChanged();
+
+        $this->verb = 'TRUNCATE';
+
+        return $this;
+    }
+
+
     public function build()
     {
         if ($this->builded) {
             return $this;
         }
-
-        $this->build_WHERE();
 
         switch ($this->verb) {
             case 'SELECT':
@@ -348,6 +366,11 @@ abstract class Builder
             case 'INSERT':
                 $this->build_INSERT();
                 break;
+            case 'TRUNCATE':
+                $this->build_TRUNCATE();
+                break;
+            default:
+                throw new Exception('Unknown verb "' . $this->verb . '"');
         }
 
         $this->builded = true;
@@ -444,6 +467,13 @@ abstract class Builder
     }
 
 
+    protected function build_TRUNCATE()
+    {
+        $this->sql = 'TRUNCATE TABLE ' . $this->table;
+        $this->sql_parameters = [];
+    }
+
+
     /**
      * Resolves a record to
      *
@@ -477,6 +507,7 @@ abstract class Builder
             case 'INSERT':
             case 'UPDATE':
             case 'DELETE':
+            case 'TRUNCATE':
                 $this->rowCount = null;
                 break;
             default :
