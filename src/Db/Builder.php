@@ -7,6 +7,7 @@
 namespace Dida\Db;
 
 use \PDO;
+use \Exception;
 
 /**
  * Builder
@@ -23,9 +24,42 @@ abstract class Builder
     protected $table = null;
     protected $prefix = null;
     protected $def = null;
+    protected $def_columns = null;
+    protected $def_basetype = [];
 
     /* prepare mode */
     protected $prepare = false;
+
+    /* build */
+    protected $builded = false;
+
+    /* verb */
+    protected $verb = 'SELECT';
+
+    /* WHERE */
+    protected $where_changed = true;
+    protected $where_parts = [];
+    protected $where_expression = '';
+    protected $where_parameters = [];
+
+    /* SELECT */
+    protected $select_columns = [];
+    protected $select_columns_expression = '';
+    protected $select_distinct = false;
+    protected $select_distinct_expression = '';
+
+    /* INSERT */
+    protected $insert_columns = [];
+    protected $insert_record = [];
+    protected $insert_expression = '';
+    protected $insert_parameters = [];
+
+    /* final sql */
+    public $sql = '';
+    public $sql_parameters = [];
+
+    /* execution's result */
+    public $rowCount = null;
 
     /* SELECT template */
     protected $SELECT_expression = [
@@ -60,12 +94,7 @@ abstract class Builder
         'table'   => '',
         'columns' => '',
         1         => ' VALUES ',
-        'data'    => '',
-    ];
-    protected $INSERT_parameters = [
-        'table'   => [],
-        'columns' => [],
-        'data'    => [],
+        'values'  => '',
     ];
 
     /* UPDATE template */
@@ -148,38 +177,6 @@ abstract class Builder
         'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
     ];
 
-    /* build */
-    protected $builded = false;
-
-    /* verb */
-    protected $verb = 'SELECT';
-
-        /* WHERE */
-    protected $where_changed = true;
-    protected $where_parts = [];
-    protected $where_expression = '';
-    protected $where_parameters = [];
-
-    /* SELECT */
-    protected $select_columns = ['*'];
-    protected $select_columns_expression = '';
-    protected $select_distinct = false;
-    protected $select_distinct_expression = '';
-
-    /* INSERT */
-    protected $insert_columns = [];
-    protected $insert_record = [];
-    protected $insert_expression = '';
-    protected $insert_parameters = [];
-
-    /* final sql */
-    public $sql = '';
-    public $sql_parameters = [];
-
-    /* results  */
-    public $rowCount = null;
-    public $lastInsertId = null;
-
 
     abstract protected function quoteTable($table);
 
@@ -204,7 +201,10 @@ abstract class Builder
 
         $this->table = $prefix . $table;
         $this->prefix = $prefix;
+
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $this->table . '.php');
+        $this->def_columns = array_keys($this->def['COLUMNS']);
+        $this->def_basetype = array_column($this->def['COLUMNS'], 'BASE_TYPE', 'COLUMN_NAME');
     }
 
 
@@ -295,7 +295,7 @@ abstract class Builder
     }
 
 
-    public function select($columns = ['*'])
+    public function select($columns = [])
     {
         $this->buildChanged();
 
@@ -322,15 +322,14 @@ abstract class Builder
     }
 
 
-    public function insert($record)
+    public function insert(array $record)
     {
+        $this->buildChanged();
 
-    }
+        $this->verb = 'INSERT';
+        $this->insert_record = $record;
 
-
-    public function insertMany($records)
-    {
-
+        return $this;
     }
 
 
@@ -345,6 +344,9 @@ abstract class Builder
         switch ($this->verb) {
             case 'SELECT':
                 $this->build_SELECT();
+                break;
+            case 'INSERT':
+                $this->build_INSERT();
                 break;
         }
 
@@ -404,10 +406,54 @@ abstract class Builder
     protected function build_SELECT_COLUMNS()
     {
         if (empty($this->select_columns)) {
-            $this->select_columns_expression = '*';
+            $this->select_columns_expression = $this->implodeColumns($this->def_columns);
         } else {
             $this->select_columns_expression = $this->implodeColumns($this->select_columns);
         }
+    }
+
+
+    protected function build_INSERT()
+    {
+        $record = $this->insert_record;
+
+        $columns = array_keys($record);
+        $columns_expression = '(' . $this->implodeColumns($columns) . ')';
+
+        $values = [];
+        if ($this->prepare) {
+            $values_expression = '(' . implode(',', array_fill(0, count($record), '?')) . ')';
+            $values_parameters = array_values($record);
+        } else {
+            foreach ($record as $column => $value) {
+                $values[$column] = $this->quoteColumnValue($column, $value);
+            }
+            $values_expression = '(' . implode(',', $values) . ')';
+            $values_parameters = [];
+        }
+
+        $expression = [
+            'table'   => $this->quoteTable($this->table),
+            "columns" => $columns_expression,
+            'values'  => $values_expression,
+        ];
+        $expression = array_merge($this->INSERT_expression, $expression);
+
+        $this->sql = implode('', $expression);
+        $this->sql_parameters = $values_parameters;
+    }
+
+
+    /**
+     * Resolves a record to
+     *
+     * @param data $record
+     * @param type $expression
+     * @param type $parameters
+     */
+    protected function resolveRecord($record, &$expression, &$parameters)
+    {
+
     }
 
 
@@ -422,14 +468,13 @@ abstract class Builder
      *
      * @return bool  true on success, false on failure.
      */
-    public function run()
+    public function go()
     {
         $this->build();
 
         // pre-processing
         switch ($this->verb) {
             case 'INSERT':
-                $this->lastInsertId = null;
             case 'UPDATE':
             case 'DELETE':
                 $this->rowCount = null;
@@ -439,18 +484,25 @@ abstract class Builder
         }
 
         // execute
-        if (count($this->sql_parameters)) {
-            $stmt = $this->db->pdo->prepare($this->sql);
-            $this->rowCount = $stmt->execute($this->sql_parameters);
-        } else {
-            $this->rowCount = $this->db->pdo->exec($this->sql);
-        }
-
-        // post-processing
-        switch ($this->verb) {
-            case 'INSERT':
-                $this->lastInsertId = $this->db->pdo->lastInsertId();
-                break;
+        try {
+            if (count($this->sql_parameters)) {
+                $stmt = $this->db->pdo->prepare($this->sql);
+                if ($stmt->execute($this->sql_parameters)) {
+                    $this->rowCount = $stmt->rowCount();
+                } else {
+                    return false;
+                }
+            } else {
+                $result = $this->db->pdo->exec($this->sql);
+                if ($result === false) {
+                    return false;
+                } else {
+                    $this->rowCount = $result;
+                }
+            }
+        } catch (Exception $ex) {
+            $this->db->pdoexception = $ex;
+            return false;
         }
 
         // return true on success
@@ -586,16 +638,7 @@ abstract class Builder
             return $part;
         }
 
-        switch ($this->def['COLUMNS'][$column]['BASE_TYPE']) {
-            case 'string':
-                $tpl['value'] = $this->quoteString($data);
-                break;
-            case 'time':
-                $tpl['value'] = $this->quoteTime($data);
-                break;
-            default:
-                $tpl['value'] = $data;
-        }
+        $tpl['value'] = $this->quoteColumnValue($column, $data);
 
         $expression = implode('', $tpl);
         $part = [
@@ -680,19 +723,7 @@ abstract class Builder
             return $part;
         }
 
-        $base_type = $this->def['COLUMNS'][$column]['BASE_TYPE'];
-        switch ($base_type) {
-            case 'string':
-                foreach ($data as $key => $value) {
-                    $data[$key] = $this->quoteString($value);
-                }
-                break;
-            case 'time':
-                foreach ($data as $key => $value) {
-                    $data[$key] = $this->quoteTime($value);
-                }
-                break;
-        }
+        $data[$key] = $this->quoteColumnValue($column, $value);
         $tpl['list'] = implode(',', $data);
 
         $part = [
@@ -706,6 +737,12 @@ abstract class Builder
     protected function cond_NOTIN($column, $op, $data)
     {
         return $this->cond_IN($column, 'NOT IN', $data);
+    }
+
+
+    public function lastInsertId($name = null)
+    {
+        return $this->db->pdo->lastInsertId($name);
     }
 
 
@@ -723,9 +760,15 @@ abstract class Builder
     protected function implodeColumns($columns)
     {
         $return = [];
-        foreach ($columns as $as => $column) {
-            if (is_string($as)) {
-                $return[] = $column . " AS " . $this->quoteColumn($as);
+        foreach ($columns as $alias => $column) {
+            // if $column exists, quote it.
+            if (array_key_exists($column, $this->def_basetype)) {
+                $column = $this->quoteColumn($column);
+            }
+
+            // if $alias is string, quote it.
+            if (is_string($alias)) {
+                $return[] = $column . " AS " . $this->quoteColumn($alias);
             } else {
                 $return[] = $column;
             }
@@ -759,5 +802,24 @@ abstract class Builder
             $ret = array_merge($ret, array_values($parameters));
         }
         return $ret;
+    }
+
+
+    protected function quoteColumnValue($column, $value)
+    {
+        if (!array_key_exists($column, $this->def_basetype)) {
+            throw new Exception("Invalid column name `$column`");
+        }
+
+        switch ($this->def_basetype[$column]) {
+            case 'string':
+                return $this->quoteString($value);
+            case 'time':
+                return $this->quoteTime($value);
+            case 'numeric':
+                return $value;
+            default:
+                return $value;
+        }
     }
 }
