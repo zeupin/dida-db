@@ -121,7 +121,6 @@ abstract class Builder
         'where' => '',
     ];
     protected $DELETE_parameters = [
-        'table' => [],
         'join'  => [],
         'where' => [],
     ];
@@ -366,6 +365,9 @@ abstract class Builder
             case 'INSERT':
                 $this->build_INSERT();
                 break;
+            case 'DELETE':
+                $this->build_DELETE();
+                break;
             case 'TRUNCATE':
                 $this->build_TRUNCATE();
                 break;
@@ -464,6 +466,25 @@ abstract class Builder
 
         $this->sql = implode('', $expression);
         $this->sql_parameters = $values_parameters;
+    }
+
+
+    protected function build_DELETE()
+    {
+        $this->build_WHERE();
+
+        $expression = [
+            'table'    => $this->quoteTable($this->table),
+            'where'    => $this->where_expression,
+        ];
+        $expression = array_merge($this->DELETE_expression, $expression);
+        $this->sql = implode('', $expression);
+
+        $parameters = [
+            'where' => $this->where_parameters,
+        ];
+        $parameters = array_merge($this->DELETE_parameters, $parameters);
+        $this->sql_parameters = $this->combineParameterArray($parameters);
     }
 
 
