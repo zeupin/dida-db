@@ -154,17 +154,23 @@ abstract class Builder
     /* verb */
     protected $verb = 'SELECT';
 
+        /* WHERE */
+    protected $where_changed = true;
+    protected $where_parts = [];
+    protected $where_expression = '';
+    protected $where_parameters = [];
+
     /* SELECT */
     protected $select_columns = ['*'];
     protected $select_columns_expression = '';
     protected $select_distinct = false;
     protected $select_distinct_expression = '';
 
-    /* WHERE */
-    protected $where_changed = true;
-    protected $where_parts = [];
-    protected $where_expression = '';
-    protected $where_parameters = [];
+    /* INSERT */
+    protected $insert_columns = [];
+    protected $insert_record = [];
+    protected $insert_expression = '';
+    protected $insert_parameters = [];
 
     /* final sql */
     public $sql = '';
@@ -198,7 +204,7 @@ abstract class Builder
 
         $this->table = $prefix . $table;
         $this->prefix = $prefix;
-        $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $table . '.php');
+        $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $this->table . '.php');
     }
 
 
@@ -313,6 +319,18 @@ abstract class Builder
         }
 
         return $this;
+    }
+
+
+    public function insert($record)
+    {
+
+    }
+
+
+    public function insertMany($records)
+    {
+
     }
 
 
