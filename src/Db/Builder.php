@@ -54,12 +54,22 @@ abstract class Builder
     protected $insert_expression = '';
     protected $insert_parameters = [];
 
+    /* UPDATE */
+    protected $update_set = [];
+    protected $update_set_expression = '';
+    protected $update_set_parameters = [];
+
     /* final sql */
     public $sql = '';
     public $sql_parameters = [];
 
     /* execution's result */
     public $rowCount = null;
+
+    /* class constants */
+    const VALUE_COLUMN = 'value';
+    const CALC_COLUMN = 'calc';
+    const SELECT_COLUMN = 'select';
 
     /* SELECT template */
     protected $SELECT_expression = [
@@ -102,13 +112,12 @@ abstract class Builder
         0       => 'UPDATE ',
         'table' => '',
         1       => ' SET ',
-        'data'  => '',
+        'set'   => '',
         'join'  => '',
         'where' => '',
     ];
     protected $UPDATE_parameters = [
-        'table' => [],
-        'data'  => [],
+        'set'   => [],
         'join'  => [],
         'where' => [],
     ];
@@ -352,6 +361,49 @@ abstract class Builder
     }
 
 
+    public function update()
+    {
+        $this->buildChanged();
+
+        $this->verb = 'UPDATE';
+
+        return $this;
+    }
+
+
+    public function set($column, $new_value)
+    {
+        $this->buildChanged();
+
+        $this->update_set[$column] = [Builder::VALUE_COLUMN, $column, $new_value];
+
+        return $this;
+    }
+
+
+    public function setCalc($column, $expr, $parameters = [])
+    {
+        $this->buildChanged();
+
+        $this->update_set[$column] = [Builder::CALC_COLUMN, $column, $expr, $parameters];
+
+        return $this;
+    }
+
+
+    /**
+     * column = (SELECT tableB.columnB FROM tableB WHERE table.colA = tableB.colB)
+     */
+    public function setFromSelect($column, $tableB, $columnB, $colA, $colB, $alias = null)
+    {
+        $this->buildChanged();
+
+        $this->update_set[$column] = [Builder::SELECT_COLUMN, $column, $tableB, $columnB, $colA, $colB, $alias];
+
+        return $this;
+    }
+
+
     public function build()
     {
         if ($this->builded) {
@@ -361,6 +413,9 @@ abstract class Builder
         switch ($this->verb) {
             case 'SELECT':
                 $this->build_SELECT();
+                break;
+            case 'UPDATE':
+                $this->build_UPDATE();
                 break;
             case 'INSERT':
                 $this->build_INSERT();
@@ -474,8 +529,8 @@ abstract class Builder
         $this->build_WHERE();
 
         $expression = [
-            'table'    => $this->quoteTable($this->table),
-            'where'    => $this->where_expression,
+            'table' => $this->quoteTable($this->table),
+            'where' => $this->where_expression,
         ];
         $expression = array_merge($this->DELETE_expression, $expression);
         $this->sql = implode('', $expression);
@@ -492,6 +547,115 @@ abstract class Builder
     {
         $this->sql = 'TRUNCATE TABLE ' . $this->table;
         $this->sql_parameters = [];
+    }
+
+
+    protected function build_UPDATE()
+    {
+        $this->build_WHERE();
+        $this->build_UPDATE_SET();
+
+        // build expression
+        $expression = [
+            'table' => $this->quoteTable($this->table),
+            'set'   => $this->update_set_expression,
+            'join'  => '',
+            'where' => $this->where_expression,
+        ];
+        $expression = array_merge($this->UPDATE_expression, $expression);
+        $this->sql = implode('', $expression);
+
+        // build parameters
+        $parameters = [
+            'set'   => $this->update_set_parameters,
+            'where' => $this->where_parameters,
+        ];
+        $parameters = array_merge($this->UPDATE_parameters, $parameters);
+        $this->sql_parameters = $this->combineParameterArray($parameters);
+    }
+
+
+    protected function build_UPDATE_SET()
+    {
+        $expression = [];
+        $parameters = [];
+
+        foreach ($this->update_set as $item) {
+            list($type, $column) = $item;
+            $column_quoted = $this->quoteColumn($column);
+
+            switch ($type) {
+                case Builder::VALUE_COLUMN:
+                    list($type, $column, $new_value) = $item;
+                    if ($this->prepare) {
+                        $expression[] = $column_quoted . ' = ?';
+                        $parameters[] = $new_value;
+                    } else {
+                        $new_value = $this->quoteColumnValue($column, $new_value);
+                        $expression[] = $column_quoted . ' = ' . $new_value;
+                        $parameters = [];
+                    }
+                    break;
+
+                case Builder::CALC_COLUMN:
+                    switch (count($item)) {
+                        case 3:
+                            list($type, $column, $expr) = $item;
+                            $param = [];
+                            break;
+                        case 4:
+                            list($type, $column, $expr, $param) = $item;
+                            break;
+                        default:
+                            throw new Exception('Invalid parameters number');
+                    }
+                    if ($this->prepare) {
+                        $expression[] = $column_quoted . ' = ' . $expr;
+                        $parameters = array_merge($parameters, $param);
+                    } else {
+                        $expression[] = $column_quoted . ' = ' . $expr;
+                        $parameters = [];
+                    }
+                    break;
+
+                case Builder::SELECT_COLUMN:
+                    list($type, $column, $tableB, $columnB, $colA, $colB, $alias) = $item;
+
+                    $table_quoted = $this->quoteTable($this->table);
+                    $tableB_quoted = $this->quoteTable($this->prefix . $tableB);
+                    $columnB_quoted = $this->quoteColumn($columnB);
+                    $colA_quoted = $this->quoteColumn($colA);
+                    $colB_quoted = $this->quoteColumn($colB);
+
+                    if (is_null($alias)) {
+                        $alias = $tableB_quoted;
+                        $as = '';
+                    } else {
+                        $alias = $this->quoteTable($alias);
+                        $as = ' AS ' . $alias;
+                    }
+
+                    $tpl = [
+                        'column'         => $column_quoted,
+                        ' = (SELECT ',
+                        'tableB.columnB' => "$alias.$columnB_quoted",
+                        ' FROM ',
+                        'tableB'         => $tableB_quoted,
+                        'as'             => $as,
+                        ' WHERE ',
+                        'table.colA'     => "$table_quoted.$colA_quoted",
+                        ' = ',
+                        'tableB.colB'    => "$alias.$colB_quoted",
+                        ')',
+                    ];
+                    $expression[] = implode('', $tpl);
+                    $parameters = [];
+                    break;
+            }
+        }
+
+        $this->update_set_expression = implode(', ', $expression);
+        $this->update_set_parameters = $parameters;
     }
 
 
@@ -847,11 +1011,11 @@ abstract class Builder
     }
 
 
-    protected function combineParameterArray($array)
+    protected function combineParameterArray(array $parameters)
     {
         $ret = [];
-        foreach ($array as $parameters) {
-            $ret = array_merge($ret, array_values($parameters));
+        foreach ($parameters as $array) {
+            $ret = array_merge($ret, array_values($array));
         }
         return $ret;
     }
