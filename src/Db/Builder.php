@@ -386,9 +386,20 @@ abstract class Builder
     {
         $this->buildChanged();
 
-
+        $this->groupby_columnlist = $columnlist;
 
         return $this;
+    }
+
+
+    protected function build_GROUP_BY()
+    {
+        $expr = $this->makeColumnList($this->groupby_columnlist);
+        if ($expr === '') {
+            $this->groupby_expression = '';
+        } else {
+            $this->groupby_expression = ' GROUP BY ' . $expr;
+        }
     }
 
 
@@ -588,10 +599,11 @@ abstract class Builder
 
     protected function build_SELECT()
     {
-        $this->build_WHERE();
         $this->build_SELECT_COLUMNS();
-        $this->build_ORDERBY();
         $this->build_JOIN();
+        $this->build_WHERE();
+        $this->build_GROUP_BY();
+        $this->build_ORDER_BY();
 
         $expression = [
             'table'    => $this->bstrTable([$this->table, $this->table_alias]),
@@ -599,6 +611,8 @@ abstract class Builder
             "columns"  => $this->select_columns_expression,
             'join'     => $this->join_expression,
             'where'    => $this->where_expression,
+            'groupby'  => $this->groupby_expression,
+            'having'   => '',
             'orderby'  => $this->select_orderby_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
@@ -627,11 +641,7 @@ abstract class Builder
                 $this->select_columns_expression = $this->makeColumnList($array);
             }
         } else {
-            $array = $this->select_columns;
-            array_walk($array, function(&$item, $key) {
-                $item = $this->bstrColumn($item);
-            });
-            $this->select_columns_expression = $this->makeColumnList($array);
+            $this->select_columns_expression = $this->makeColumnList($this->select_columns);
         }
     }
 
@@ -642,7 +652,7 @@ abstract class Builder
     }
 
 
-    protected function build_ORDERBY()
+    protected function build_ORDER_BY()
     {
         if ($this->select_orderby_columns === '') {
             $this->select_orderby_expression = '';
@@ -1215,6 +1225,7 @@ abstract class Builder
     {
         // column
         $column_quoted = '';
+        $column = $this->bstr($column);
         if (preg_match('/^[_A-Za-z]{1}\w*$/', $column)) {
             // "column"
             $column_quoted = $this->quoteColumn($column);
@@ -1333,26 +1344,7 @@ abstract class Builder
         return $t . $as;
     }
 
-
-    protected function bstrColumn($column)
-    {
-        if (is_string($column)) {
-            $result = $this->splitNameString($column);
-            $name = $result['name'];
-            $alias = $result['alias'];
-        } elseif (is_array($column)) {
-            $name = $column[0];
-            $alias = $column[1];
-        } else {
-            throw new Exception('Invalid function parameter');
-        }
-
-        $alias = ($alias === null) ? '' : ' AS ' . $this->quoteColumn($alias);
-
-        return $name . $alias;
-    }
-
-
+    
     /**
      * Converts a table/column name string to an array of a specified format.
      */
