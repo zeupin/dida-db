@@ -54,6 +54,9 @@ abstract class Builder
     protected $join_expression = '';
     protected $groupby_columnlist = [];
     protected $groupby_expression = '';
+    protected $having_conditions = [];
+    protected $having_logic = '';
+    protected $having_expression = '';
 
     /* INSERT */
     protected $insert_columns = [];
@@ -392,14 +395,19 @@ abstract class Builder
     }
 
 
-    protected function build_GROUP_BY()
+    public function having($condition, $logic = null)
     {
-        $expr = $this->makeColumnList($this->groupby_columnlist);
-        if ($expr === '') {
-            $this->groupby_expression = '';
+        $this->buildChanged();
+
+        if ($logic && is_string($logic)) {
+            $this->having_conditions = $condition;
+            $this->having_logic = " $logic ";
         } else {
-            $this->groupby_expression = ' GROUP BY ' . $expr;
+            $this->having_conditions[] = $condition;
+            $this->having_logic = '';
         }
+
+        return $this;
     }
 
 
@@ -603,6 +611,7 @@ abstract class Builder
         $this->build_JOIN();
         $this->build_WHERE();
         $this->build_GROUP_BY();
+        $this->build_HAVING();
         $this->build_ORDER_BY();
 
         $expression = [
@@ -612,7 +621,7 @@ abstract class Builder
             'join'     => $this->join_expression,
             'where'    => $this->where_expression,
             'groupby'  => $this->groupby_expression,
-            'having'   => '',
+            'having'   => $this->having_expression,
             'orderby'  => $this->select_orderby_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
@@ -649,6 +658,28 @@ abstract class Builder
     protected function build_JOIN()
     {
         $this->join_expression = implode('', $this->join);
+    }
+
+
+    protected function build_GROUP_BY()
+    {
+        $expr = $this->makeColumnList($this->groupby_columnlist);
+        if ($expr === '') {
+            $this->groupby_expression = '';
+        } else {
+            $this->groupby_expression = ' GROUP BY ' . $expr;
+        }
+    }
+
+
+    protected function build_HAVING()
+    {
+        $expr = implode($this->having_logic, $this->having_conditions);
+        if ($expr === '') {
+            $this->having_expression = '';
+        } else {
+            $this->having_expression = ' HAVING ' . $expr;
+        }
     }
 
 
