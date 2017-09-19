@@ -443,16 +443,6 @@ abstract class Builder
     }
 
 
-    protected function build_ORDERBY()
-    {
-        if ($this->select_orderby_columns === '') {
-            $this->select_orderby_expression = '';
-        } else {
-            $this->select_orderby_expression = ' ORDER BY ' . $this->select_orderby_columns;
-        }
-    }
-
-
     public function insert(array $record)
     {
         $this->buildChanged();
@@ -637,6 +627,16 @@ abstract class Builder
     protected function build_JOIN()
     {
         $this->join_expression = implode('', $this->join);
+    }
+
+
+    protected function build_ORDERBY()
+    {
+        if ($this->select_orderby_columns === '') {
+            $this->select_orderby_expression = '';
+        } else {
+            $this->select_orderby_expression = ' ORDER BY ' . $this->select_orderby_columns;
+        }
     }
 
 
