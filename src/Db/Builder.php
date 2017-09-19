@@ -378,6 +378,18 @@ abstract class Builder
 
         return $this;
     }
+    protected $groupby_columnlist = [];
+    protected $groupby_expression = '';
+
+
+    public function groupBy(array $columnlist)
+    {
+        $this->buildChanged();
+
+
+
+        return $this;
+    }
 
 
     public function select(array $columns = [])
@@ -604,7 +616,7 @@ abstract class Builder
     {
         if (empty($this->select_columns)) {
             if (empty($this->join)) {
-                $this->select_columns_expression = $this->implodeColumns($this->def_columns);
+                $this->select_columns_expression = $this->makeColumnList($this->def_columns);
             } else {
                 $t = ($this->table_alias === null) ? $this->table : $this->table_alias;
                 $array = $this->def_columns;
@@ -612,14 +624,14 @@ abstract class Builder
                     $item = $this->quoteTable($t) . '.' . $this->quoteColumn($item);
                 });
 
-                $this->select_columns_expression = $this->implodeColumns($array);
+                $this->select_columns_expression = $this->makeColumnList($array);
             }
         } else {
             $array = $this->select_columns;
             array_walk($array, function(&$item, $key) {
                 $item = $this->bstrColumn($item);
             });
-            $this->select_columns_expression = $this->implodeColumns($array);
+            $this->select_columns_expression = $this->makeColumnList($array);
         }
     }
 
@@ -645,7 +657,7 @@ abstract class Builder
         $record = $this->insert_record;
 
         $columns = array_keys($record);
-        $columns_expression = '(' . $this->implodeColumns($columns) . ')';
+        $columns_expression = '(' . $this->makeColumnList($columns) . ')';
 
         $values = [];
         if ($this->preparemode) {
@@ -1185,23 +1197,45 @@ abstract class Builder
     }
 
 
-    protected function implodeColumns(array $columns)
+    protected function makeColumnList(array $columns)
     {
         $return = [];
-        foreach ($columns as $alias => $column) {
-            // if $column exists, quote it.
-            if (array_key_exists($column, $this->def_basetype)) {
-                $column = $this->quoteColumn($column);
-            }
-
-            // if $alias is string, quote it.
-            if (is_string($alias)) {
-                $return[] = $column . " AS " . $this->quoteColumn($alias);
+        foreach ($columns as $key => $item) {
+            if (is_int($key)) {
+                $return[] = $this->makeColumn($item, null);
             } else {
-                $return[] = $column;
+                $return[] = $this->makeColumn($key, $item);
             }
         }
         return implode(', ', $return);
+    }
+
+
+    protected function makeColumn($column, $alias = null)
+    {
+        // column
+        $column_quoted = '';
+        if (preg_match('/^[_A-Za-z]{1}\w*$/', $column)) {
+            // "column"
+            $column_quoted = $this->quoteColumn($column);
+        } elseif (preg_match('/^[_A-Za-z]{1}\w*\.[_A-Za-z]{1}\w*$/', $column)) {
+            // "table.column"
+            $array = explode('.', $column);
+            $column_quoted = $this->quoteTable($array[0]) . '.' . $this->quoteColumn($array[1]);
+        } else {
+            $column_quoted = $column;
+        }
+
+        // alias
+        $alias_quoted = '';
+        if (!is_string($alias) || $alias === '') {
+            $alias_quoted = '';
+        } else {
+            $alias_quoted = ' AS ' . $this->quoteColumn($alias);
+        }
+
+        // combine column and alias
+        return $column_quoted . $alias_quoted;
     }
 
 
