@@ -28,7 +28,7 @@ abstract class Builder
     protected $def_basetype = [];
 
     /* prepare mode */
-    protected $prepare = false;
+    protected $preparemode = true;  // default TRUE
 
     /* build */
     protected $builded = false;
@@ -47,6 +47,8 @@ abstract class Builder
     protected $select_columns_expression = '';
     protected $select_distinct = false;
     protected $select_distinct_expression = '';
+    protected $select_orderby_columns = '';
+    protected $select_orderby_expression = '';
 
     /* INSERT */
     protected $insert_columns = [];
@@ -65,6 +67,9 @@ abstract class Builder
 
     /* execution's result */
     public $rowCount = null;
+
+    /* builder-sql */
+    protected $bsql_prefix = '###_';
 
     /* class constants */
     const VALUE_COLUMN = 'value';
@@ -218,7 +223,7 @@ abstract class Builder
 
     public function prepare($flag = true)
     {
-        $this->prepare = $flag;
+        $this->preparemode = $flag;
         return $this;
     }
 
@@ -327,6 +332,52 @@ abstract class Builder
         }
 
         return $this;
+    }
+
+
+    /**
+     *
+     * @param string $columns  name, id DESC
+     * @param array  $columns  ['name' => '', 'id' => 'DESC']
+     */
+    public function orderby($columns = '')
+    {
+        $this->buildChanged();
+
+        if (is_array($columns)) {
+            $std = [];
+            foreach ($columns as $column => $order) {
+                if (is_numeric($column)) {
+                    $column = $order;
+                    $std[$column] = $this->quoteColumn($column);
+                } else {
+                    $order = strtoupper($order);
+                    if ($order === 'ASC') $order = '';
+                    if ($order === '' || $order === 'DESC') {
+                        $column_quoted = $this->quoteColumn($column);
+                        $std[$column] = ($order === '') ? $column_quoted : "$column_quoted $order";
+                    } else {
+                        throw new Exception("Invalid ORDERBY expression: $column $order");
+                    }
+                }
+            }
+            $this->select_orderby_columns = implode(', ', $std);
+            return $this;
+        } elseif (is_string($columns)) {
+            $this->select_orderby_columns = $columns;
+        }
+
+        return $this;
+    }
+
+
+    protected function build_ORDERBY()
+    {
+        if ($this->select_orderby_columns === '') {
+            $this->select_orderby_expression = '';
+        } else {
+            $this->select_orderby_expression = ' ORDER BY ' . $this->select_orderby_columns;
+        }
     }
 
 
@@ -465,12 +516,14 @@ abstract class Builder
     {
         $this->build_WHERE();
         $this->build_SELECT_COLUMNS();
+        $this->build_ORDERBY();
 
         $expression = [
             'table'    => $this->quoteTable($this->table),
             'distinct' => $this->select_distinct_expression,
             "columns"  => $this->select_columns_expression,
             'where'    => $this->where_expression,
+            'orderby'  => $this->select_orderby_expression,
         ];
         $expression = array_merge($this->SELECT_expression, $expression);
         $this->sql = implode('', $expression);
@@ -501,7 +554,7 @@ abstract class Builder
         $columns_expression = '(' . $this->implodeColumns($columns) . ')';
 
         $values = [];
-        if ($this->prepare) {
+        if ($this->preparemode) {
             $values_expression = '(' . implode(',', array_fill(0, count($record), '?')) . ')';
             $values_parameters = array_values($record);
         } else {
@@ -587,7 +640,7 @@ abstract class Builder
             switch ($type) {
                 case Builder::VALUE_COLUMN:
                     list($type, $column, $new_value) = $item;
-                    if ($this->prepare) {
+                    if ($this->preparemode) {
                         $expression[] = $column_quoted . ' = ?';
                         $parameters[] = $new_value;
                     } else {
@@ -609,7 +662,7 @@ abstract class Builder
                         default:
                             throw new Exception('Invalid parameters number');
                     }
-                    if ($this->prepare) {
+                    if ($this->preparemode) {
                         $expression[] = $column_quoted . ' = ' . $expr;
                         $parameters = array_merge($parameters, $param);
                     } else {
@@ -843,7 +896,7 @@ abstract class Builder
         $expression = '';
         $parameters = [];
 
-        if ($this->prepare) {
+        if ($this->preparemode) {
             $tpl['value'] = '?';
             $expression = implode('', $tpl);
             $parameters[] = $data;
@@ -926,7 +979,7 @@ abstract class Builder
         $expression = '';
         $parameters = [];
 
-        if ($this->prepare) {
+        if ($this->preparemode) {
             $marks = array_fill(0, count($data), '?');
             $tpl['list'] = implode(',', $marks);
             $expression = implode('', $tpl);
@@ -956,6 +1009,68 @@ abstract class Builder
     }
 
 
+    protected function cond_LIKE($column, $op, $data)
+    {
+        $column_quoted = $this->quoteColumn($column);
+        $value_quoted = $this->quoteString($data);
+
+        if ($this->preparemode) {
+            $expression = "$column_quoted $op ?";
+            $parameters[] = $data;
+        } else {
+            $expression = "$column_quoted $op $value_quoted";
+            $parameters = [];
+        }
+
+        $part = [
+            'expression' => $expression,
+            'parameters' => $parameters,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTLIKE($column, $op, $data)
+    {
+        return $this->cond_LIKE($column, 'NOT LIKE', $data);
+    }
+
+
+    protected function cond_BETWEEN($column, $op, $data)
+    {
+        $expression = '';
+        $parameters = [];
+
+        $column_quoted = $this->quoteColumn($column);
+
+        $value1 = $data[0];
+        $value2 = $data[1];
+        $value1_quoted = $this->quoteColumnValue($column, $value1);
+        $value2_quoted = $this->quoteColumnValue($column, $value2);
+
+        if ($this->preparemode) {
+            $expression = "$column_quoted $op ? AND ?";
+            $parameters[] = $value1;
+            $parameters[] = $value2;
+        } else {
+            $expression = "$column_quoted $op $value1_quoted AND $value2_quoted";
+            $parameters = [];
+        }
+
+        $part = [
+            'expression' => $expression,
+            'parameters' => $parameters,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTBETWEEN($column, $op, $data)
+    {
+        return $this->cond_BETWEEN($column, 'NOT BETWEEN', $data);
+    }
+
+
     public function lastInsertId($name = null)
     {
         return $this->db->pdo->lastInsertId($name);
@@ -973,7 +1088,7 @@ abstract class Builder
     }
 
 
-    protected function implodeColumns($columns)
+    protected function implodeColumns(array $columns)
     {
         $return = [];
         foreach ($columns as $alias => $column) {
@@ -1037,5 +1152,19 @@ abstract class Builder
             default:
                 return $value;
         }
+    }
+
+
+    protected function bsql($sql)
+    {
+        $search = [];
+        $replace = [];
+
+        // prefix
+        $search[] = $this->bsql_prefix;
+        $replace[] = $this->prefix;
+
+        // execute
+        return str_replace($search, $replace, $bsql);
     }
 }
