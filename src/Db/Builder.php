@@ -44,14 +44,16 @@ abstract class Builder
     protected $where_parameters = [];
 
     /* SELECT */
-    protected $select_columns = [];
-    protected $select_columns_expression = '';
+    protected $select_columnlist = [];
+    protected $select_columnlist_expression = '';
     protected $select_distinct = false;
     protected $select_distinct_expression = '';
     protected $select_orderby_columns = '';
     protected $select_orderby_expression = '';
     protected $join = [];
     protected $join_expression = '';
+    protected $groupby_columnlist = [];
+    protected $groupby_expression = '';
 
     /* INSERT */
     protected $insert_columns = [];
@@ -378,8 +380,6 @@ abstract class Builder
 
         return $this;
     }
-    protected $groupby_columnlist = [];
-    protected $groupby_expression = '';
 
 
     public function groupBy(array $columnlist)
@@ -408,7 +408,7 @@ abstract class Builder
         $this->buildChanged();
 
         $this->verb = 'SELECT';
-        $this->select_columns = $columns;
+        $this->select_columnlist = $columns;
 
         return $this;
     }
@@ -421,9 +421,9 @@ abstract class Builder
         $this->verb = 'SELECT';
 
         if (is_string($alias)) {
-            $this->select_columns = [$alias => "COUNT($columns)"];
+            $this->select_columnlist = ["COUNT($columns)" => $alias];
         } else {
-            $this->select_columns = ["COUNT($columns)"];
+            $this->select_columnlist = ["COUNT($columns)"];
         }
 
         return $this;
@@ -608,7 +608,7 @@ abstract class Builder
         $expression = [
             'table'    => $this->bstrTable([$this->table, $this->table_alias]),
             'distinct' => $this->select_distinct_expression,
-            "columns"  => $this->select_columns_expression,
+            "columns"  => $this->select_columnlist_expression,
             'join'     => $this->join_expression,
             'where'    => $this->where_expression,
             'groupby'  => $this->groupby_expression,
@@ -628,9 +628,9 @@ abstract class Builder
 
     protected function build_SELECT_COLUMNS()
     {
-        if (empty($this->select_columns)) {
+        if (empty($this->select_columnlist)) {
             if (empty($this->join)) {
-                $this->select_columns_expression = $this->makeColumnList($this->def_columns);
+                $this->select_columnlist_expression = $this->makeColumnList($this->def_columns);
             } else {
                 $t = ($this->table_alias === null) ? $this->table : $this->table_alias;
                 $array = $this->def_columns;
@@ -638,10 +638,10 @@ abstract class Builder
                     $item = $this->quoteTable($t) . '.' . $this->quoteColumn($item);
                 });
 
-                $this->select_columns_expression = $this->makeColumnList($array);
+                $this->select_columnlist_expression = $this->makeColumnList($array);
             }
         } else {
-            $this->select_columns_expression = $this->makeColumnList($this->select_columns);
+            $this->select_columnlist_expression = $this->makeColumnList($this->select_columnlist);
         }
     }
 
@@ -1344,7 +1344,7 @@ abstract class Builder
         return $t . $as;
     }
 
-    
+
     /**
      * Converts a table/column name string to an array of a specified format.
      */
