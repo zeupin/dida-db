@@ -22,6 +22,7 @@ abstract class Builder
 
     /* table and its defination */
     protected $table = null;
+    protected $table_alias = null;
     protected $prefix = null;
     protected $def = null;
     protected $def_columns = null;
@@ -49,6 +50,8 @@ abstract class Builder
     protected $select_distinct_expression = '';
     protected $select_orderby_columns = '';
     protected $select_orderby_expression = '';
+    protected $join = [];
+    protected $join_expression = '';
 
     /* INSERT */
     protected $insert_columns = [];
@@ -69,7 +72,7 @@ abstract class Builder
     public $rowCount = null;
 
     /* builder-sql */
-    protected $bsql_prefix = '###_';
+    protected $bstr_prefix = '###_';
 
     /* class constants */
     const VALUE_COLUMN = 'value';
@@ -85,7 +88,7 @@ abstract class Builder
         'table'    => '',
         'join'     => '',
         'where'    => '',
-        'group'    => '',
+        'groupby'  => '',
         'having'   => '',
         'orderby'  => '',
         'limit'    => '',
@@ -96,7 +99,7 @@ abstract class Builder
         'table'   => [],
         'join'    => [],
         'where'   => [],
-        'group'   => [],
+        'groupby' => [],
         'having'  => [],
         'orderby' => [],
         'limit'   => [],
@@ -224,6 +227,15 @@ abstract class Builder
     public function prepare($flag = true)
     {
         $this->preparemode = $flag;
+
+        return $this;
+    }
+
+
+    public function alias($alias)
+    {
+        $this->table_alias = $alias;
+
         return $this;
     }
 
@@ -308,7 +320,67 @@ abstract class Builder
     }
 
 
-    public function select($columns = [])
+    public function join($table, $colA, $rel, $colB)
+    {
+        $this->buildChanged();
+
+        $tpl = [
+            ' INNER JOIN ',
+            'table' => $this->bstrTable($table),
+            ' ON ',
+            'colA'  => $this->bstr($colA),
+            ' ',
+            'rel'   => $rel,
+            ' ',
+            'colB'  => $this->bstr($colB),
+        ];
+        $this->join[] = implode('', $tpl);
+
+        return $this;
+    }
+
+
+    public function leftJoin($table, $colA, $rel, $colB)
+    {
+        $this->buildChanged();
+
+        $tpl = [
+            ' LEFT JOIN ',
+            'table' => $this->bstrTable($table),
+            ' ON ',
+            'colA'  => $this->bstr($colA),
+            ' ',
+            'rel'   => $rel,
+            ' ',
+            'colB'  => $this->bstr($colB),
+        ];
+        $this->join[] = implode('', $tpl);
+
+        return $this;
+    }
+
+
+    public function rightJoin($table, $colA, $rel, $colB)
+    {
+        $this->buildChanged();
+
+        $tpl = [
+            ' RIGHT JOIN ',
+            'table' => $this->bstrTable($table),
+            ' ON ',
+            'colA'  => $this->bstr($colA),
+            ' ',
+            'rel'   => $rel,
+            ' ',
+            'colB'  => $this->bstr($colB),
+        ];
+        $this->join[] = implode('', $tpl);
+
+        return $this;
+    }
+
+
+    public function select(array $columns = [])
     {
         $this->buildChanged();
 
@@ -340,7 +412,7 @@ abstract class Builder
      * @param string $columns  name, id DESC
      * @param array  $columns  ['name' => '', 'id' => 'DESC']
      */
-    public function orderby($columns = '')
+    public function orderBy($columns = '')
     {
         $this->buildChanged();
 
@@ -517,11 +589,13 @@ abstract class Builder
         $this->build_WHERE();
         $this->build_SELECT_COLUMNS();
         $this->build_ORDERBY();
+        $this->build_JOIN();
 
         $expression = [
-            'table'    => $this->quoteTable($this->table),
+            'table'    => $this->bstrTable([$this->table, $this->table_alias]),
             'distinct' => $this->select_distinct_expression,
             "columns"  => $this->select_columns_expression,
+            'join'     => $this->join_expression,
             'where'    => $this->where_expression,
             'orderby'  => $this->select_orderby_expression,
         ];
@@ -539,10 +613,30 @@ abstract class Builder
     protected function build_SELECT_COLUMNS()
     {
         if (empty($this->select_columns)) {
-            $this->select_columns_expression = $this->implodeColumns($this->def_columns);
+            if (empty($this->join)) {
+                $this->select_columns_expression = $this->implodeColumns($this->def_columns);
+            } else {
+                $t = ($this->table_alias === null) ? $this->table : $this->table_alias;
+                $array = $this->def_columns;
+                array_walk($array, function(&$item, $key) use($t) {
+                    $item = $this->quoteTable($t) . '.' . $this->quoteColumn($item);
+                });
+
+                $this->select_columns_expression = $this->implodeColumns($array);
+            }
         } else {
-            $this->select_columns_expression = $this->implodeColumns($this->select_columns);
+            $array = $this->select_columns;
+            array_walk($array, function(&$item, $key) {
+                $item = $this->bstrColumn($item);
+            });
+            $this->select_columns_expression = $this->implodeColumns($array);
         }
+    }
+
+
+    protected function build_JOIN()
+    {
+        $this->join_expression = implode('', $this->join);
     }
 
 
@@ -1003,6 +1097,9 @@ abstract class Builder
     }
 
 
+    /**
+     * Do not use this operator, which will greatly affect performance!
+     */
     protected function cond_NOTIN($column, $op, $data)
     {
         return $this->cond_IN($column, 'NOT IN', $data);
@@ -1104,7 +1201,7 @@ abstract class Builder
                 $return[] = $column;
             }
         }
-        return implode(',', $return);
+        return implode(', ', $return);
     }
 
 
@@ -1155,16 +1252,85 @@ abstract class Builder
     }
 
 
-    protected function bsql($sql)
+    /**
+     * Converts bstr SQL to real SQL
+     */
+    protected function bstr($bstr_sql)
     {
         $search = [];
         $replace = [];
 
         // prefix
-        $search[] = $this->bsql_prefix;
+        $search[] = $this->bstr_prefix;
         $replace[] = $this->prefix;
 
         // execute
-        return str_replace($search, $replace, $bsql);
+        return str_replace($search, $replace, $bstr_sql);
+    }
+
+
+    /**
+     * @param string $table  'table_name', 'table_name alias', 'table_name as alias'
+     * @param array  $table  [tablename, alias]
+     */
+    protected function bstrTable($table)
+    {
+        $t = '';
+        $as = '';
+
+        if (is_string($table)) {
+            $table = $this->splitNameString($table);
+            $t = $table['name'];
+            $as = (isset($table['alias'])) ? $table['alias'] : null;
+        } elseif (is_array($table)) {
+            $t = $table[0];
+            if (!isset($table[1]) || $table[1] === '') {
+                $as = null;
+            } else {
+                $as = $table[1];
+            }
+        } else {
+            throw new Exception('Invalid function parameter');
+        }
+
+        $t = $this->bstr($t);
+        $t = $this->quoteTable($t);
+        $as = ($as === null) ? '' : ' ' . $this->quoteTable($as);
+        return $t . $as;
+    }
+
+
+    protected function bstrColumn($column)
+    {
+        if (is_string($column)) {
+            $result = $this->splitNameString($column);
+            $name = $result['name'];
+            $alias = $result['alias'];
+        } elseif (is_array($column)) {
+            $name = $column[0];
+            $alias = $column[1];
+        } else {
+            throw new Exception('Invalid function parameter');
+        }
+
+        $alias = ($alias === null) ? '' : ' AS ' . $this->quoteColumn($alias);
+
+        return $name . $alias;
+    }
+
+
+    /**
+     * Converts a table/column name string to an array of a specified format.
+     */
+    protected function splitNameString($string)
+    {
+        $result = preg_split('/\s+(AS|as){0,1}\s*/', $string, 2);
+        $name = $result[0];
+        $alias = (isset($result[1])) ? $result[1] : null;
+
+        return [
+            'name'  => $name,
+            'alias' => $alias,
+        ];
     }
 }
