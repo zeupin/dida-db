@@ -1202,7 +1202,7 @@ abstract class Builder
         $return = [];
         foreach ($columns as $key => $item) {
             if (is_int($key)) {
-                $return[] = $this->makeColumn($item, null);
+                $return[] = $this->makeColumn($item);
             } else {
                 $return[] = $this->makeColumn($key, $item);
             }
