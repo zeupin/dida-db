@@ -859,6 +859,8 @@ abstract class Builder
     /**
      * Executes a DELETE, INSERT, or UPDATE statement (with the parameters).
      *
+     * 执行变更数据类的SQL指令。
+     *
      * @return bool  true on success, false on failure.
      */
     public function go()
@@ -905,7 +907,9 @@ abstract class Builder
 
 
     /**
-     * Action: Fetches a record from a recordset.
+     * Fetches a record from the result set.
+     *
+     * 执行一个查询操作，返回匹配的下一条记录。
      */
     public function fetch($fetch_style = null)
     {
@@ -934,7 +938,9 @@ abstract class Builder
 
 
     /**
-     * Action: Fetches all records from a recordset.
+     * Fetches all records from a result set.
+     *
+     * 执行一个查询操作，返回所有获取的记录。
      */
     public function fetchAll($fetch_style = null)
     {
@@ -962,6 +968,15 @@ abstract class Builder
     }
 
 
+    /**
+     * Returns a column value of the next record.
+     *
+     * 返回查询操作的下一行的第n列的值，默认是取第1列的值。
+     * 如果返回多列，可指定要取的列的序号，第1列的序号是0。
+     *
+     * @param int $column_number
+     * @return mixed 失败返回false，成功返回字符串。
+     */
     public function value($column_number = 0)
     {
         $this->build();
@@ -1004,8 +1019,13 @@ abstract class Builder
         if ($cnt === 3) {
             list($column, $op, $data) = $condition;
         } elseif ($cnt === 2) {
+            // isnull, isnotnull
             list($column, $op) = $condition;
             $data = null;
+        } elseif ($cnt === 4) {
+            // between
+            list($column, $op, $data1, $data2) = $condition;
+            $data = [$data1, $data2];
         } else {
             throw new Exception("Invalid condition as " . var_export($condition, true));
         }
