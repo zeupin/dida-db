@@ -873,7 +873,6 @@ abstract class Builder
      */
     protected function resolveRecord($record, &$expression, &$parameters)
     {
-
     }
 
 
@@ -1410,7 +1409,7 @@ abstract class Builder
         $as = '';
 
         if (is_string($table)) {
-            $table = $this->splitNameString($table);
+            $table = $this->splitNameAlias($table);
             $t = $table['name'];
             $as = (isset($table['alias'])) ? $table['alias'] : null;
         } elseif (is_array($table)) {
@@ -1440,7 +1439,7 @@ abstract class Builder
      *
      * Converts a table/column name string to an array of a specified format.
      */
-    protected function splitNameString($string)
+    protected function splitNameAlias($string)
     {
         $result = preg_split('/\s+(AS|as|As)\s+/', $string, 2);
         $name = $result[0];
