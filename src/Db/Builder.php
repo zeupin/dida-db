@@ -400,12 +400,12 @@ abstract class Builder
     }
 
 
-    public function select(array $columns = [])
+    public function select(array $columnlist = [])
     {
         $this->buildChanged();
 
         $this->verb = 'SELECT';
-        $this->select_columnlist = $columns;
+        $this->select_columnlist = $columnlist;
 
         return $this;
     }
