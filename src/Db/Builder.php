@@ -589,6 +589,27 @@ abstract class Builder
     }
 
 
+    /**
+     * 指定列自增一个值，默认自增1。
+     *
+     * @param string $column
+     * @param mixed $value
+     */
+    public function inc($column, $value = 1)
+    {
+        $this->buildChanged();
+
+        $this->verb = 'UPDATE';
+
+        $column_quoted = $this->makeColumn($column);
+        $plus = ($value < 0) ? '' : '+'; // 正数和零要显示加号
+
+        $this->update_set[$column] = [Builder::CALC_COLUMN, $column, "$column_quoted{$plus}$value"];
+
+        return $this;
+    }
+
+
     public function build()
     {
         if ($this->builded) {
