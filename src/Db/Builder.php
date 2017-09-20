@@ -334,7 +334,7 @@ abstract class Builder
 
         $tpl = [
             ' INNER JOIN ',
-            'table' => $this->fsqlTable($table),
+            'table' => $this->tableNormalize($table),
             ' ON ',
             'colA'  => $this->fsql($colA),
             ' ',
@@ -354,7 +354,7 @@ abstract class Builder
 
         $tpl = [
             ' LEFT JOIN ',
-            'table' => $this->fsqlTable($table),
+            'table' => $this->tableNormalize($table),
             ' ON ',
             'colA'  => $this->fsql($colA),
             ' ',
@@ -374,7 +374,7 @@ abstract class Builder
 
         $tpl = [
             ' RIGHT JOIN ',
-            'table' => $this->fsqlTable($table),
+            'table' => $this->tableNormalize($table),
             ' ON ',
             'colA'  => $this->fsql($colA),
             ' ',
@@ -873,7 +873,6 @@ abstract class Builder
      */
     protected function resolveRecord($record, &$expression, &$parameters)
     {
-
     }
 
 
@@ -1288,49 +1287,6 @@ abstract class Builder
     }
 
 
-    protected function makeColumnList(array $columns)
-    {
-        $return = [];
-        foreach ($columns as $key => $item) {
-            if (is_int($key)) {
-                $return[] = $this->makeColumn($item);
-            } else {
-                $return[] = $this->makeColumn($key, $item);
-            }
-        }
-        return implode(', ', $return);
-    }
-
-
-    protected function makeColumn($column, $alias = null)
-    {
-        // column
-        $column_quoted = '';
-        $column = $this->fsql($column);
-        if ($this->isName($column)) {
-            // "column"
-            $column_quoted = $this->quoteColumnName($column);
-        } elseif ($this->isNameWithDot($column)) {
-            // "table.column"
-            $array = explode('.', $column);
-            $column_quoted = $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
-        } else {
-            $column_quoted = $column;
-        }
-
-        // alias
-        $alias_quoted = '';
-        if (!is_string($alias) || $alias === '') {
-            $alias_quoted = '';
-        } else {
-            $alias_quoted = ' AS ' . $this->quoteColumnName($alias);
-        }
-
-        // combine column and alias
-        return $column_quoted . $alias_quoted;
-    }
-
-
     protected function combineConditionParts($parts, $logic = 'AND')
     {
         $expression = array_column($parts, 'expression');
@@ -1381,7 +1337,7 @@ abstract class Builder
 
 
     /**
-     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量
+     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量(如：###_等)
      *
      * Converts a fsql SQL to a real SQL
      */
@@ -1400,26 +1356,43 @@ abstract class Builder
 
 
     /**
-     * 把一个表名称字符串进行标准化。
+     * Normalizes a table name expression.
+     *
+     * 把一个表名表达式进行标准化。
      * 支持两种格式：“tablename”和“tablename AS alias”
      *
-     * @param string $table  'table_name', 'table_name alias', 'table_name as alias'
-     * @param array  $table  [tablename, alias]
+     * @param string $table  'table_name', 'table_name AS alias'
      */
-    protected function fsqlTable($table)
+    protected function tableNormalize($table)
     {
-        $t = trim($table);
-        $stdTable = $this->splitNameAlias($t);
+        $s = trim($table);
+        $temp = $this->splitNameAlias($s);
 
-        return $this->makeTable($stdTable['name'], $stdTable['alias']);
+        return $this->makeTable($temp['name'], $temp['alias']);
     }
 
 
     /**
-     * 返回一个表的名称表达式的代码片段。
+     * Normalizes a column name expression.
      *
+     * 把一个列名表达式进行标准化。
+     * 支持两种格式：“column”和“column AS alias”
+     *
+     * @param string $table  'table_name', 'table_name AS alias'
+     */
+    protected function columnNormalize($column)
+    {
+        $s = trim($column);
+        $temp = $this->splitNameAlias($s);
+
+        return $this->makeColumn($temp['name'], $temp['alias']);
+    }
+
+
+    /**
      * Returns a SQL code snippet of a table name (with an alias).
      *
+     * 返回一个表的名称表达式的代码片段。
      * 注意：表的Alias一定会被quote的。
      *
      * @param string $name
@@ -1437,9 +1410,9 @@ abstract class Builder
 
 
     /**
-     * 返回一个tablelist的名称表达式的代码片段。
-     *
      * Returns a SQL code snippet of a table list names (with aliases).
+     *
+     * 返回一个tablelist的名称表达式的代码片段。
      *
      * @param array $tablelist
      * @return type
@@ -1447,11 +1420,11 @@ abstract class Builder
     protected function makeTableList(array $tablelist)
     {
         $array = [];
-        foreach ($tablelist as $key => $item) {
-            if (is_string($key)) {
-                $array[] = $this->makeTable($key, $item);
+        foreach ($tablelist as $alias => $table) {
+            if (is_string($alias)) {
+                $array[] = $this->makeTable($table, $alias);
             } else {
-                $array[] = $this->makeTable($item);
+                $array[] = $this->makeTable($table);
             }
         }
         return implode(', ', $array);
@@ -1459,13 +1432,85 @@ abstract class Builder
 
 
     /**
+     * Returns a column name expression snippet.
+     *
+     * 返回一个列的名称表达式的代码片段。
+     *
+     * @param string $column
+     * @param string $alias
+     * @return string
+     */
+    protected function makeColumn($column, $alias = null)
+    {
+        $column_quoted = '';
+        $column = $this->fsql(trim($column));
+
+        if ($this->isName($column)) {
+            // 只有“列名”的情况
+            // case "column"
+            //
+            $column_quoted = $this->quoteColumnName($column);
+        } elseif ($this->isNameWithDot($column)) {
+            // 只有“表名.列名”的情况
+            // case "table.column"
+            //
+            $array = explode('.', $column);
+            $column_quoted = $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
+        } else {
+            // 其它情况不quote
+            // case other
+            $column_quoted = $column;
+        }
+
+        // alias
+        $alias_quoted = '';
+        if (!is_string($alias) || $alias === '') {
+            $alias_quoted = '';
+        } else {
+            $alias_quoted = ' AS ' . $this->quoteColumnName($alias);
+        }
+
+        // combine column and alias
+        return $column_quoted . $alias_quoted;
+    }
+
+
+    /**
+     * Returns a columnlist expression snippet
+     *
+     * 返回一个列名数组对应的columnlist表达式。
+     * 输入的$columns只允许以如下格式：
+     * [
+     *      'alias'=>'column',   // 带alias的
+     *               'column',   // 不带alias的
+     * ]
+     *
+     * @param array $columns ['alias'=>'column', 'column',]
+     * @return string
+     */
+    protected function makeColumnList(array $columns)
+    {
+        $array = [];
+        foreach ($columns as $alias => $column) {
+            if (is_string($alias)) {
+                $array[] = $this->makeColumn($column, $alias);
+            } else {
+                $array[] = $this->makeColumn($column);
+            }
+        }
+
+        return implode(', ', $array);
+    }
+
+
+    /**
+     * Converts a table/column name string to an array of a specified format.
+     *
      * 把一个表名或者列名字符串转换为标准格式待用。
      * 支持：“名称”、“名称 AS 别名”这两种形式。
      *
      * 考虑到“表名 别名”这种用法不易一眼识别。因此表名如果带别名，一律要求都用" as "显式指明。
      * 如“tb_user AS u”，其中AS的大小写没有关系，用AS、as或As都行。
-     *
-     * Converts a table/column name string to an array of a specified format.
      */
     protected function splitNameAlias($string)
     {
@@ -1481,11 +1526,11 @@ abstract class Builder
 
 
     /**
+     * Tests the specified $name is a valid table/column name.
+     *
      * 检查给出的名称字符串是否是一个可用作表名或列名的单词。
      * 标准是：以下划线或字母开头，后面跟若干个_、字母和数字。
      * 注意：执行本函数前，要先转换好 ###_tablename
-     *
-     * Tests the specified $name is a valid table/column name.
      *
      * @param string $name
      * @return int   1 for yes, 0 for no
@@ -1497,11 +1542,11 @@ abstract class Builder
 
 
     /**
+     * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
+     *
      * 检查给出的字符串是否是一个以点分隔的名字。
      * 用于检查列名是否是“表名称.列名称”这种形式。
      * 注意：执行本函数前，要先转换好 ###_tablename
-     *
-     * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
      *
      * @param string $name
      * @return int   1 for yes, 0 for no
