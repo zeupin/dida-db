@@ -873,6 +873,7 @@ abstract class Builder
      */
     protected function resolveRecord($record, &$expression, &$parameters)
     {
+
     }
 
 
@@ -1427,6 +1428,49 @@ abstract class Builder
         $t = $this->quoteTableName($t);
         $as = ($as === null) ? '' : ' ' . $this->quoteTableName($as);
         return $t . $as;
+    }
+
+
+    /**
+     * 返回一个表的名称表达式代码片段
+     *
+     * Returns a SQL code snippet of a table name (with an alias).
+     *
+     * 注意：表的Alias一定会被quote的。
+     *
+     * @param string $name
+     * @param string $alias
+     */
+    protected function makeTable($name, $alias = null)
+    {
+        $t = trim($name);
+        $t = $this->bstr($name);
+        $t = $this->quoteTableName($t);
+        $as = ($alias) ? ' ' . $this->quoteTableName($alias) : '';
+
+        return $t . $as;
+    }
+
+
+    /**
+     * 返回一个tablelist的名称表达式代码片段。
+     *
+     * Returns a SQL code snippet of a table list names (with aliases).
+     *
+     * @param array $tablelist
+     * @return type
+     */
+    protected function makeTableList(array $tablelist)
+    {
+        $array = [];
+        foreach ($tablelist as $key => $item) {
+            if (is_string($key)) {
+                $array[] = $this->makeTable($key, $item);
+            } else {
+                $array[] = $this->makeTable($item);
+            }
+        }
+        return implode(', ', $array);
     }
 
 
