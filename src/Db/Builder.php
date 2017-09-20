@@ -1264,6 +1264,30 @@ abstract class Builder
     }
 
 
+    protected function cond_EXISTS($column, $op, $data)
+    {
+        $sql = $this->fsql($column);
+
+        $part = [
+            'expression' => "EXISTS ($sql)",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTEXISTS($column, $op, $data)
+    {
+        $sql = $this->fsql($column);
+
+        $part = [
+            'expression' => "NOT EXISTS ($sql)",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
     public function lastInsertId($name = null)
     {
         return $this->db->pdo->lastInsertId($name);
