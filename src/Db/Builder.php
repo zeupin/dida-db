@@ -1434,8 +1434,9 @@ abstract class Builder
     /**
      * 把一个表名或者列名字符串转换为标准格式待用。
      * 支持：“名称”、“名称 AS 别名”这两种形式。
-     * 考虑到“表名 别名”这种形式不易一眼识别。如果带别名，一律都用" as "关键字显式指明。
-     * 表名也要这样处理，如“tb_user AS u”，其中AS的大小写没有关系，用AS、as或As都行。
+     *
+     * 考虑到“表名 别名”这种用法不易一眼识别。因此表名如果带别名，一律要求都用" as "显式指明。
+     * 如“tb_user AS u”，其中AS的大小写没有关系，用AS、as或As都行。
      *
      * Converts a table/column name string to an array of a specified format.
      */
