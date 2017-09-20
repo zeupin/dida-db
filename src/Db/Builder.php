@@ -873,6 +873,7 @@ abstract class Builder
      */
     protected function resolveRecord($record, &$expression, &$parameters)
     {
+
     }
 
 
@@ -1309,10 +1310,10 @@ abstract class Builder
         // column
         $column_quoted = '';
         $column = $this->bstr($column);
-        if ($this->isSimpleName($column)) {
+        if ($this->isName($column)) {
             // "column"
             $column_quoted = $this->quoteColumnName($column);
-        } elseif ($this->isSimpleNameWithDot($column)) {
+        } elseif ($this->isNameWithDot($column)) {
             // "table.column"
             $array = explode('.', $column);
             $column_quoted = $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
@@ -1431,6 +1432,11 @@ abstract class Builder
 
 
     /**
+     * 把一个表名或者列名字符串转换为标准格式待用。
+     * 支持：“名称”、“名称 AS 别名”这两种形式。
+     * 考虑到“表名 别名”这种形式不易一眼识别。如果带别名，一律都用" as "关键字显式指明。
+     * 表名也要这样处理，如“tb_user AS u”，其中AS的大小写没有关系，用AS、as或As都行。
+     *
      * Converts a table/column name string to an array of a specified format.
      */
     protected function splitNameString($string)
@@ -1447,26 +1453,32 @@ abstract class Builder
 
 
     /**
-     * Tests the specified $name is a simple name
-     * Such as: tb_user
+     * 检查给出的名称字符串是否是一个可用作表名或列名的单词。
+     * 标准是：以下划线或字母开头，后面跟若干个_、字母和数字。
+     * 注意：执行本函数前，要先转换好 ###_tablename
+     *
+     * Tests the specified $name is a valid table/column name.
      *
      * @param string $name
-     * @return int   0 for no, 1 for yes
+     * @return int   1 for yes, 0 for no
      */
-    protected function isSimpleName($name)
+    protected function isName($name)
     {
         return preg_match('/^[_A-Za-z]{1}\w*$/', $name);
     }
 
 
     /**
-     * Tests the specified $name is a simple name splitted by a dot
-     * Such as: tb_user.address
+     * 检查给出的字符串是否是一个以点分隔的名字。
+     * 用于检查列名是否是“表名称.列名称”这种形式。
+     * 注意：执行本函数前，要先转换好 ###_tablename
+     *
+     * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
      *
      * @param string $name
-     * @return int   0 for no, 1 for yes
+     * @return int   1 for yes, 0 for no
      */
-    protected function isSimpleNameWithDot($name)
+    protected function isNameWithDot($name)
     {
         return preg_match('/^[_A-Za-z]{1}\w*\.[_A-Za-z]{1}\w*$/', $name);
     }
