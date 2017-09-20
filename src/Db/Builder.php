@@ -864,18 +864,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Resolves a record to
-     *
-     * @param data $record
-     * @param type $expression
-     * @param type $parameters
-     */
-    protected function resolveRecord($record, &$expression, &$parameters)
-    {
-    }
-
-
     protected function buildChanged()
     {
         $this->builded = false;
