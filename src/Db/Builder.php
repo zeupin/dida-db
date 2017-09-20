@@ -24,6 +24,7 @@ abstract class Builder
     protected $table = null;
     protected $table_alias = null;
     protected $prefix = null;
+    protected $fsql_prefix = '###_'; /* faked sql */
     protected $def = null;
     protected $def_columns = null;
     protected $def_basetype = [];
@@ -75,9 +76,6 @@ abstract class Builder
 
     /* execution's result */
     public $rowCount = null;
-
-    /* builder-sql */
-    protected $fsql_prefix = '###_';
 
     /* class constants */
     const VALUE_COLUMN = 'value';
@@ -147,58 +145,58 @@ abstract class Builder
         'where' => [],
     ];
 
+    /* EXISTS template */
+    protected $EXISTS_expression = [
+        0      => 'SELECT EXISTS (',
+        'expr' => '',
+        1      => ')',
+    ];
+
 
     /* 支持的SQL条件运算集 */
     protected static $opertor_set = [
         /* Raw SQL */
-        'SQL'              => 'SQL',
+        'SQL'         => 'SQL',
         /* equal */
-        'EQ'               => 'EQ',
-        '='                => 'EQ',
-        '=='               => 'EQ',
+        'EQ'          => 'EQ',
+        '='           => 'EQ',
+        '=='          => 'EQ',
         /* not equal */
-        'NEQ'              => 'NEQ',
-        '<>'               => 'NEQ',
-        '!='               => 'NEQ',
+        'NEQ'         => 'NEQ',
+        '<>'          => 'NEQ',
+        '!='          => 'NEQ',
         /* <,>,<=,>= */
-        'GT'               => 'GT',
-        '>'                => 'GT',
-        'EGT'              => 'EGT',
-        '>='               => 'EGT',
-        'LT'               => 'LT',
-        '<'                => 'LT',
-        'ELT'              => 'ELT',
-        '<='               => 'ELT',
+        'GT'          => 'GT',
+        '>'           => 'GT',
+        'EGT'         => 'EGT',
+        '>='          => 'EGT',
+        'LT'          => 'LT',
+        '<'           => 'LT',
+        'ELT'         => 'ELT',
+        '<='          => 'ELT',
         /* LIKE */
-        'LIKE'             => 'LIKE',
-        'NOT LIKE'         => 'NOTLIKE',
-        'NOTLIKE'          => 'NOTLIKE',
+        'LIKE'        => 'LIKE',
+        'NOT LIKE'    => 'NOTLIKE',
+        'NOTLIKE'     => 'NOTLIKE',
         /* IN */
-        'IN'               => 'IN',
-        'NOT IN'           => 'NOTIN',
-        'NOTIN'            => 'NOTIN',
+        'IN'          => 'IN',
+        'NOT IN'      => 'NOTIN',
+        'NOTIN'       => 'NOTIN',
         /* BETWEEN */
-        'BETWEEN'          => 'BETWEEN',
-        'NOT BETWEEN'      => 'NOTBETWEEN',
-        'NOTBETWEEN'       => 'NOTBETWEEN',
+        'BETWEEN'     => 'BETWEEN',
+        'NOT BETWEEN' => 'NOTBETWEEN',
+        'NOTBETWEEN'  => 'NOTBETWEEN',
         /* EXISTS */
-        'EXISTS'           => 'EXISTS',
-        'NOT EXISTS'       => 'NOTEXISTS',
-        'NOTEXISTS'        => 'NOTEXISTS',
+        'EXISTS'      => 'EXISTS',
+        'NOT EXISTS'  => 'NOTEXISTS',
+        'NOTEXISTS'   => 'NOTEXISTS',
         /* NULL */
-        'ISNULL'           => 'ISNULL',
-        'NULL'             => 'ISNULL',
-        'ISNOTNULL'        => 'ISNOTNULL',
-        'IS NOT NULL'      => 'ISNOTNULL',
-        'NOTNULL'          => 'ISNOTNULL',
-        'NOT NULL'         => 'ISNOTNULL',
-        /* 时间类型字段的运算 */
-        'TIME >'           => 'TIME_GT',
-        'TIME <'           => 'TIME_LT',
-        'TIME >='          => 'TIME_EGT',
-        'TIME <='          => 'TIME_ELT',
-        'TIME BETWEEN'     => 'TIME_BETWEEN',
-        'TIME NOT BETWEEN' => 'TIME_NOTBETWEEN',
+        'ISNULL'      => 'ISNULL',
+        'NULL'        => 'ISNULL',
+        'ISNOTNULL'   => 'ISNOTNULL',
+        'IS NOT NULL' => 'ISNOTNULL',
+        'NOTNULL'     => 'ISNOTNULL',
+        'NOT NULL'    => 'ISNOTNULL',
     ];
 
 
@@ -218,17 +216,69 @@ abstract class Builder
      * @param \Dida\Db $db
      * @param string $table
      */
-    public function __construct($db, $table, $prefix = '')
+    public function __construct($db, $table, $prefix = '', $fsql_prefix = '###_')
     {
         $this->db = $db;
         $this->pdo_default_fetch_mode = $this->db->pdo->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
 
         $this->table = $prefix . $table;
         $this->prefix = $prefix;
+        $this->fsql_prefix = $fsql_prefix;
 
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $this->table . '.php');
         $this->def_columns = array_keys($this->def['COLUMNS']);
         $this->def_basetype = array_column($this->def['COLUMNS'], 'BASE_TYPE', 'COLUMN_NAME');
+
+        $this->reset();
+    }
+
+
+    public function reset()
+    {
+        /* prepare mode */
+        $preparemode = true;  // default TRUE
+
+        /* build */
+        $builded = false;
+
+        /* verb */
+        $verb = 'SELECT';
+
+        /* WHERE */
+        $where_changed = true;
+        $where_parts = [];
+        $where_expression = '';
+        $where_parameters = [];
+
+        /* SELECT */
+        $select_columnlist = [];
+        $select_columnlist_expression = '';
+        $select_distinct = false;
+        $select_distinct_expression = '';
+        $select_orderby_columns = '';
+        $select_orderby_expression = '';
+        $join = [];
+        $join_expression = '';
+        $groupby_columnlist = [];
+        $groupby_expression = '';
+        $having_conditions = [];
+        $having_logic = '';
+        $having_expression = '';
+
+        /* INSERT */
+        $insert_columns = [];
+        $insert_record = [];
+        $insert_expression = '';
+        $insert_parameters = [];
+
+        /* UPDATE */
+        $update_set = [];
+        $update_set_expression = '';
+        $update_set_parameters = [];
+
+        /* final sql */
+        $sql = '';
+        $sql_parameters = [];
     }
 
 
@@ -865,8 +915,6 @@ abstract class Builder
      */
     public function go()
     {
-        $this->build();
-
         // pre-processing
         switch ($this->verb) {
             case 'INSERT':
@@ -876,8 +924,11 @@ abstract class Builder
                 $this->rowCount = null;
                 break;
             default:
-                return false;
+                throw new Exception("Incorrect verb type: $this->verb");
         }
+
+        // build
+        $this->build();
 
         // execute
         try {
@@ -913,6 +964,12 @@ abstract class Builder
      */
     public function fetch($fetch_style = null)
     {
+        // checking
+        if ($this->verb !== 'SELECT') {
+            throw new Exception("Incorrect verb type: $this->verb");
+        }
+
+        // build
         $this->build();
 
         if (is_null($fetch_style)) {
@@ -944,6 +1001,12 @@ abstract class Builder
      */
     public function fetchAll($fetch_style = null)
     {
+        // checking
+        if ($this->verb !== 'SELECT') {
+            throw new Exception("Incorrect verb type: $this->verb");
+        }
+
+        // build
         $this->build();
 
         if (is_null($fetch_style)) {
@@ -979,6 +1042,12 @@ abstract class Builder
      */
     public function value($column_number = 0)
     {
+        // checking
+        if ($this->verb !== 'SELECT') {
+            throw new Exception("Incorrect verb type: $this->verb");
+        }
+
+        // build
         $this->build();
 
         if (count($this->sql_parameters) === 0) {
@@ -997,6 +1066,51 @@ abstract class Builder
                 return $stmt->fetchColumn($column_number);
             }
         }
+    }
+
+
+    /**
+     * Checks records exists.
+     *
+     * 检查当前的SELECT语句的是否能找到至少一条数据。
+     *
+     * @return boolean  有数据返回true，没有数据返回false
+     */
+    public function exists()
+    {
+        // checking
+        if ($this->verb !== 'SELECT') {
+            throw new Exception("Incorrect verb type: $this->verb");
+        }
+
+        // build
+        $this->build();
+
+        $tpl = [
+            'SELECT EXISTS (',
+            $this->sql,
+            ')',
+        ];
+        $sql = implode('', $tpl);
+
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($sql);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $result = $stmt->fetchColumn();
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($sql);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                $result = $stmt->fetchColumn();
+            }
+        }
+
+        return ($result === '1');
     }
 
 
@@ -1297,11 +1411,11 @@ abstract class Builder
     /**
      * Brackets a string value.
      *
-     * 用小括号把一个字符串括起来。
+     * 用小括号把一个非空字符串括起来。
      *
      * @param string $string
      */
-    public static function bracket($string)
+    protected function bracket($string)
     {
         return ($string === '') ? '' : "($string)";
     }
