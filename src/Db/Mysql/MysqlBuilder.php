@@ -7,6 +7,7 @@
 namespace Dida\Db\Mysql;
 
 use \Dida\Db\Builder;
+use \PDO;
 
 /**
  * MysqlBuilder
@@ -27,7 +28,7 @@ class MysqlBuilder extends Builder
 
     protected function quoteString($value)
     {
-        return $this->db->pdo->quote($value);
+        return $this->db->pdo->quote($value, PDO::PARAM_STR);
     }
 
 
