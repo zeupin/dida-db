@@ -418,7 +418,7 @@ abstract class Builder
         $this->verb = 'SELECT';
 
         if (is_string($alias)) {
-            $this->select_columnlist = ["COUNT($columns)" => $alias];
+            $this->select_columnlist = [$alias => "COUNT($columns)"];
         } else {
             $this->select_columnlist = ["COUNT($columns)"];
         }
@@ -1025,8 +1025,8 @@ abstract class Builder
     protected function cond_SQL($column, $op, $data)
     {
         return [
-            'expression' => $data,
-            'parameters' => [],
+            'expression' => $column,
+            'parameters' => $data,
         ];
     }
 
@@ -1252,6 +1252,8 @@ abstract class Builder
 
     /**
      * Brackets a string value.
+     *
+     * 用小括号把一个字符串括起来。
      *
      * @param string $string
      */
