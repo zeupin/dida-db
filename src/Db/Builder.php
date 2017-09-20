@@ -924,7 +924,7 @@ abstract class Builder
                 $this->rowCount = null;
                 break;
             default:
-                throw new Exception("Incorrect verb type: $this->verb");
+                throw new Exception("Illegal verb type \"$this->verb\", expects INSERT/UPDATE/DELETE/TRUNCATE.");
         }
 
         // build
@@ -966,7 +966,7 @@ abstract class Builder
     {
         // checking
         if ($this->verb !== 'SELECT') {
-            throw new Exception("Incorrect verb type: $this->verb");
+            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
         }
 
         // build
@@ -1003,7 +1003,7 @@ abstract class Builder
     {
         // checking
         if ($this->verb !== 'SELECT') {
-            throw new Exception("Incorrect verb type: $this->verb");
+            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
         }
 
         // build
@@ -1044,7 +1044,7 @@ abstract class Builder
     {
         // checking
         if ($this->verb !== 'SELECT') {
-            throw new Exception("Incorrect verb type: $this->verb");
+            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
         }
 
         // build
@@ -1080,7 +1080,7 @@ abstract class Builder
     {
         // checking
         if ($this->verb !== 'SELECT') {
-            throw new Exception("Incorrect verb type: $this->verb");
+            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
         }
 
         // build
