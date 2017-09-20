@@ -186,9 +186,12 @@ abstract class Builder
         'NOT EXISTS'       => 'NOTEXISTS',
         'NOTEXISTS'        => 'NOTEXISTS',
         /* NULL */
-        'NULL'             => 'NULL',
-        'NOT NULL'         => 'NOTNULL',
-        'NOTNULL'          => 'NOTNULL',
+        'ISNULL'           => 'ISNULL',
+        'NULL'             => 'ISNULL',
+        'ISNOTNULL'        => 'ISNOTNULL',
+        'IS NOT NULL'      => 'ISNOTNULL',
+        'NOTNULL'          => 'ISNOTNULL',
+        'NOT NULL'         => 'ISNOTNULL',
         /* 时间类型字段的运算 */
         'TIME >'           => 'TIME_GT',
         'TIME <'           => 'TIME_LT',
@@ -1218,6 +1221,28 @@ abstract class Builder
     protected function cond_NOTBETWEEN($column, $op, $data)
     {
         return $this->cond_BETWEEN($column, 'NOT BETWEEN', $data);
+    }
+
+
+    protected function cond_ISNULL($column, $op, $data = null)
+    {
+        $column_quoted = $this->makeColumn($column);
+        $part = [
+            'expression' => "$column_quoted IS NULL",
+            'parameters' => [],
+        ];
+        return $part;
+    }
+
+
+    protected function cond_ISNOTNULL($column, $op, $data = null)
+    {
+        $column_quoted = $this->makeColumn($column);
+        $part = [
+            'expression' => "$column_quoted IS NOT NULL",
+            'parameters' => [],
+        ];
+        return $part;
     }
 
 
