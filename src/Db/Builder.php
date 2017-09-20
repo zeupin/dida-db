@@ -202,10 +202,10 @@ abstract class Builder
     ];
 
 
-    abstract protected function quoteTable($table);
+    abstract protected function quoteTableName($table);
 
 
-    abstract protected function quoteColumn($column);
+    abstract protected function quoteColumnName($column);
 
 
     abstract protected function quoteString($value);
@@ -455,12 +455,14 @@ abstract class Builder
             foreach ($columns as $column => $order) {
                 if (is_numeric($column)) {
                     $column = $order;
-                    $std[$column] = $this->quoteColumn($column);
+                    $std[$column] = $this->quoteColumnName($column);
                 } else {
                     $order = strtoupper($order);
-                    if ($order === 'ASC') $order = '';
+                    if ($order === 'ASC') {
+                        $order = '';
+                    }
                     if ($order === '' || $order === 'DESC') {
-                        $column_quoted = $this->quoteColumn($column);
+                        $column_quoted = $this->quoteColumnName($column);
                         $std[$column] = ($order === '') ? $column_quoted : "$column_quoted $order";
                     } else {
                         throw new Exception("Invalid ORDERBY expression: $column $order");
@@ -646,8 +648,8 @@ abstract class Builder
             } else {
                 $t = ($this->table_alias === null) ? $this->table : $this->table_alias;
                 $array = $this->def_columns;
-                array_walk($array, function(&$item, $key) use($t) {
-                    $item = $this->quoteTable($t) . '.' . $this->quoteColumn($item);
+                array_walk($array, function (&$item, $key) use ($t) {
+                    $item = $this->quoteTableName($t) . '.' . $this->quoteColumnName($item);
                 });
 
                 $this->select_columnlist_expression = $this->makeColumnList($array);
@@ -716,7 +718,7 @@ abstract class Builder
         }
 
         $expression = [
-            'table'   => $this->quoteTable($this->table),
+            'table'   => $this->quoteTableName($this->table),
             "columns" => $columns_expression,
             'values'  => $values_expression,
         ];
@@ -732,7 +734,7 @@ abstract class Builder
         $this->build_WHERE();
 
         $expression = [
-            'table' => $this->quoteTable($this->table),
+            'table' => $this->quoteTableName($this->table),
             'where' => $this->where_expression,
         ];
         $expression = array_merge($this->DELETE_expression, $expression);
@@ -760,7 +762,7 @@ abstract class Builder
 
         // build expression
         $expression = [
-            'table' => $this->quoteTable($this->table),
+            'table' => $this->quoteTableName($this->table),
             'set'   => $this->update_set_expression,
             'join'  => '',
             'where' => $this->where_expression,
@@ -785,7 +787,7 @@ abstract class Builder
 
         foreach ($this->update_set as $item) {
             list($type, $column) = $item;
-            $column_quoted = $this->quoteColumn($column);
+            $column_quoted = $this->quoteColumnName($column);
 
             switch ($type) {
                 case Builder::VALUE_COLUMN:
@@ -824,17 +826,17 @@ abstract class Builder
                 case Builder::SELECT_COLUMN:
                     list($type, $column, $tableB, $columnB, $colA, $colB, $alias) = $item;
 
-                    $table_quoted = $this->quoteTable($this->table);
-                    $tableB_quoted = $this->quoteTable($this->prefix . $tableB);
-                    $columnB_quoted = $this->quoteColumn($columnB);
-                    $colA_quoted = $this->quoteColumn($colA);
-                    $colB_quoted = $this->quoteColumn($colB);
+                    $table_quoted = $this->quoteTableName($this->table);
+                    $tableB_quoted = $this->quoteTableName($this->prefix . $tableB);
+                    $columnB_quoted = $this->quoteColumnName($columnB);
+                    $colA_quoted = $this->quoteColumnName($colA);
+                    $colB_quoted = $this->quoteColumnName($colB);
 
                     if (is_null($alias)) {
                         $alias = $tableB_quoted;
                         $as = '';
                     } else {
-                        $alias = $this->quoteTable($alias);
+                        $alias = $this->quoteTableName($alias);
                         $as = ' AS ' . $alias;
                     }
 
@@ -871,7 +873,6 @@ abstract class Builder
      */
     protected function resolveRecord($record, &$expression, &$parameters)
     {
-
     }
 
 
@@ -898,7 +899,7 @@ abstract class Builder
             case 'TRUNCATE':
                 $this->rowCount = null;
                 break;
-            default :
+            default:
                 return false;
         }
 
@@ -987,6 +988,32 @@ abstract class Builder
     }
 
 
+    public function value($column_number = 0)
+    {
+        $this->build();
+
+        if (is_null($fetch_style)) {
+            $fetch_style = $this->pdo_default_fetch_mode;
+        }
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql);
+            if ($stmt === false) {
+                return false;
+            } else {
+                return $stmt->fetchColumn($column_number);
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql);
+            if ($stmt === false) {
+                return false;
+            } else {
+                $stmt->execute($this->sql_parameters);
+                return $stmt->fetchColumn($column_number);
+            }
+        }
+    }
+
+
     protected function cond($condition, $parameters = [])
     {
         if (is_string($condition)) {
@@ -1037,7 +1064,7 @@ abstract class Builder
     {
         $tpl = [
             '(',
-            'column' => $this->quoteColumn($column),
+            'column' => $this->makeColumn($column),
             'op'     => " $op ",
             'value'  => '',
             ')'
@@ -1120,7 +1147,7 @@ abstract class Builder
 
         $tpl = [
             '(',
-            'column' => $this->quoteColumn($column),
+            'column' => $this->quoteColumnName($column),
             'op'     => " $op ",
             '(',
             'list'   => '',
@@ -1164,7 +1191,7 @@ abstract class Builder
 
     protected function cond_LIKE($column, $op, $data)
     {
-        $column_quoted = $this->quoteColumn($column);
+        $column_quoted = $this->quoteColumnName($column);
         $value_quoted = $this->quoteString($data);
 
         if ($this->preparemode) {
@@ -1194,7 +1221,7 @@ abstract class Builder
         $expression = '';
         $parameters = [];
 
-        $column_quoted = $this->quoteColumn($column);
+        $column_quoted = $this->quoteColumnName($column);
 
         $value1 = $data[0];
         $value2 = $data[1];
@@ -1282,13 +1309,13 @@ abstract class Builder
         // column
         $column_quoted = '';
         $column = $this->bstr($column);
-        if (preg_match('/^[_A-Za-z]{1}\w*$/', $column)) {
+        if ($this->isSimpleName($column)) {
             // "column"
-            $column_quoted = $this->quoteColumn($column);
-        } elseif (preg_match('/^[_A-Za-z]{1}\w*\.[_A-Za-z]{1}\w*$/', $column)) {
+            $column_quoted = $this->quoteColumnName($column);
+        } elseif ($this->isSimpleNameWithDot($column)) {
             // "table.column"
             $array = explode('.', $column);
-            $column_quoted = $this->quoteTable($array[0]) . '.' . $this->quoteColumn($array[1]);
+            $column_quoted = $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
         } else {
             $column_quoted = $column;
         }
@@ -1298,7 +1325,7 @@ abstract class Builder
         if (!is_string($alias) || $alias === '') {
             $alias_quoted = '';
         } else {
-            $alias_quoted = ' AS ' . $this->quoteColumn($alias);
+            $alias_quoted = ' AS ' . $this->quoteColumnName($alias);
         }
 
         // combine column and alias
@@ -1313,7 +1340,9 @@ abstract class Builder
 
         $expression_cnt = count($expression);
         $expression = implode(" $logic ", $expression);
-        if ($expression_cnt > 1) $expression = "($expression)";
+        if ($expression_cnt > 1) {
+            $expression = "($expression)";
+        }
 
         $parameters = $this->combineParameterArray($parameters);
 
@@ -1395,8 +1424,8 @@ abstract class Builder
         }
 
         $t = $this->bstr($t);
-        $t = $this->quoteTable($t);
-        $as = ($as === null) ? '' : ' ' . $this->quoteTable($as);
+        $t = $this->quoteTableName($t);
+        $as = ($as === null) ? '' : ' ' . $this->quoteTableName($as);
         return $t . $as;
     }
 
@@ -1406,7 +1435,7 @@ abstract class Builder
      */
     protected function splitNameString($string)
     {
-        $result = preg_split('/\s+(AS|as){0,1}\s*/', $string, 2);
+        $result = preg_split('/\s+(AS|as|As)\s+/', $string, 2);
         $name = $result[0];
         $alias = (isset($result[1])) ? $result[1] : null;
 
@@ -1414,5 +1443,31 @@ abstract class Builder
             'name'  => $name,
             'alias' => $alias,
         ];
+    }
+
+
+    /**
+     * Tests the specified $name is a simple name
+     * Such as: tb_user
+     *
+     * @param string $name
+     * @return int   0 for no, 1 for yes
+     */
+    protected function isSimpleName($name)
+    {
+        return preg_match('/^[_A-Za-z]{1}\w*$/', $name);
+    }
+
+
+    /**
+     * Tests the specified $name is a simple name splitted by a dot
+     * Such as: tb_user.address
+     *
+     * @param string $name
+     * @return int   0 for no, 1 for yes
+     */
+    protected function isSimpleNameWithDot($name)
+    {
+        return preg_match('/^[_A-Za-z]{1}\w*\.[_A-Za-z]{1}\w*$/', $name);
     }
 }

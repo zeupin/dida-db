@@ -13,13 +13,13 @@ use \Dida\Db\Builder;
  */
 class MysqlBuilder extends Builder
 {
-    protected function quoteTable($table)
+    protected function quoteTableName($table)
     {
         return '`' . $table . '`';
     }
 
 
-    protected function quoteColumn($column)
+    protected function quoteColumnName($column)
     {
         return '`' . $column . '`';
     }
