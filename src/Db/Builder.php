@@ -77,7 +77,7 @@ abstract class Builder
     public $rowCount = null;
 
     /* builder-sql */
-    protected $bstr_prefix = '###_';
+    protected $fsql_prefix = '###_';
 
     /* class constants */
     const VALUE_COLUMN = 'value';
@@ -334,13 +334,13 @@ abstract class Builder
 
         $tpl = [
             ' INNER JOIN ',
-            'table' => $this->bstrTable($table),
+            'table' => $this->fsqlTable($table),
             ' ON ',
-            'colA'  => $this->bstr($colA),
+            'colA'  => $this->fsql($colA),
             ' ',
             'rel'   => $rel,
             ' ',
-            'colB'  => $this->bstr($colB),
+            'colB'  => $this->fsql($colB),
         ];
         $this->join[] = implode('', $tpl);
 
@@ -354,13 +354,13 @@ abstract class Builder
 
         $tpl = [
             ' LEFT JOIN ',
-            'table' => $this->bstrTable($table),
+            'table' => $this->fsqlTable($table),
             ' ON ',
-            'colA'  => $this->bstr($colA),
+            'colA'  => $this->fsql($colA),
             ' ',
             'rel'   => $rel,
             ' ',
-            'colB'  => $this->bstr($colB),
+            'colB'  => $this->fsql($colB),
         ];
         $this->join[] = implode('', $tpl);
 
@@ -374,13 +374,13 @@ abstract class Builder
 
         $tpl = [
             ' RIGHT JOIN ',
-            'table' => $this->bstrTable($table),
+            'table' => $this->fsqlTable($table),
             ' ON ',
-            'colA'  => $this->bstr($colA),
+            'colA'  => $this->fsql($colA),
             ' ',
             'rel'   => $rel,
             ' ',
-            'colB'  => $this->bstr($colB),
+            'colB'  => $this->fsql($colB),
         ];
         $this->join[] = implode('', $tpl);
 
@@ -620,7 +620,7 @@ abstract class Builder
         $this->build_ORDER_BY();
 
         $expression = [
-            'table'    => $this->bstrTable([$this->table, $this->table_alias]),
+            'table'    => $this->makeTable($this->table, $this->table_alias),
             'distinct' => $this->select_distinct_expression,
             "columns"  => $this->select_columnlist_expression,
             'join'     => $this->join_expression,
@@ -993,9 +993,6 @@ abstract class Builder
     {
         $this->build();
 
-        if (is_null($fetch_style)) {
-            $fetch_style = $this->pdo_default_fetch_mode;
-        }
         if (count($this->sql_parameters) === 0) {
             $stmt = $this->db->pdo->query($this->sql);
             if ($stmt === false) {
@@ -1309,7 +1306,7 @@ abstract class Builder
     {
         // column
         $column_quoted = '';
-        $column = $this->bstr($column);
+        $column = $this->fsql($column);
         if ($this->isName($column)) {
             // "column"
             $column_quoted = $this->quoteColumnName($column);
@@ -1384,55 +1381,42 @@ abstract class Builder
 
 
     /**
-     * Converts bstr SQL to real SQL
+     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量
+     *
+     * Converts a fsql SQL to a real SQL
      */
-    protected function bstr($bstr_sql)
+    protected function fsql($fsql)
     {
         $search = [];
         $replace = [];
 
         // prefix
-        $search[] = $this->bstr_prefix;
+        $search[] = $this->fsql_prefix;
         $replace[] = $this->prefix;
 
         // execute
-        return str_replace($search, $replace, $bstr_sql);
+        return str_replace($search, $replace, $fsql);
     }
 
 
     /**
+     * 把一个表名称字符串进行标准化。
+     * 支持两种格式：“tablename”和“tablename AS alias”
+     *
      * @param string $table  'table_name', 'table_name alias', 'table_name as alias'
      * @param array  $table  [tablename, alias]
      */
-    protected function bstrTable($table)
+    protected function fsqlTable($table)
     {
-        $t = '';
-        $as = '';
+        $t = trim($table);
+        $stdTable = $this->splitNameAlias($t);
 
-        if (is_string($table)) {
-            $table = $this->splitNameAlias($table);
-            $t = $table['name'];
-            $as = (isset($table['alias'])) ? $table['alias'] : null;
-        } elseif (is_array($table)) {
-            $t = $table[0];
-            if (!isset($table[1]) || $table[1] === '') {
-                $as = null;
-            } else {
-                $as = $table[1];
-            }
-        } else {
-            throw new Exception('Invalid function parameter');
-        }
-
-        $t = $this->bstr($t);
-        $t = $this->quoteTableName($t);
-        $as = ($as === null) ? '' : ' ' . $this->quoteTableName($as);
-        return $t . $as;
+        return $this->makeTable($stdTable['name'], $stdTable['alias']);
     }
 
 
     /**
-     * 返回一个表的名称表达式代码片段
+     * 返回一个表的名称表达式的代码片段。
      *
      * Returns a SQL code snippet of a table name (with an alias).
      *
@@ -1444,7 +1428,7 @@ abstract class Builder
     protected function makeTable($name, $alias = null)
     {
         $t = trim($name);
-        $t = $this->bstr($name);
+        $t = $this->fsql($t);
         $t = $this->quoteTableName($t);
         $as = ($alias) ? ' ' . $this->quoteTableName($alias) : '';
 
@@ -1453,7 +1437,7 @@ abstract class Builder
 
 
     /**
-     * 返回一个tablelist的名称表达式代码片段。
+     * 返回一个tablelist的名称表达式的代码片段。
      *
      * Returns a SQL code snippet of a table list names (with aliases).
      *
