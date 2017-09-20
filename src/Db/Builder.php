@@ -328,63 +328,49 @@ abstract class Builder
     }
 
 
-    public function join($table, $colA, $rel, $colB)
+    protected function joinCommon($joinType, $table, $colA, $rel, $colB)
     {
         $this->buildChanged();
 
         $tpl = [
-            ' INNER JOIN ',
-            'table' => $this->tableNormalize($table),
+            ' ',
+            'join type' => $joinType,
+            ' ',
+            'table'     => $this->tableNormalize($table),
             ' ON ',
-            'colA'  => $this->fsql($colA),
+            'colA'      => $this->columnNormalize($colA),
             ' ',
-            'rel'   => $rel,
+            'rel'       => $rel,
             ' ',
-            'colB'  => $this->fsql($colB),
+            'colB'      => $this->columnNormalize($colB),
         ];
         $this->join[] = implode('', $tpl);
 
         return $this;
+    }
+
+
+    public function join($table, $colA, $rel, $colB)
+    {
+        return $this->joinCommon('INNER JOIN', $table, $colA, $rel, $colB);
+    }
+
+
+    public function innerJoin($table, $colA, $rel, $colB)
+    {
+        return $this->joinCommon('INNER JOIN', $table, $colA, $rel, $colB);
     }
 
 
     public function leftJoin($table, $colA, $rel, $colB)
     {
-        $this->buildChanged();
-
-        $tpl = [
-            ' LEFT JOIN ',
-            'table' => $this->tableNormalize($table),
-            ' ON ',
-            'colA'  => $this->fsql($colA),
-            ' ',
-            'rel'   => $rel,
-            ' ',
-            'colB'  => $this->fsql($colB),
-        ];
-        $this->join[] = implode('', $tpl);
-
-        return $this;
+        return $this->joinCommon('LEFT JOIN', $table, $colA, $rel, $colB);
     }
 
 
     public function rightJoin($table, $colA, $rel, $colB)
     {
-        $this->buildChanged();
-
-        $tpl = [
-            ' RIGHT JOIN ',
-            'table' => $this->tableNormalize($table),
-            ' ON ',
-            'colA'  => $this->fsql($colA),
-            ' ',
-            'rel'   => $rel,
-            ' ',
-            'colB'  => $this->fsql($colB),
-        ];
-        $this->join[] = implode('', $tpl);
-
-        return $this;
+        return $this->joinCommon('RIGHT JOIN', $table, $colA, $rel, $colB);
     }
 
 
@@ -707,13 +693,13 @@ abstract class Builder
 
         $values = [];
         if ($this->preparemode) {
-            $values_expression = '(' . implode(',', array_fill(0, count($record), '?')) . ')';
+            $values_expression = '(' . implode(', ', array_fill(0, count($record), '?')) . ')';
             $values_parameters = array_values($record);
         } else {
             foreach ($record as $column => $value) {
                 $values[$column] = $this->quoteColumnValue($column, $value);
             }
-            $values_expression = '(' . implode(',', $values) . ')';
+            $values_expression = '(' . implode(', ', $values) . ')';
             $values_parameters = [];
         }
 
@@ -1143,7 +1129,7 @@ abstract class Builder
 
         if ($this->preparemode) {
             $marks = array_fill(0, count($data), '?');
-            $tpl['list'] = implode(',', $marks);
+            $tpl['list'] = implode(', ', $marks);
             $expression = implode('', $tpl);
             $parameters = array_values($data);
 
@@ -1155,7 +1141,7 @@ abstract class Builder
         }
 
         $data[$key] = $this->quoteColumnValue($column, $value);
-        $tpl['list'] = implode(',', $data);
+        $tpl['list'] = implode(', ', $data);
 
         $part = [
             'expression' => implode('', $tpl),
