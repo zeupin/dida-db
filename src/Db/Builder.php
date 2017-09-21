@@ -1421,19 +1421,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Brackets a string value.
-     *
-     * 用小括号把一个非空字符串括起来。
-     *
-     * @param string $string
-     */
-    protected function bracket($string)
-    {
-        return ($string === '') ? '' : "($string)";
-    }
-
-
     protected function combineConditionParts($parts, $logic = 'AND')
     {
         $expression = array_column($parts, 'expression');
@@ -1480,6 +1467,19 @@ abstract class Builder
             default:
                 return $value;
         }
+    }
+
+
+    /**
+     * Brackets a string value.
+     *
+     * 用小括号把一个非空字符串括起来。
+     *
+     * @param string $string
+     */
+    protected function bracket($string)
+    {
+        return ($string === '') ? '' : "($string)";
     }
 
 
