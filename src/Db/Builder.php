@@ -235,9 +235,11 @@ abstract class Builder
      * 类常量
      * ------------------------------------------------------------
      */
-    const VALUE_COLUMN = 'value';
-    const CALC_COLUMN = 'calc';
-    const SELECT_COLUMN = 'select';
+
+    /* constants used by UPDATE set***() */
+    const SET_VALUE = 'set value';
+    const SET_EXPRESSION = 'set expression';
+    const SET_FROM_TABLE = 'set from table';
 
 
     abstract protected function quoteTableName($table);
@@ -336,7 +338,7 @@ abstract class Builder
     }
 
 
-    public function configPrefix($prefix = '', $fsql_prefix='###_')
+    public function configPrefix($prefix = '', $fsql_prefix = '###_')
     {
         $this->prefix = $prefix;
         $this->fsql_prefix = $fsql_prefix;
@@ -615,30 +617,40 @@ abstract class Builder
     {
         $this->buildChanged();
 
-        $this->update_set[$column] = [Builder::VALUE_COLUMN, $column, $new_value];
+        $this->update_set[$column] = [Builder::SET_VALUE, $column, $new_value];
 
         return $this;
     }
 
 
-    public function setCalc($column, $expr, $parameters = [])
+    public function setExpr($column, $expr, $parameters = [])
     {
         $this->buildChanged();
 
-        $this->update_set[$column] = [Builder::CALC_COLUMN, $column, $expr, $parameters];
+        $this->update_set[$column] = [Builder::SET_EXPRESSION, $column, $expr, $parameters];
 
         return $this;
     }
 
 
     /**
-     * column = (SELECT tableB.columnB FROM tableB WHERE table.colA = tableB.colB)
+     * Set column from other table.
+     *
+     * 常用的一种UPDATE写法：
+     * UPDATE tableA
+     * SET
+     *     columnA = (SELECT tableB.columnB FROM tableB WHERE tableA.colA = tableB.colB)
+     * WHERE
+     *     EXISTS (SELECT tableB.* FROM tableB WHERE tableA.colA = tableB.colB)
+     *
+     * 1. 一般还要和UPDATE的where条件的EXISTS子查询配合用，因为如果在tableB中找不到记录，会把columnA设置为null。
+     * 2. $tableB 可以写为 “tablename AS alias” 的形式。
      */
-    public function setFromSelect($column, $tableB, $columnB, $colA, $colB, $alias = null)
+    public function setFromTable($columnA, $tableB, $columnB, $colA, $colB)
     {
         $this->buildChanged();
 
-        $this->update_set[$column] = [Builder::SELECT_COLUMN, $column, $tableB, $columnB, $colA, $colB, $alias];
+        $this->update_set[$columnA] = [Builder::SET_FROM_TABLE, $columnA, $tableB, $columnB, $colA, $colB];
 
         return $this;
     }
@@ -656,10 +668,10 @@ abstract class Builder
 
         $this->verb = 'UPDATE';
 
-        $column_quoted = $this->makeColumn($column);
+        $column_quoted = $this->makeColumnFullname($column);
         $plus = ($value < 0) ? '' : '+'; // 正数和零要显示加号
 
-        $this->update_set[$column] = [Builder::CALC_COLUMN, $column, "$column_quoted{$plus}$value"];
+        $this->update_set[$column] = [Builder::SET_EXPRESSION, $column, "$column_quoted{$plus}$value"];
 
         return $this;
     }
@@ -732,7 +744,7 @@ abstract class Builder
         $this->build_ORDER_BY();
 
         $expression = [
-            'table'    => $this->makeTable($this->table, $this->table_alias),
+            'table'    => $this->makeTableFullname($this->table, $this->table_alias),
             'distinct' => $this->select_distinct_expression,
             "columns"  => $this->select_columnlist_expression,
             'join'     => $this->join_expression,
@@ -756,15 +768,11 @@ abstract class Builder
     {
         if (empty($this->select_columnlist)) {
             if (empty($this->join)) {
-                $this->select_columnlist_expression = $this->makeColumnList($this->def_columns);
+                $ref = ($this->table_alias && is_string($this->table_alias)) ? $this->table_alias : $this->table;
+                $columnlist = $this->convertSimpleColumnsToFullnames($ref, $this->def_columns);
+                $this->select_columnlist_expression = $this->makeColumnList($columnlist);
             } else {
-                $t = ($this->table_alias === null) ? $this->table : $this->table_alias;
-                $array = $this->def_columns;
-                array_walk($array, function (&$item, $key) use ($t) {
-                    $item = $this->quoteTableName($t) . '.' . $this->quoteColumnName($item);
-                });
-
-                $this->select_columnlist_expression = $this->makeColumnList($array);
+                $this->select_columnlist_expression = $this->makeColumnList($this->def_columns);
             }
         } else {
             $this->select_columnlist_expression = $this->makeColumnList($this->select_columnlist);
@@ -862,7 +870,7 @@ abstract class Builder
 
     protected function build_TRUNCATE()
     {
-        $this->sql = 'TRUNCATE TABLE ' . $this->table;
+        $this->sql = 'TRUNCATE TABLE ' . $this->quoteTableName($this->table);
         $this->sql_parameters = [];
     }
 
@@ -899,10 +907,10 @@ abstract class Builder
 
         foreach ($this->update_set as $item) {
             list($type, $column) = $item;
-            $column_quoted = $this->quoteColumnName($column);
+            $column_quoted = $this->makeColumn($column);
 
             switch ($type) {
-                case Builder::VALUE_COLUMN:
+                case Builder::SET_VALUE:
                     list($type, $column, $new_value) = $item;
                     if ($this->preparemode) {
                         $expression[] = $column_quoted . ' = ?';
@@ -914,7 +922,7 @@ abstract class Builder
                     }
                     break;
 
-                case Builder::CALC_COLUMN:
+                case Builder::SET_EXPRESSION:
                     switch (count($item)) {
                         case 3:
                             list($type, $column, $expr) = $item;
@@ -935,34 +943,33 @@ abstract class Builder
                     }
                     break;
 
-                case Builder::SELECT_COLUMN:
-                    list($type, $column, $tableB, $columnB, $colA, $colB, $alias) = $item;
+                case Builder::SET_FROM_TABLE:
+                    list($type, $columnA, $tableB, $columnB, $colA, $colB) = $item;
 
-                    $table_quoted = $this->quoteTableName($this->table);
-                    $tableB_quoted = $this->quoteTableName($this->prefix . $tableB);
-                    $columnB_quoted = $this->quoteColumnName($columnB);
-                    $colA_quoted = $this->quoteColumnName($colA);
-                    $colB_quoted = $this->quoteColumnName($colB);
+                    $s = $this->splitNameAlias($tableB);
+                    $tableB = $s['name'];
+                    $aliasB = $s['alias'];
 
-                    if (is_null($alias)) {
-                        $alias = $tableB_quoted;
-                        $as = '';
-                    } else {
-                        $alias = $this->quoteTableName($alias);
-                        $as = ' AS ' . $alias;
-                    }
+                    $refA_quoted = $this->makeTableRef($this->table, $this->table_alias);
+                    $refB_quoted = $this->makeTableRef($tableB, $aliasB);
+
+                    $tableBFullname_quoted = $this->makeTableFullname($tableB, $aliasB);
+
+                    $columnA_quoted = $this->makeColumn($columnA);
+                    $columnB_quoted = $this->makeColumn($columnB);
+                    $colA_quoted = $this->makeColumn($colA);
+                    $colB_quoted = $this->makeColumn($colB);
 
                     $tpl = [
-                        'column'         => $column_quoted,
+                        'columnA'        => $columnA_quoted,
                         ' = (SELECT ',
-                        'tableB.columnB' => "$alias.$columnB_quoted",
+                        'tableB.columnB' => "$refB_quoted.$columnB_quoted",
                         ' FROM ',
-                        'tableB'         => $tableB_quoted,
-                        'as'             => $as,
+                        'tableB'         => $tableBFullname_quoted,
                         ' WHERE ',
-                        'table.colA'     => "$table_quoted.$colA_quoted",
+                        'tableA.colA'    => "$refA_quoted.$colA_quoted",
                         ' = ',
-                        'tableB.colB'    => "$alias.$colB_quoted",
+                        'tableB.colB'    => "$refB_quoted.$colB_quoted",
                         ')',
                     ];
                     $expression[] = implode('', $tpl);
@@ -1320,7 +1327,7 @@ abstract class Builder
 
         $tpl = [
             '(',
-            'column' => $this->quoteColumnName($column),
+            'column' => $this->makeColumn($column),
             'op'     => " $op ",
             '(',
             'list'   => '',
@@ -1364,7 +1371,7 @@ abstract class Builder
 
     protected function cond_LIKE($column, $op, $data)
     {
-        $column_quoted = $this->quoteColumnName($column);
+        $column_quoted = $this->makeColumn($column);
         $value_quoted = $this->quoteString($data);
 
         if ($this->preparemode) {
@@ -1394,7 +1401,7 @@ abstract class Builder
         $expression = '';
         $parameters = [];
 
-        $column_quoted = $this->quoteColumnName($column);
+        $column_quoted = $this->makeColumn($column);
 
         $value1 = $data[0];
         $value2 = $data[1];
@@ -1551,7 +1558,7 @@ abstract class Builder
         switch ($this->verb) {
             case 'SELECT':
                 return true;
-            default :
+            default:
                 throw new Exception("Illegal verb type \"$this->verb\" found, expects SELECT.");
         }
     }
@@ -1582,14 +1589,14 @@ abstract class Builder
      * 把一个表名表达式进行标准化。
      * 支持两种格式：“tablename”和“tablename AS alias”
      *
-     * @param string $table  'table_name', 'table_name AS alias'
+     * @param string $table
      */
     protected function tableNormalize($table)
     {
         $s = trim($table);
         $temp = $this->splitNameAlias($s);
 
-        return $this->makeTable($temp['name'], $temp['alias']);
+        return $this->makeTableFullname($temp['name'], $temp['alias']);
     }
 
 
@@ -1599,14 +1606,58 @@ abstract class Builder
      * 把一个列名表达式进行标准化。
      * 支持两种格式：“column”和“column AS alias”
      *
-     * @param string $table  'table_name', 'table_name AS alias'
+     * @param string $column
      */
     protected function columnNormalize($column)
     {
         $s = trim($column);
-        $temp = $this->splitNameAlias($s);
+        $array = $this->splitNameAlias($s);
 
-        return $this->makeColumn($temp['name'], $temp['alias']);
+        return $this->makeColumnFullname($array['name'], $array['alias']);
+    }
+
+
+    /**
+     * Returns a quoted table expression.
+     *
+     * 返回一个quoted的表名表达式。
+     *
+     * @param string $table
+     * @return string
+     */
+    protected function makeTable($table)
+    {
+        $table = trim($table);
+        if ($table === '') {
+            return '';
+        }
+
+        $table = $this->fsql($table);
+
+        if ($this->isName($table)) {
+            return $this->quoteTableName($table);
+        } else {
+            return $table;
+        }
+    }
+
+
+    /**
+     * If $alias is not null or ''， returns the quoted table alias expression.
+     *
+     * 如果Alias不为空，则返回quoted的alias表达式。为空则返回空串。
+     *
+     * @param string $alias
+     * @return string
+     */
+    protected function makeTableAlias($alias)
+    {
+        $alias = trim($alias);
+        if ($alias && is_string($alias)) {
+            return $this->quoteTableName($alias);
+        } else {
+            return '';
+        }
     }
 
 
@@ -1616,34 +1667,36 @@ abstract class Builder
      * 返回一个表的名称表达式的代码片段。
      * 注意：表的Alias一定会被quote的。
      *
-     * @param string $name
+     * @param string $table
      * @param string $alias
      */
-    protected function makeTable($name, $alias = null)
+    protected function makeTableFullname($table, $alias = null)
     {
-        $t = trim($name);
-        $t = $this->fsql($t);
-        $t = $this->quoteTableName($t);
-        $as = ($alias) ? ' ' . $this->quoteTableName($alias) : '';
+        $table_quoted = $this->makeTable($table);
+        $alias_quoted = $this->makeTableAlias($alias);
 
-        return $t . $as;
+        if ($alias_quoted) {
+            return "$table_quoted $alias_quoted";
+        } else {
+            return $table_quoted;
+        }
     }
 
 
     /**
      * Returns a SQL code snippet of a table list names (with aliases).
      *
-     * 返回一个tablelist的名称表达式的代码片段。
+     * 返回一个tablelist的quoted的表达式。
      *
      * @param array $tablelist
-     * @return type
+     * @return string
      */
     protected function makeTableList(array $tablelist)
     {
         $array = [];
         foreach ($tablelist as $alias => $table) {
-            if (is_string($alias)) {
-                $array[] = $this->makeTable($table, $alias);
+            if ($alias && is_string($alias)) {
+                $array[] = $this->makeTableFullname($table, $alias);
             } else {
                 $array[] = $this->makeTable($table);
             }
@@ -1653,46 +1706,104 @@ abstract class Builder
 
 
     /**
+     * Returns quoted alias when alias exists, else returns quoted table name.
+     *
+     * 返回某个表的具体指代者，有别名返回别名；没有别名则返回表名。
+     *
+     * @param string $table
+     * @param string $alias
+     * @return string
+     */
+    protected function makeTableRef($table, $alias = null)
+    {
+        if ($alias && is_string($alias)) {
+            return $this->quoteTableName($alias);
+        } else {
+            return $this->quoteTableName($table);
+        }
+    }
+
+
+    /**
+     * Returns a quoted column name
+     *
+     * 返回一个quoted的列名
+     *
+     * @param string $column
+     * @return string
+     */
+    protected function makeColumn($column)
+    {
+        $column = trim($column);
+        if ($column === '') {
+            return '';
+        }
+
+        $column = $this->fsql($column);
+
+        /*
+         * case "column"
+         * 只有“列名”的情况
+         */
+        if ($this->isName($column)) {
+            return $this->quoteColumnName($column);
+        }
+
+        /*
+         * case "table.column"
+         * “表名.列名”的情况
+         */
+        if ($this->isNameWithDot($column)) {
+            $array = explode('.', $column);
+            return $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
+        }
+
+        /*
+         * case other
+         * 其它情况不quote此列
+         */
+        return $column;
+    }
+
+
+    /**
+     * If $alias is not null or ''， returns the quoted column alias expression.
+     *
+     * 如果Alias不为空，则返回quoted的alias表达式。
+     *
+     * @param string $alias
+     * @return string
+     */
+    protected function makeColumnAlias($alias)
+    {
+        $alias = trim($alias);
+        if ($alias && is_string($alias)) {
+            return $this->quoteColumnName($alias);
+        } else {
+            return '';
+        }
+    }
+
+
+    /**
      * Returns a column name expression snippet.
      *
-     * 返回一个列的名称表达式的代码片段。
+     * 返回一个列名的quoted全名表达式。
      *
      * @param string $column
      * @param string $alias
      * @return string
      */
-    protected function makeColumn($column, $alias = null)
+    protected function makeColumnFullname($column, $alias = null)
     {
-        $column_quoted = '';
-        $column = $this->fsql(trim($column));
+        $column_quoted = $this->makeColumn($column);
+        $alias_quoted = $this->makeColumnAlias($alias);
 
-        if ($this->isName($column)) {
-            // 只有“列名”的情况
-            // case "column"
-            //
-            $column_quoted = $this->quoteColumnName($column);
-        } elseif ($this->isNameWithDot($column)) {
-            // 只有“表名.列名”的情况
-            // case "table.column"
-            //
-            $array = explode('.', $column);
-            $column_quoted = $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
+        if ($alias_quoted) {
+            return "$column_quoted AS $alias_quoted";
         } else {
-            // 其它情况不quote
-            // case other
-            $column_quoted = $column;
+            return $column_quoted;
         }
-
-        // alias
-        $alias_quoted = '';
-        if (!is_string($alias) || $alias === '') {
-            $alias_quoted = '';
-        } else {
-            $alias_quoted = ' AS ' . $this->quoteColumnName($alias);
-        }
-
-        // combine column and alias
-        return $column_quoted . $alias_quoted;
     }
 
 
@@ -1714,9 +1825,9 @@ abstract class Builder
         $array = [];
         foreach ($columns as $alias => $column) {
             if (is_string($alias)) {
-                $array[] = $this->makeColumn($column, $alias);
+                $array[] = $this->makeColumnFullname($column, $alias);
             } else {
-                $array[] = $this->makeColumn($column);
+                $array[] = $this->makeColumnFullname($column);
             }
         }
 
@@ -1775,5 +1886,24 @@ abstract class Builder
     protected function isNameWithDot($name)
     {
         return preg_match('/^[_A-Za-z]{1}\w*\.[_A-Za-z]{1}\w*$/', $name);
+    }
+
+
+    /**
+     * Converts simple name columns to full name columns.
+     *
+     * 把一个不含表名的columnlist转换为含表名的columnlist
+     *
+     * @param string $table
+     * @param array $columns
+     * @return array
+     */
+    protected function convertSimpleColumnsToFullnames($table, array $columns)
+    {
+        $new = [];
+        foreach ($columns as $column) {
+            $new[] = "$table.$column";
+        }
+        return $new;
     }
 }
