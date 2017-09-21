@@ -641,16 +641,46 @@ abstract class Builder
      * SET
      *     columnA = (SELECT tableB.columnB FROM tableB WHERE tableA.colA = tableB.colB)
      * WHERE
-     *     EXISTS (SELECT tableB.* FROM tableB WHERE tableA.colA = tableB.colB)
+     *     EXISTS (SELECT tableB.columnB FROM tableB WHERE tableA.colA = tableB.colB)
      *
      * 1. 一般还要和UPDATE的where条件的EXISTS子查询配合用，因为如果在tableB中找不到记录，会把columnA设置为null。
      * 2. $tableB 可以写为 “tablename AS alias” 的形式。
      */
-    public function setFromTable($columnA, $tableB, $columnB, $colA, $colB)
+    public function setFromTable($columnA, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
         $this->buildChanged();
 
-        $this->update_set[$columnA] = [Builder::SET_FROM_TABLE, $columnA, $tableB, $columnB, $colA, $colB];
+        $s = $this->splitNameAlias($tableB);
+        $tableB = $s['name'];
+        $aliasB = $s['alias'];
+
+        $tableBFullname_quoted = $this->makeTableFullname($tableB, $aliasB);
+
+        $refA_quoted = $this->makeTableRef($this->table, $this->table_alias);
+        $refB_quoted = $this->makeTableRef($tableB, $aliasB);
+
+        $columnB_quoted = $this->makeColumn($columnB);
+        $colA_quoted = $this->makeColumn($colA);
+        $colB_quoted = $this->makeColumn($colB);
+
+        $tpl = [
+            '(SELECT ',
+            'tableB.columnB' => "$refB_quoted.$columnB_quoted",
+            ' FROM ',
+            'tableB'         => $tableBFullname_quoted,
+            ' WHERE ',
+            'tableA.colA'    => "$refA_quoted.$colA_quoted",
+            ' = ',
+            'tableB.colB'    => "$refB_quoted.$colB_quoted",
+            ')',
+        ];
+        $expression = implode('', $tpl);
+
+        $this->update_set[$columnA] = [Builder::SET_EXPRESSION, $columnA, $expression, []];
+
+        if ($checkExistsInWhere) {
+            $this->where(["EXISTS $expression", 'SQL', []]);
+        }
 
         return $this;
     }
@@ -941,39 +971,6 @@ abstract class Builder
                         $expression[] = $column_quoted . ' = ' . $expr;
                         $parameters = [];
                     }
-                    break;
-
-                case Builder::SET_FROM_TABLE:
-                    list($type, $columnA, $tableB, $columnB, $colA, $colB) = $item;
-
-                    $s = $this->splitNameAlias($tableB);
-                    $tableB = $s['name'];
-                    $aliasB = $s['alias'];
-
-                    $refA_quoted = $this->makeTableRef($this->table, $this->table_alias);
-                    $refB_quoted = $this->makeTableRef($tableB, $aliasB);
-
-                    $tableBFullname_quoted = $this->makeTableFullname($tableB, $aliasB);
-
-                    $columnA_quoted = $this->makeColumn($columnA);
-                    $columnB_quoted = $this->makeColumn($columnB);
-                    $colA_quoted = $this->makeColumn($colA);
-                    $colB_quoted = $this->makeColumn($colB);
-
-                    $tpl = [
-                        'columnA'        => $columnA_quoted,
-                        ' = (SELECT ',
-                        'tableB.columnB' => "$refB_quoted.$columnB_quoted",
-                        ' FROM ',
-                        'tableB'         => $tableBFullname_quoted,
-                        ' WHERE ',
-                        'tableA.colA'    => "$refA_quoted.$colA_quoted",
-                        ' = ',
-                        'tableB.colB'    => "$refB_quoted.$colB_quoted",
-                        ')',
-                    ];
-                    $expression[] = implode('', $tpl);
-                    $parameters = [];
                     break;
             }
         }
@@ -1717,9 +1714,9 @@ abstract class Builder
     protected function makeTableRef($table, $alias = null)
     {
         if ($alias && is_string($alias)) {
-            return $this->quoteTableName($alias);
+            return $this->makeTable($alias);
         } else {
-            return $this->quoteTableName($table);
+            return $this->makeTable($table);
         }
     }
 
