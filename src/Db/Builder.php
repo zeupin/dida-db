@@ -98,8 +98,6 @@ abstract class Builder
     /* execution's result */
     public $rowCount = null;
 
-
-
     /*
      * ------------------------------------------------------------
      * SQL template variables.
@@ -281,7 +279,7 @@ abstract class Builder
      * 重置所有操作变量到初始状态。
      * 不包括：
      * 1. $preparemode。一般不会出现有些网页要prepare，另外一些不要prepare。可通过prepare()改。
-     * 2. prefix和fsql_prefix。一般类初始化后不会变。可通过configPrefix()改。
+     * 2. prefix和fsql_prefix。一般类初始化后不会变。可通过prefixConfig()改。
      * 3. alias。可以通过alias()改。
      */
     public function reset()
@@ -338,7 +336,7 @@ abstract class Builder
     }
 
 
-    public function configPrefix($prefix = '', $fsql_prefix = '###_')
+    public function prefixConfig($prefix = '', $fsql_prefix = '###_')
     {
         $this->prefix = $prefix;
         $this->fsql_prefix = $fsql_prefix;
@@ -395,7 +393,7 @@ abstract class Builder
     }
 
 
-    public function whereEQ(array $array)
+    public function whereMatch(array $array)
     {
         $this->whereChanged();
 
@@ -518,16 +516,18 @@ abstract class Builder
     }
 
 
-    public function count($columns = '*', $alias = null)
+    public function count($columns = ['*'], $alias = null)
     {
         $this->buildChanged();
 
         $this->verb = 'SELECT';
 
+        $list = $this->makeColumnList($columns);
+
         if (is_string($alias)) {
-            $this->select_columnlist = [$alias => "COUNT($columns)"];
+            $this->select_columnlist = [$alias => "COUNT($list)"];
         } else {
-            $this->select_columnlist = ["COUNT($columns)"];
+            $this->select_columnlist = ["COUNT($list)"];
         }
 
         return $this;
