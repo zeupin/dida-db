@@ -985,10 +985,8 @@ abstract class Builder
      */
     public function fetch($fetch_style = null)
     {
-        // checking
-        if ($this->verb !== 'SELECT') {
-            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
-        }
+        // check verb
+        $this->checkVerbQuery();
 
         // build
         $this->build();
@@ -1022,10 +1020,8 @@ abstract class Builder
      */
     public function fetchAll($fetch_style = null)
     {
-        // checking
-        if ($this->verb !== 'SELECT') {
-            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
-        }
+        // check verb
+        $this->checkVerbQuery();
 
         // build
         $this->build();
@@ -1063,10 +1059,8 @@ abstract class Builder
      */
     public function value($column_number = 0)
     {
-        // checking
-        if ($this->verb !== 'SELECT') {
-            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
-        }
+        // check verb
+        $this->checkVerbQuery();
 
         // build
         $this->build();
@@ -1099,10 +1093,8 @@ abstract class Builder
      */
     public function exists()
     {
-        // checking
-        if ($this->verb !== 'SELECT') {
-            throw new Exception("Illegal verb type \"$this->verb\", expects SELECT.");
-        }
+        // check verb
+        $this->checkVerbQuery();
 
         // build
         $this->build();
@@ -1492,9 +1484,28 @@ abstract class Builder
 
 
     /**
-     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量(如：###_等)
+     * Checks the verb is SELECT.
      *
-     * Converts a fsql SQL to a real SQL
+     * 检查当前SQL类型是否是SELECT。
+     * 成功返回true，失败抛异常。
+     *
+     * @return boolean
+     */
+    protected function checkVerbQuery()
+    {
+        switch ($this->verb) {
+            case 'SELECT':
+                return true;
+            default :
+                throw new Exception("Illegal verb type \"$this->verb\" found, expects SELECT.");
+        }
+    }
+
+
+    /**
+     * Converts a Faked SQL to a normal SQL.
+     *
+     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量(如：###_等)
      */
     protected function fsql($fsql)
     {
@@ -1700,7 +1711,7 @@ abstract class Builder
      * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
      *
      * 检查给出的字符串是否是一个以点分隔的名字。
-     * 用于检查列名是否是“表名称.列名称”这种形式。
+     * 主要用于检查列名是否是“表名称.列名称”这种形式。
      * 注意：执行本函数前，要先转换好 ###_tablename
      *
      * @param string $name
