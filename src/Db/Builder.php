@@ -14,6 +14,13 @@ use \Exception;
  */
 abstract class Builder
 {
+    /*
+     * ------------------------------------------------------------
+     * Class common variables
+     *
+     * 类的公用变量
+     * ------------------------------------------------------------
+     */
     /**
      * @var \Dida\Db
      */
@@ -31,6 +38,14 @@ abstract class Builder
 
     /* prepare mode */
     protected $preparemode = true;  // default TRUE
+
+    /*
+     * ------------------------------------------------------------
+     * Operation variables
+     *
+     * 和本次操作相关的内部变量
+     * ------------------------------------------------------------
+     */
 
     /* build */
     protected $builded = false;
@@ -74,13 +89,24 @@ abstract class Builder
     public $sql = '';
     public $sql_parameters = [];
 
+    /*
+     * ------------------------------------------------------------
+     * Execution result variables.
+     * ------------------------------------------------------------
+     */
+
     /* execution's result */
     public $rowCount = null;
 
-    /* class constants */
-    const VALUE_COLUMN = 'value';
-    const CALC_COLUMN = 'calc';
-    const SELECT_COLUMN = 'select';
+
+
+    /*
+     * ------------------------------------------------------------
+     * SQL template variables.
+     *
+     * 各种SQL操作的模板变量。
+     * ------------------------------------------------------------
+     */
 
     /* SELECT template */
     protected $SELECT_expression = [
@@ -152,8 +178,11 @@ abstract class Builder
         1      => ')',
     ];
 
-
-    /* 支持的SQL条件运算集 */
+    /*
+     * All supported operater set.
+     *
+     * 支持的SQL条件运算集
+     */
     protected static $opertor_set = [
         /* Raw SQL */
         'SQL'         => 'SQL',
@@ -199,6 +228,17 @@ abstract class Builder
         'NOT NULL'    => 'ISNOTNULL',
     ];
 
+    /*
+     * ------------------------------------------------------------
+     * Class constants.
+     *
+     * 类常量
+     * ------------------------------------------------------------
+     */
+    const VALUE_COLUMN = 'value';
+    const CALC_COLUMN = 'calc';
+    const SELECT_COLUMN = 'select';
+
 
     abstract protected function quoteTableName($table);
 
@@ -233,58 +273,73 @@ abstract class Builder
     }
 
 
+    /**
+     * Resets all operation variables.
+     *
+     * 重置所有操作变量到初始状态。
+     * 不包括：
+     * 1. $preparemode。一般不会出现有些网页要prepare，另外一些不要prepare。可通过prepare()改。
+     * 2. prefix和fsql_prefix。一般类初始化后不会变。可通过configPrefix()改。
+     * 3. alias。可以通过alias()改。
+     */
     public function reset()
     {
-        /* prepare mode */
-        $preparemode = true;  // default TRUE
-
         /* build */
-        $builded = false;
+        $this->builded = false;
 
         /* verb */
-        $verb = 'SELECT';
+        $this->verb = 'SELECT';
 
         /* WHERE */
-        $where_changed = true;
-        $where_parts = [];
-        $where_expression = '';
-        $where_parameters = [];
+        $this->where_changed = true;
+        $this->where_parts = [];
+        $this->where_expression = '';
+        $this->where_parameters = [];
 
         /* SELECT */
-        $select_columnlist = [];
-        $select_columnlist_expression = '';
-        $select_distinct = false;
-        $select_distinct_expression = '';
-        $select_orderby_columns = '';
-        $select_orderby_expression = '';
-        $join = [];
-        $join_expression = '';
-        $groupby_columnlist = [];
-        $groupby_expression = '';
-        $having_conditions = [];
-        $having_logic = '';
-        $having_expression = '';
+        $this->select_columnlist = [];
+        $this->select_columnlist_expression = '';
+        $this->select_distinct = false;
+        $this->select_distinct_expression = '';
+        $this->select_orderby_columns = '';
+        $this->select_orderby_expression = '';
+        $this->join = [];
+        $this->join_expression = '';
+        $this->groupby_columnlist = [];
+        $this->groupby_expression = '';
+        $this->having_conditions = [];
+        $this->having_logic = '';
+        $this->having_expression = '';
 
         /* INSERT */
-        $insert_columns = [];
-        $insert_record = [];
-        $insert_expression = '';
-        $insert_parameters = [];
+        $this->insert_columns = [];
+        $this->insert_record = [];
+        $this->insert_expression = '';
+        $this->insert_parameters = [];
 
         /* UPDATE */
-        $update_set = [];
-        $update_set_expression = '';
-        $update_set_parameters = [];
+        $this->update_set = [];
+        $this->update_set_expression = '';
+        $this->update_set_parameters = [];
 
         /* final sql */
-        $sql = '';
-        $sql_parameters = [];
+        $this->sql = '';
+        $this->sql_parameters = [];
     }
 
 
     public function prepare($flag = true)
     {
         $this->preparemode = $flag;
+
+        return $this;
+    }
+
+
+    public function configPrefix($prefix = '', $fsql_prefix='###_')
+    {
+        $this->prefix = $prefix;
+        $this->fsql_prefix = $fsql_prefix;
 
         return $this;
     }
