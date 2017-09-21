@@ -185,7 +185,7 @@ abstract class Builder
      */
     protected static $opertor_set = [
         /* Raw SQL */
-        'SQL'         => 'SQL',
+        'RAW'         => 'RAW',
         /* equal */
         'EQ'          => 'EQ',
         '='           => 'EQ',
@@ -545,18 +545,19 @@ abstract class Builder
 
         if (is_array($columns)) {
             $std = [];
-            foreach ($columns as $column => $order) {
-                if (is_numeric($column)) {
-                    $column = $order;
-                    $std[$column] = $this->quoteColumnName($column);
+            foreach ($columns as $key => $item) {
+                if (is_numeric($key)) {
+                    $column = $item;
+                    $std[$column] = $this->makeColumn($column);
                 } else {
-                    $order = strtoupper($order);
-                    if ($order === 'ASC') {
+                    $order = strtoupper($item);
+                    $column = $key;
+                    if ($order === 'ASC' || $order === '') {
                         $order = '';
                     }
-                    if ($order === '' || $order === 'DESC') {
-                        $column_quoted = $this->quoteColumnName($column);
-                        $std[$column] = ($order === '') ? $column_quoted : "$column_quoted $order";
+                    if ($order === 'DESC') {
+                        $column_quoted = $this->makeColumn($column);
+                        $std[$column] = "$column_quoted DESC";
                     } else {
                         throw new Exception("Invalid ORDERBY expression: $column $order");
                     }
@@ -565,7 +566,7 @@ abstract class Builder
             $this->select_orderby_columns = implode(', ', $std);
             return $this;
         } elseif (is_string($columns)) {
-            $this->select_orderby_columns = $columns;
+            $this->select_orderby_columns = $this->makeColumn($columns);
         }
 
         return $this;
@@ -679,7 +680,7 @@ abstract class Builder
         $this->update_set[$columnA] = [Builder::SET_EXPRESSION, $columnA, $expression, []];
 
         if ($checkExistsInWhere) {
-            $this->where(["EXISTS $expression", 'SQL', []]);
+            $this->where(["EXISTS $expression", 'RAW', []]);
         }
 
         return $this;
@@ -1228,7 +1229,7 @@ abstract class Builder
     }
 
 
-    protected function cond_SQL($column, $op, $data)
+    protected function cond_RAW($column, $op, $data)
     {
         return [
             'expression' => $column,
@@ -1237,7 +1238,7 @@ abstract class Builder
     }
 
 
-    protected function cond_COMMON($column, $op, $data)
+    protected function cond_COMPARISON($column, $op, $data)
     {
         $tpl = [
             '(',
@@ -1278,31 +1279,31 @@ abstract class Builder
             return $this->cond_IN($column, 'IN', $data);
         }
 
-        return $this->cond_COMMON($column, '=', $data);
+        return $this->cond_COMPARISON($column, '=', $data);
     }
 
 
     protected function cond_GT($column, $op, $data)
     {
-        return $this->cond_COMMON($column, '>', $data);
+        return $this->cond_COMPARISON($column, '>', $data);
     }
 
 
     protected function cond_LT($column, $op, $data)
     {
-        return $this->cond_COMMON($column, '<', $data);
+        return $this->cond_COMPARISON($column, '<', $data);
     }
 
 
     protected function cond_EGT($column, $op, $data)
     {
-        return $this->cond_COMMON($column, '>=', $data);
+        return $this->cond_COMPARISON($column, '>=', $data);
     }
 
 
     protected function cond_ELT($column, $op, $data)
     {
-        return $this->cond_COMMON($column, '<=', $data);
+        return $this->cond_COMPARISON($column, '<=', $data);
     }
 
 
@@ -1312,7 +1313,7 @@ abstract class Builder
             return $this->cond_NOTIN($column, $op, $data);
         }
 
-        return $this->cond_COMMON($column, '<>', $data);
+        return $this->cond_COMPARISON($column, '<>', $data);
     }
 
 
