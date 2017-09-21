@@ -1,4 +1,4 @@
-# Common PDO Driver Examples
+# Common PDO DSN Examples
 
 [TOC]
 
@@ -14,7 +14,7 @@
     'options'  => [
         PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_PERSISTENT         => true
+        PDO::ATTR_PERSISTENT         => false,
     ],
 ]
 ```
@@ -29,6 +29,7 @@
     'options'  => [
         PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_PERSISTENT         => true,
     ],
 ]
 ```
