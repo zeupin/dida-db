@@ -56,33 +56,33 @@ abstract class Builder
     /* WHERE */
     protected $where_changed = true;
     protected $where_parts = [];
-    protected $where_expression = '';
+    protected $where_statement = '';
     protected $where_parameters = [];
 
     /* SELECT */
     protected $select_columnlist = [];
-    protected $select_columnlist_expression = '';
+    protected $select_columnlist_statement = '';
     protected $select_distinct = false;
-    protected $select_distinct_expression = '';
+    protected $select_distinct_statement = '';
     protected $select_orderby_columns = '';
-    protected $select_orderby_expression = '';
+    protected $select_orderby_statement = '';
     protected $join = [];
-    protected $join_expression = '';
+    protected $join_statement = '';
     protected $groupby_columnlist = [];
-    protected $groupby_expression = '';
+    protected $groupby_statement = '';
     protected $having_conditions = [];
     protected $having_logic = '';
-    protected $having_expression = '';
+    protected $having_statement = '';
 
     /* INSERT */
     protected $insert_columns = [];
     protected $insert_record = [];
-    protected $insert_expression = '';
+    protected $insert_statement = '';
     protected $insert_parameters = [];
 
     /* UPDATE */
     protected $update_set = [];
-    protected $update_set_expression = '';
+    protected $update_set_statement = '';
     protected $update_set_parameters = [];
 
     /* final sql */
@@ -107,7 +107,7 @@ abstract class Builder
      */
 
     /* SELECT template */
-    protected $SELECT_expression = [
+    protected $SELECT_statement = [
         0          => 'SELECT ',
         'distinct' => '',
         'columns'  => '',
@@ -134,7 +134,7 @@ abstract class Builder
     ];
 
     /* INSERT template */
-    protected $INSERT_expression = [
+    protected $INSERT_statement = [
         0         => 'INSERT INTO ',
         'table'   => '',
         'columns' => '',
@@ -143,7 +143,7 @@ abstract class Builder
     ];
 
     /* UPDATE template */
-    protected $UPDATE_expression = [
+    protected $UPDATE_statement = [
         0       => 'UPDATE ',
         'table' => '',
         1       => ' SET ',
@@ -158,7 +158,7 @@ abstract class Builder
     ];
 
     /* DELETE template */
-    protected $DELETE_expression = [
+    protected $DELETE_statement = [
         0       => 'DELETE FROM ',
         'table' => '',
         'join'  => '',
@@ -170,7 +170,7 @@ abstract class Builder
     ];
 
     /* EXISTS template */
-    protected $EXISTS_expression = [
+    protected $EXISTS_statement = [
         0      => 'SELECT EXISTS (',
         'expr' => '',
         1      => ')',
@@ -236,7 +236,7 @@ abstract class Builder
 
     /* constants used by UPDATE set***() */
     const SET_VALUE = 'set value';
-    const SET_EXPRESSION = 'set expression';
+    const SET_EXPRESSION = 'set statement';
     const SET_FROM_TABLE = 'set from table';
 
 
@@ -293,33 +293,33 @@ abstract class Builder
         /* WHERE */
         $this->where_changed = true;
         $this->where_parts = [];
-        $this->where_expression = '';
+        $this->where_statement = '';
         $this->where_parameters = [];
 
         /* SELECT */
         $this->select_columnlist = [];
-        $this->select_columnlist_expression = '';
+        $this->select_columnlist_statement = '';
         $this->select_distinct = false;
-        $this->select_distinct_expression = '';
+        $this->select_distinct_statement = '';
         $this->select_orderby_columns = '';
-        $this->select_orderby_expression = '';
+        $this->select_orderby_statement = '';
         $this->join = [];
-        $this->join_expression = '';
+        $this->join_statement = '';
         $this->groupby_columnlist = [];
-        $this->groupby_expression = '';
+        $this->groupby_statement = '';
         $this->having_conditions = [];
         $this->having_logic = '';
-        $this->having_expression = '';
+        $this->having_statement = '';
 
         /* INSERT */
         $this->insert_columns = [];
         $this->insert_record = [];
-        $this->insert_expression = '';
+        $this->insert_statement = '';
         $this->insert_parameters = [];
 
         /* UPDATE */
         $this->update_set = [];
-        $this->update_set_expression = '';
+        $this->update_set_statement = '';
         $this->update_set_parameters = [];
 
         /* final sql */
@@ -424,9 +424,9 @@ abstract class Builder
         $this->select_distinct = $flag;
 
         if ($flag) {
-            $this->select_distinct_expression = 'DISTINCT ';
+            $this->select_distinct_statement = 'DISTINCT ';
         } else {
-            $this->select_distinct_expression = '';
+            $this->select_distinct_statement = '';
         }
 
         return $this;
@@ -559,7 +559,7 @@ abstract class Builder
                         $column_quoted = $this->makeColumn($column);
                         $std[$column] = "$column_quoted DESC";
                     } else {
-                        throw new Exception("Invalid ORDERBY expression: $column $order");
+                        throw new Exception("Invalid ORDERBY statement: $column $order");
                     }
                 }
             }
@@ -675,12 +675,12 @@ abstract class Builder
             'tableB.colB'    => "$refB_quoted.$colB_quoted",
             ')',
         ];
-        $expression = implode('', $tpl);
+        $statement = implode('', $tpl);
 
-        $this->update_set[$columnA] = [Builder::SET_EXPRESSION, $columnA, $expression, []];
+        $this->update_set[$columnA] = [Builder::SET_EXPRESSION, $columnA, $statement, []];
 
         if ($checkExistsInWhere) {
-            $this->where(["EXISTS $expression", 'RAW', []]);
+            $this->where(["EXISTS $statement", 'RAW', []]);
         }
 
         return $this;
@@ -740,7 +740,7 @@ abstract class Builder
 
 
     /**
-     * Builds the WHERE expression.
+     * Builds the WHERE statement.
      */
     protected function build_WHERE()
     {
@@ -752,11 +752,11 @@ abstract class Builder
         // combine the where_parts
         $where = $this->combineConditionParts($this->where_parts, 'AND');
 
-        if ($where['expression'] === '') {
-            $this->where_expression = '';
+        if ($where['statement'] === '') {
+            $this->where_statement = '';
             $this->where_parameters = [];
         } else {
-            $this->where_expression = " WHERE " . $where['expression'];
+            $this->where_statement = " WHERE " . $where['statement'];
             $this->where_parameters = $where['parameters'];
         }
 
@@ -774,18 +774,18 @@ abstract class Builder
         $this->build_HAVING();
         $this->build_ORDER_BY();
 
-        $expression = [
+        $statement = [
             'table'    => $this->makeTableFullname($this->table, $this->table_alias),
-            'distinct' => $this->select_distinct_expression,
-            "columns"  => $this->select_columnlist_expression,
-            'join'     => $this->join_expression,
-            'where'    => $this->where_expression,
-            'groupby'  => $this->groupby_expression,
-            'having'   => $this->having_expression,
-            'orderby'  => $this->select_orderby_expression,
+            'distinct' => $this->select_distinct_statement,
+            "columns"  => $this->select_columnlist_statement,
+            'join'     => $this->join_statement,
+            'where'    => $this->where_statement,
+            'groupby'  => $this->groupby_statement,
+            'having'   => $this->having_statement,
+            'orderby'  => $this->select_orderby_statement,
         ];
-        $expression = array_merge($this->SELECT_expression, $expression);
-        $this->sql = implode('', $expression);
+        $statement = array_merge($this->SELECT_statement, $statement);
+        $this->sql = implode('', $statement);
 
         $parameters = [
             'where' => $this->where_parameters,
@@ -801,19 +801,19 @@ abstract class Builder
             if (empty($this->join)) {
                 $ref = ($this->table_alias && is_string($this->table_alias)) ? $this->table_alias : $this->table;
                 $columnlist = $this->convertSimpleColumnsToFullnames($ref, $this->def_columns);
-                $this->select_columnlist_expression = $this->makeColumnList($columnlist);
+                $this->select_columnlist_statement = $this->makeColumnList($columnlist);
             } else {
-                $this->select_columnlist_expression = $this->makeColumnList($this->def_columns);
+                $this->select_columnlist_statement = $this->makeColumnList($this->def_columns);
             }
         } else {
-            $this->select_columnlist_expression = $this->makeColumnList($this->select_columnlist);
+            $this->select_columnlist_statement = $this->makeColumnList($this->select_columnlist);
         }
     }
 
 
     protected function build_JOIN()
     {
-        $this->join_expression = implode('', $this->join);
+        $this->join_statement = implode('', $this->join);
     }
 
 
@@ -821,9 +821,9 @@ abstract class Builder
     {
         $expr = $this->makeColumnList($this->groupby_columnlist);
         if ($expr === '') {
-            $this->groupby_expression = '';
+            $this->groupby_statement = '';
         } else {
-            $this->groupby_expression = ' GROUP BY ' . $expr;
+            $this->groupby_statement = ' GROUP BY ' . $expr;
         }
     }
 
@@ -832,9 +832,9 @@ abstract class Builder
     {
         $expr = implode($this->having_logic, $this->having_conditions);
         if ($expr === '') {
-            $this->having_expression = '';
+            $this->having_statement = '';
         } else {
-            $this->having_expression = ' HAVING ' . $expr;
+            $this->having_statement = ' HAVING ' . $expr;
         }
     }
 
@@ -842,9 +842,9 @@ abstract class Builder
     protected function build_ORDER_BY()
     {
         if ($this->select_orderby_columns === '') {
-            $this->select_orderby_expression = '';
+            $this->select_orderby_statement = '';
         } else {
-            $this->select_orderby_expression = ' ORDER BY ' . $this->select_orderby_columns;
+            $this->select_orderby_statement = ' ORDER BY ' . $this->select_orderby_columns;
         }
     }
 
@@ -854,28 +854,28 @@ abstract class Builder
         $record = $this->insert_record;
 
         $columns = array_keys($record);
-        $columns_expression = '(' . $this->makeColumnList($columns) . ')';
+        $columns_statement = '(' . $this->makeColumnList($columns) . ')';
 
         $values = [];
         if ($this->preparemode) {
-            $values_expression = '(' . implode(', ', array_fill(0, count($record), '?')) . ')';
+            $values_statement = '(' . implode(', ', array_fill(0, count($record), '?')) . ')';
             $values_parameters = array_values($record);
         } else {
             foreach ($record as $column => $value) {
                 $values[$column] = $this->quoteColumnValue($column, $value);
             }
-            $values_expression = '(' . implode(', ', $values) . ')';
+            $values_statement = '(' . implode(', ', $values) . ')';
             $values_parameters = [];
         }
 
-        $expression = [
+        $statement = [
             'table'   => $this->quoteTableName($this->table),
-            "columns" => $columns_expression,
-            'values'  => $values_expression,
+            "columns" => $columns_statement,
+            'values'  => $values_statement,
         ];
-        $expression = array_merge($this->INSERT_expression, $expression);
+        $statement = array_merge($this->INSERT_statement, $statement);
 
-        $this->sql = implode('', $expression);
+        $this->sql = implode('', $statement);
         $this->sql_parameters = $values_parameters;
     }
 
@@ -884,12 +884,12 @@ abstract class Builder
     {
         $this->build_WHERE();
 
-        $expression = [
+        $statement = [
             'table' => $this->quoteTableName($this->table),
-            'where' => $this->where_expression,
+            'where' => $this->where_statement,
         ];
-        $expression = array_merge($this->DELETE_expression, $expression);
-        $this->sql = implode('', $expression);
+        $statement = array_merge($this->DELETE_statement, $statement);
+        $this->sql = implode('', $statement);
 
         $parameters = [
             'where' => $this->where_parameters,
@@ -911,15 +911,15 @@ abstract class Builder
         $this->build_WHERE();
         $this->build_UPDATE_SET();
 
-        // build expression
-        $expression = [
+        // build statement
+        $statement = [
             'table' => $this->quoteTableName($this->table),
-            'set'   => $this->update_set_expression,
+            'set'   => $this->update_set_statement,
             'join'  => '',
-            'where' => $this->where_expression,
+            'where' => $this->where_statement,
         ];
-        $expression = array_merge($this->UPDATE_expression, $expression);
-        $this->sql = implode('', $expression);
+        $statement = array_merge($this->UPDATE_statement, $statement);
+        $this->sql = implode('', $statement);
 
         // build parameters
         $parameters = [
@@ -933,7 +933,7 @@ abstract class Builder
 
     protected function build_UPDATE_SET()
     {
-        $expression = [];
+        $statement = [];
         $parameters = [];
 
         foreach ($this->update_set as $item) {
@@ -944,11 +944,11 @@ abstract class Builder
                 case Builder::SET_VALUE:
                     list($type, $column, $new_value) = $item;
                     if ($this->preparemode) {
-                        $expression[] = $column_quoted . ' = ?';
+                        $statement[] = $column_quoted . ' = ?';
                         $parameters[] = $new_value;
                     } else {
                         $new_value = $this->quoteColumnValue($column, $new_value);
-                        $expression[] = $column_quoted . ' = ' . $new_value;
+                        $statement[] = $column_quoted . ' = ' . $new_value;
                         $parameters = [];
                     }
                     break;
@@ -966,17 +966,17 @@ abstract class Builder
                             throw new Exception('Invalid parameters number');
                     }
                     if ($this->preparemode) {
-                        $expression[] = $column_quoted . ' = ' . $expr;
+                        $statement[] = $column_quoted . ' = ' . $expr;
                         $parameters = array_merge($parameters, $param);
                     } else {
-                        $expression[] = $column_quoted . ' = ' . $expr;
+                        $statement[] = $column_quoted . ' = ' . $expr;
                         $parameters = [];
                     }
                     break;
             }
         }
 
-        $this->update_set_expression = implode(', ', $expression);
+        $this->update_set_statement = implode(', ', $statement);
         $this->update_set_parameters = $parameters;
     }
 
@@ -1191,7 +1191,7 @@ abstract class Builder
     {
         if (is_string($condition)) {
             $part = [
-                'expression' => $condition,
+                'statement' => $condition,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1232,7 +1232,7 @@ abstract class Builder
     protected function cond_RAW($column, $op, $data)
     {
         return [
-            'expression' => $column,
+            'statement' => $column,
             'parameters' => $data,
         ];
     }
@@ -1248,15 +1248,15 @@ abstract class Builder
             ')'
         ];
 
-        $expression = '';
+        $statement = '';
         $parameters = [];
 
         if ($this->preparemode) {
             $tpl['value'] = '?';
-            $expression = implode('', $tpl);
+            $statement = implode('', $tpl);
             $parameters[] = $data;
             $part = [
-                'expression' => $expression,
+                'statement' => $statement,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1264,9 +1264,9 @@ abstract class Builder
 
         $tpl['value'] = $this->quoteColumnValue($column, $data);
 
-        $expression = implode('', $tpl);
+        $statement = implode('', $tpl);
         $part = [
-            'expression' => $expression,
+            'statement' => $statement,
             'parameters' => [],
         ];
         return $part;
@@ -1320,7 +1320,7 @@ abstract class Builder
     protected function cond_IN($column, $op, $data)
     {
         if (empty($data)) {
-            throw new Exception('An empty array not allowed use in a IN expression');
+            throw new Exception('An empty array not allowed use in a IN statement');
         }
 
         $tpl = [
@@ -1331,17 +1331,17 @@ abstract class Builder
             'list'   => '',
             '))'
         ];
-        $expression = '';
+        $statement = '';
         $parameters = [];
 
         if ($this->preparemode) {
             $marks = array_fill(0, count($data), '?');
             $tpl['list'] = implode(', ', $marks);
-            $expression = implode('', $tpl);
+            $statement = implode('', $tpl);
             $parameters = array_values($data);
 
             $part = [
-                'expression' => $expression,
+                'statement' => $statement,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1351,7 +1351,7 @@ abstract class Builder
         $tpl['list'] = implode(', ', $data);
 
         $part = [
-            'expression' => implode('', $tpl),
+            'statement' => implode('', $tpl),
             'parameters' => [],
         ];
         return $part;
@@ -1373,15 +1373,15 @@ abstract class Builder
         $value_quoted = $this->quoteString($data);
 
         if ($this->preparemode) {
-            $expression = "$column_quoted $op ?";
+            $statement = "$column_quoted $op ?";
             $parameters[] = $data;
         } else {
-            $expression = "$column_quoted $op $value_quoted";
+            $statement = "$column_quoted $op $value_quoted";
             $parameters = [];
         }
 
         $part = [
-            'expression' => $expression,
+            'statement' => $statement,
             'parameters' => $parameters,
         ];
         return $part;
@@ -1396,7 +1396,7 @@ abstract class Builder
 
     protected function cond_BETWEEN($column, $op, $data)
     {
-        $expression = '';
+        $statement = '';
         $parameters = [];
 
         $column_quoted = $this->makeColumn($column);
@@ -1407,16 +1407,16 @@ abstract class Builder
         $value2_quoted = $this->quoteColumnValue($column, $value2);
 
         if ($this->preparemode) {
-            $expression = "$column_quoted $op ? AND ?";
+            $statement = "$column_quoted $op ? AND ?";
             $parameters[] = $value1;
             $parameters[] = $value2;
         } else {
-            $expression = "$column_quoted $op $value1_quoted AND $value2_quoted";
+            $statement = "$column_quoted $op $value1_quoted AND $value2_quoted";
             $parameters = [];
         }
 
         $part = [
-            'expression' => $expression,
+            'statement' => $statement,
             'parameters' => $parameters,
         ];
         return $part;
@@ -1433,7 +1433,7 @@ abstract class Builder
     {
         $column_quoted = $this->makeColumn($column);
         $part = [
-            'expression' => "$column_quoted IS NULL",
+            'statement' => "$column_quoted IS NULL",
             'parameters' => [],
         ];
         return $part;
@@ -1444,7 +1444,7 @@ abstract class Builder
     {
         $column_quoted = $this->makeColumn($column);
         $part = [
-            'expression' => "$column_quoted IS NOT NULL",
+            'statement' => "$column_quoted IS NOT NULL",
             'parameters' => [],
         ];
         return $part;
@@ -1456,7 +1456,7 @@ abstract class Builder
         $sql = $this->fsql($column);
 
         $part = [
-            'expression' => "EXISTS ($sql)",
+            'statement' => "EXISTS ($sql)",
             'parameters' => $data,
         ];
         return $part;
@@ -1468,7 +1468,7 @@ abstract class Builder
         $sql = $this->fsql($column);
 
         $part = [
-            'expression' => "NOT EXISTS ($sql)",
+            'statement' => "NOT EXISTS ($sql)",
             'parameters' => $data,
         ];
         return $part;
@@ -1483,19 +1483,19 @@ abstract class Builder
 
     protected function combineConditionParts($parts, $logic = 'AND')
     {
-        $expression = array_column($parts, 'expression');
+        $statement = array_column($parts, 'statement');
         $parameters = array_column($parts, 'parameters');
 
-        $expression_cnt = count($expression);
-        $expression = implode(" $logic ", $expression);
-        if ($expression_cnt > 1) {
-            $expression = "($expression)";
+        $statement_cnt = count($statement);
+        $statement = implode(" $logic ", $statement);
+        if ($statement_cnt > 1) {
+            $statement = "($statement)";
         }
 
         $parameters = $this->combineParameterArray($parameters);
 
         return [
-            'expression' => $expression,
+            'statement' => $statement,
             'parameters' => $parameters,
         ];
     }
@@ -1582,7 +1582,7 @@ abstract class Builder
 
 
     /**
-     * Normalizes a table name expression.
+     * Normalizes a table name statement.
      *
      * 把一个表名表达式进行标准化。
      * 支持两种格式：“tablename”和“tablename AS alias”
@@ -1599,7 +1599,7 @@ abstract class Builder
 
 
     /**
-     * Normalizes a column name expression.
+     * Normalizes a column name statement.
      *
      * 把一个列名表达式进行标准化。
      * 支持两种格式：“column”和“column AS alias”
@@ -1616,7 +1616,7 @@ abstract class Builder
 
 
     /**
-     * Returns a quoted table expression.
+     * Returns a quoted table statement.
      *
      * 返回一个quoted的表名表达式。
      *
@@ -1641,7 +1641,7 @@ abstract class Builder
 
 
     /**
-     * If $alias is not null or ''， returns the quoted table alias expression.
+     * If $alias is not null or ''， returns the quoted table alias statement.
      *
      * 如果Alias不为空，则返回quoted的alias表达式。为空则返回空串。
      *
@@ -1765,7 +1765,7 @@ abstract class Builder
 
 
     /**
-     * If $alias is not null or ''， returns the quoted column alias expression.
+     * If $alias is not null or ''， returns the quoted column alias statement.
      *
      * 如果Alias不为空，则返回quoted的alias表达式。
      *
@@ -1784,7 +1784,7 @@ abstract class Builder
 
 
     /**
-     * Returns a column name expression snippet.
+     * Returns a column name statement snippet.
      *
      * 返回一个列名的quoted全名表达式。
      *
@@ -1806,7 +1806,7 @@ abstract class Builder
 
 
     /**
-     * Returns a columnlist expression snippet
+     * Returns a columnlist statement snippet
      *
      * 返回一个列名数组对应的columnlist表达式。
      * 输入的$columns只允许以如下格式：
