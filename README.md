@@ -1,6 +1,8 @@
 # dida-db
 
-Db is a database management package. It's a part of Dida Framework.
+Dida\Db is a wrapper for PDO and PDOStatement. It's a part of Dida Framework.
+
+It extends PDO and PDOStatement classes and adds some advanced features such as SQL query builder, chain-like function call and so on.
 
 * Supports various SQL database, including MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite and more.
 * Friendly MIT License.
@@ -25,3 +27,20 @@ composer require dida/db
 ```
 composer update
 ```
+
+## Documents
+
+* [API](docs/README.md)
+
+
+## Authors
+
+* [Macc Liu](https://github.com/maccliu)
+
+## Credits
+
+* [Zeupin LLC](http://zeupin.com) , especially [Dida Team](http://dida.zeupin.com)
+
+## License
+
+Copyright (c) 2017 Zeupin LLC. Released under the [MIT license](LICENSE).
