@@ -16,7 +16,7 @@ use \Exception;
 class Db
 {
     /**
-     * Initial configurations
+     * Default configurations.
      *
      * @var array
      */
@@ -31,57 +31,85 @@ class Db
         'workdir' => null, // Set the work directory.
 
         /* optional parameters */
-        'dbname'      => null, // The database name
-        'charset'     => null, // Set the connection charset
-        'persistence' => false, // persistence connection
+        'dbname'      => null, // the database name
+        'charset'     => 'utf8', // set the default connection charset.
+        'persistence' => false, // set if a persistence connection is persistence.
         'prefix'      => '', // default table prefix
+        'prefix_tpl'  => '###_', // default table prefix template placeholder.
+        'prepared'    => true, // default
     ];
 
     /**
-     * PDO instance
+     * Returns the PDO instance.
      *
      * @var \PDO
      */
     public $pdo = null;
 
     /**
-     * PDO Exception instance
+     * Returns the PDO Exception instance.
      *
      * @var \PDOException
      */
     public $pdoexception = null;
 
     /**
-     * work directory
+     * Specifies a work directory.
+     *
      * @var string
      */
     public $workdir = null;
 
+    /**
+     * Returns if the connection is persistence.
+     *
+     * @var boolean
+     */
+    protected $persistence = false;
 
     /**
-     * Construct
+     * Returns the number of execute() affected rows.
      *
-     * @param array $cfg
+     * @var int
      */
-    public function __construct($cfg = [])
-    {
-        $this->cfg = array_merge($this->cfg, $cfg);
+    public $rowsAffected = null;
 
-        // Work directory.
-        $workdir = $this->cfg['workdir'];
+
+    /**
+     * Constructs this class.
+     */
+    public function __construct(array $cfg = [])
+    {
+        // Checks if the work directory is valid.
+        $workdir = $cfg['workdir'];
         if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
             throw new Exception("You must specify the cfg['workdir'] to a valid writable directory");
         }
-        $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
+        $cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
         $this->workdir = $this->cfg['workdir'];
+
+        // $cfg['persistence']
+        $cfg['persistence'] = ($cfg['persistence']) ? true : false;
+
+        // Merges user $cfg into default $cfg.
+        $this->cfg = array_merge($this->cfg, $cfg);
     }
 
 
     /**
-     * Connects the database
+     * Destructs this class.
+     */
+    public function __destruct()
+    {
+        $this->pdo = null;
+        $this->pdoexception = null;
+    }
+
+
+    /**
+     * Connects the specified database driver.
      *
-     * @return bool TRUE on success.
-     *               FALSE on failure.
+     * @return boolean -- Returns TRUE on success or FALSE on failure.
      */
     public function connect()
     {
@@ -102,9 +130,10 @@ class Db
 
 
     /**
-     * Check the connection.
+     * Checks if the connection is already established.
+     * If $strict_mode is true, further checks if the database connection works.
      *
-     * @param bool $strict_mode Strict mode
+     * @param boolean $strict_mode Strict mode
      */
     public function isConnected($strict_mode = false)
     {
@@ -115,8 +144,6 @@ class Db
         if (!$strict_mode) {
             return true;
         }
-
-        /* if strict mode is enabled */
         try {
             $result = $this->pdo->query('SELECT 1');
             if ($result === false) {
@@ -134,17 +161,19 @@ class Db
 
 
     /**
-     * Disconnect
+     * Disconnects the connection.
      */
     public function disconnect()
     {
         $this->pdo = null;
+        $this->pdoexception = null;
     }
 
 
     /**
-     * Query a SQL.
-     * The operation will not change the data.
+     * Executes an SQL statement that does not affect the data.
+     *
+     * @return \PDOStatement|FALSE -- Returns a result set as a PDOStatement object, or FALSE on failure.
      */
     public function query($sql, $data = null)
     {
@@ -160,18 +189,40 @@ class Db
 
 
     /**
-     * Execute a SQL.
-     * The operation might change the data.
+     * Executes an SQL statement that might affect the data.
+     * Returns TRUE on success, and puts $this->rowsAffected.
+     * Returns FALSE on failure, and puts $this->rowsAffected null.
+     *
+     * @param string $sql
+     * @param null|array $data
+     *
+     * @return boolean -- Returns TRUE on success or FALSE on failure.
      */
     public function execute($sql, $data = null)
     {
         if ($data === null) {
-            return $this->pdo->exec($sql);
+            $result = $this->pdo->exec($sql);
+
+            if ($result === false) {
+                $this->rowsAffected = null;
+                return false;
+            } else {
+                $this->rowsAffected = $result;
+                return true;
+            }
         } elseif (is_array($data)) {
             $stmt = $this->pdo->prepare($sql);
-            return $stmt->execute($data);
+            $result = $stmt->execute($data);
+
+            if ($result === false) {
+                $this->rowsAffected = null;
+                return false;
+            } else {
+                $this->rowsAffected = $stmt->rowCount();
+                return true;
+            }
         } else {
-            return false;
+            throw new Exception('Invalid parameter type "$data".');
         }
     }
 }
