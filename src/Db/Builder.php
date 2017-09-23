@@ -44,7 +44,7 @@ abstract class Builder
      */
 
     /* build */
-    protected $builded = false;
+    protected $built = false;
 
     /* verb */
     public $verb = 'SELECT';
@@ -285,7 +285,7 @@ abstract class Builder
     public function reset()
     {
         /* build */
-        $this->builded = false;
+        $this->built = false;
 
         /* verb */
         $this->verb = 'SELECT';
@@ -709,7 +709,7 @@ abstract class Builder
 
     public function build()
     {
-        if ($this->builded) {
+        if ($this->built) {
             return $this;
         }
 
@@ -733,7 +733,7 @@ abstract class Builder
                 throw new Exception('Unknown verb "' . $this->verb . '"');
         }
 
-        $this->builded = true;
+        $this->built = true;
         return $this;
     }
 
@@ -982,7 +982,7 @@ abstract class Builder
 
     protected function buildChanged()
     {
-        $this->builded = false;
+        $this->built = false;
         $this->query_result = null;
         $this->execute_result = null;
     }
