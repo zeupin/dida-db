@@ -9,8 +9,9 @@ $users = $db->table('users')  // 生成Builder实例
     ->where()   // 各种where设置条件
     ->join()    // 更多设置
     ->select()  // 设置具体动作，默认为SELECT
-    ->build()   // 开始构建，生成SELECT的$this->sql和$this->sql_parameters
-    ->fetchAll();  // 取出所有的记录（如果有这一步，前面一步的build()可以省略）
+    ->build();   // 开始构建，生成SELECT的$this->sql和$this->sql_parameters
+
+$users->fetchAll();  // 取出所有的记录（如果有这一步，前面一步的build()可以省略）
 
 $users->delete(); // 查询执行后，where条件都还继续有效，可以继续进行其它动作
     ->build()     // 开始构建，生成DELETE语句的$this->sql和$this->sql_parameters
@@ -246,11 +247,11 @@ WHERE
 
 ## 查询类的执行
 
-### `fetch($fetch_style = null)`
-> 从结果集中获取下一条记录，用法同PDOStatement的fetch()类似。
+### `fetch($fetch_style = null, $cursor_orientation = PDO::FETCH_ORI_NEXT, $cursor_offset = 0)`
+> 从结果集中获取下一条记录，用法同PDOStatement的fetch()，详见PHP手册。默认是以`PDO::FETCH_ASSOC`返回一个一维数组。
 
-### `fetchAll($fetch_style = null)`
-> 从结果集中获取所有记录。
+### `fetchAll($fetch_style = null, $fetch_argument = null, array $ctor_args = null)`
+> 从结果集中获取剩余的所有记录，用法同PDOStatement的fetchAll()，详见PHP手册。默认是以`PDO::FETCH_ASSOC`返回一个二维数组。
 
 ### `value($column_number = 0)`
 > 获取下一条记录中的第n列的值。第1列的column_number是0。成功返回字符串，失败返回false。
