@@ -31,12 +31,11 @@ class Db
         'workdir' => null, // Set the work directory.
 
         /* optional parameters */
-        'dbname'      => null, // the database name
-        'charset'     => 'utf8', // set the default connection charset.
-        'persistence' => false, // set if a persistence connection is persistence.
-        'prefix'      => '', // default table prefix
-        'prefix_tpl'  => '###_', // default table prefix template placeholder.
-        'prepared'    => true, // default
+        'dbname'        => null, // the database name
+        'charset'       => 'utf8', // set the default connection charset.
+        'persistence'   => false, // set if a persistence connection is persistence.
+        'prefix'        => '', // default table prefix
+        'formal_prefix' => '###_', // default formal table prefix.
     ];
 
     /**
@@ -61,13 +60,6 @@ class Db
     public $workdir = null;
 
     /**
-     * Returns if the connection is persistence.
-     *
-     * @var boolean
-     */
-    protected $persistence = false;
-
-    /**
      * Returns the number of execute() affected rows.
      *
      * @var int
@@ -80,19 +72,17 @@ class Db
      */
     public function __construct(array $cfg = [])
     {
+        $this->cfg = array_merge($this->cfg, $cfg);
+
         // Checks if the work directory is valid.
-        $workdir = $cfg['workdir'];
+        $workdir = $this->cfg['workdir'];
         if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception("You must specify the cfg['workdir'] to a valid writable directory");
+            throw new Exception('You must specify a valid writable work directory by $cfg["workdir"]');
         }
-        $cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
-        $this->workdir = $this->cfg['workdir'];
+        $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
 
         // $cfg['persistence']
-        $cfg['persistence'] = ($cfg['persistence']) ? true : false;
-
-        // Merges user $cfg into default $cfg.
-        $this->cfg = array_merge($this->cfg, $cfg);
+        $this->cfg['persistence'] = ($this->cfg['persistence']) ? true : false;
     }
 
 
@@ -173,7 +163,10 @@ class Db
     /**
      * Executes an SQL statement that does not affect the data.
      *
-     * @return \PDOStatement|FALSE -- Returns a result set as a PDOStatement object, or FALSE on failure.
+     * @param string $sql
+     * @param null|array $data  -- If $data is array, executes the statement under the prepared mode.
+     *
+     * @return \PDOStatement|FALSE -- Returns a result set as a PDOStatement object or FALSE on failure.
      */
     public function query($sql, $data = null)
     {
@@ -181,7 +174,12 @@ class Db
             return $this->pdo->query($sql);
         } elseif (is_array($data)) {
             $stmt = $this->pdo->prepare($sql);
-            return $stmt->execute($data);
+            $result = $stmt->execute($data);
+            if ($result === false) {
+                return false;
+            } else {
+                return $stmt;
+            }
         } else {
             return false;
         }
@@ -194,7 +192,7 @@ class Db
      * Returns FALSE on failure, and puts $this->rowsAffected null.
      *
      * @param string $sql
-     * @param null|array $data
+     * @param null|array $data  -- If $data is array, executes the statement under the prepared mode.
      *
      * @return boolean -- Returns TRUE on success or FALSE on failure.
      */
