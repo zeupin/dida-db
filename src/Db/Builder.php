@@ -1092,6 +1092,7 @@ abstract class Builder
         if ($this->query_result === false) {
             return false;
         }
+
         return $this->recordset->fetch($fetch_style, $cursor_orientation, $cursor_offset);
     }
 
@@ -1125,7 +1126,7 @@ abstract class Builder
      *
      * @param int $column_number
      */
-    public function value($column_number = 0)
+    public function fetchColumn($column_number = 0)
     {
         if ($this->query_result === null) {
             $this->query();
