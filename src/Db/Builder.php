@@ -17,8 +17,6 @@ abstract class Builder
     /*
      * ------------------------------------------------------------
      * Class common variables
-     *
-     * 类的公用变量
      * ------------------------------------------------------------
      */
     /**
@@ -42,8 +40,6 @@ abstract class Builder
     /*
      * ------------------------------------------------------------
      * Operation variables
-     *
-     * 和本次操作相关的内部变量
      * ------------------------------------------------------------
      */
 
@@ -101,8 +97,6 @@ abstract class Builder
     /*
      * ------------------------------------------------------------
      * SQL template variables.
-     *
-     * 各种SQL操作的模板变量。
      * ------------------------------------------------------------
      */
 
@@ -181,8 +175,6 @@ abstract class Builder
 
     /*
      * All supported operater set.
-     *
-     * 支持的SQL条件运算集
      */
     protected static $opertor_set = [
         /* Raw SQL */
@@ -232,8 +224,6 @@ abstract class Builder
     /*
      * ------------------------------------------------------------
      * Class constants.
-     *
-     * 类常量
      * ------------------------------------------------------------
      */
 
@@ -278,12 +268,6 @@ abstract class Builder
 
     /**
      * Resets all operation variables.
-     *
-     * 重置所有操作变量到初始状态。
-     * 不包括：
-     * 1. $preparemode。一般不会出现有些网页要prepare，另外一些不要prepare。可通过prepare()改。
-     * 2. prefix和formal_prefix。一般类初始化后不会变。可通过prefixConfig()改。
-     * 3. alias。可以通过alias()改。
      */
     public function reset()
     {
@@ -362,6 +346,9 @@ abstract class Builder
 
     /**
      * Specify a WHERE condition.
+     *
+     * @param string|array $condition  [$column, $op, $data],
+     * @param type $parameters
      */
     public function where($condition, $parameters = [])
     {
@@ -375,7 +362,7 @@ abstract class Builder
 
 
     /**
-     * Sets many WHERE conditions at one time.
+     * Sets many conditions at one time.
      *
      * @param array $conditions  The conditions array like:
      *      [
@@ -542,9 +529,7 @@ abstract class Builder
 
 
     /**
-     *
-     * @param string $columns  name, id DESC
-     * @param array  $columns  ['name' => '', 'id' => 'DESC']
+     * @param array|string $columns
      */
     public function orderBy($columns = '')
     {
@@ -643,16 +628,6 @@ abstract class Builder
 
     /**
      * Set column from other table.
-     *
-     * 常用的一种UPDATE写法：
-     * UPDATE tableA
-     * SET
-     *     columnA = (SELECT tableB.columnB FROM tableB WHERE tableA.colA = tableB.colB)
-     * WHERE
-     *     EXISTS (SELECT tableB.columnB FROM tableB WHERE tableA.colA = tableB.colB)
-     *
-     * 1. 一般还要和UPDATE的where条件的EXISTS子查询配合用，因为如果在tableB中找不到记录，会把columnA设置为null。
-     * 2. $tableB 可以写为 “tablename AS alias” 的形式。
      */
     public function setFromTable($columnA, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
@@ -695,8 +670,6 @@ abstract class Builder
 
 
     /**
-     * 指定列自增一个值，默认自增1。
-     *
      * @param string $column
      * @param mixed $value
      */
@@ -707,7 +680,7 @@ abstract class Builder
         $this->verb = 'UPDATE';
 
         $column_quoted = $this->makeColumnFullname($column);
-        $plus = ($value < 0) ? '' : '+'; // 正数和零要显示加号
+        $plus = ($value < 0) ? '' : '+';
 
         $this->update_set[$column] = [Builder::SET_EXPRESSION, $column, "$column_quoted{$plus}$value"];
 
@@ -1528,8 +1501,6 @@ abstract class Builder
     /**
      * Brackets a string value.
      *
-     * 用小括号把一个非空字符串括起来。
-     *
      * @param string $string
      */
     protected function bracket($string)
@@ -1540,9 +1511,6 @@ abstract class Builder
 
     /**
      * Checks the verb is SELECT.
-     *
-     * 检查当前SQL类型是否是SELECT。
-     * 成功返回true，失败抛异常。
      *
      * @return boolean
      */
@@ -1559,8 +1527,6 @@ abstract class Builder
 
     /**
      * Converts a formal SQL to a normal SQL.
-     *
-     * 把一个形式SQL片段转变为常规SQL片段，替换掉其中的模板(如：###_等)
      */
     protected function fsql($fsql)
     {
@@ -1581,9 +1547,6 @@ abstract class Builder
     /**
      * Normalizes a table name statement.
      *
-     * 把一个表名表达式进行标准化。
-     * 支持两种格式：“tablename”和“tablename AS alias”
-     *
      * @param string $table
      */
     protected function tableNormalize($table)
@@ -1598,9 +1561,6 @@ abstract class Builder
     /**
      * Normalizes a column name statement.
      *
-     * 把一个列名表达式进行标准化。
-     * 支持两种格式：“column”和“column AS alias”
-     *
      * @param string $column
      */
     protected function columnNormalize($column)
@@ -1614,8 +1574,6 @@ abstract class Builder
 
     /**
      * Returns a quoted table statement.
-     *
-     * 返回一个quoted的表名表达式。
      *
      * @param string $table
      * @return string
@@ -1640,8 +1598,6 @@ abstract class Builder
     /**
      * If $alias is not null or ''， returns the quoted table alias statement.
      *
-     * 如果Alias不为空，则返回quoted的alias表达式。为空则返回空串。
-     *
      * @param string $alias
      * @return string
      */
@@ -1658,9 +1614,6 @@ abstract class Builder
 
     /**
      * Returns an SQL statement of a table name (with an alias).
-     *
-     * 返回一个表的名称表达式的代码片段。
-     * 注意：表的Alias一定会被quote的。
      *
      * @param string $table
      * @param string $alias
@@ -1680,8 +1633,6 @@ abstract class Builder
 
     /**
      * Returns an SQL statement of a table list names (with aliases).
-     *
-     * 返回一个tablelist的quoted的表达式。
      *
      * @param array $tablelist
      * @return string
@@ -1703,8 +1654,6 @@ abstract class Builder
     /**
      * Returns quoted alias when alias exists, else returns quoted table name.
      *
-     * 返回某个表的具体指代者，有别名返回别名；没有别名则返回表名。
-     *
      * @param string $table
      * @param string $alias
      * @return string
@@ -1722,8 +1671,6 @@ abstract class Builder
     /**
      * Returns a quoted column name
      *
-     * 返回一个quoted的列名
-     *
      * @param string $column
      * @return string
      */
@@ -1738,7 +1685,6 @@ abstract class Builder
 
         /*
          * case "column"
-         * 只有“列名”的情况
          */
         if ($this->isName($column)) {
             return $this->quoteColumnName($column);
@@ -1746,7 +1692,6 @@ abstract class Builder
 
         /*
          * case "table.column"
-         * “表名.列名”的情况
          */
         if ($this->isNameWithDot($column)) {
             $array = explode('.', $column);
@@ -1754,8 +1699,7 @@ abstract class Builder
         }
 
         /*
-         * case other
-         * 其它情况不quote此列
+         * case else
          */
         return $column;
     }
@@ -1763,8 +1707,6 @@ abstract class Builder
 
     /**
      * If $alias is not null or ''， returns the quoted column alias statement.
-     *
-     * 如果Alias不为空，则返回quoted的alias表达式。
      *
      * @param string $alias
      * @return string
@@ -1782,8 +1724,6 @@ abstract class Builder
 
     /**
      * Returns a column name statement.
-     *
-     * 返回一个列名的quoted全名表达式。
      *
      * @param string $column
      * @param string $alias
@@ -1805,13 +1745,6 @@ abstract class Builder
     /**
      * Returns a columnlist statement.
      *
-     * 返回一个列名数组对应的columnlist表达式。
-     * 输入的$columns只允许以如下格式：
-     * [
-     *      'alias'=>'column',   // 带alias的
-     *               'column',   // 不带alias的
-     * ]
-     *
      * @param array $columns ['alias'=>'column', 'column',]
      * @return string
      */
@@ -1832,12 +1765,6 @@ abstract class Builder
 
     /**
      * Converts a table/column name string to an array of a fixed format.
-     *
-     * 把一个表名或者列名字符串转换为标准格式待用。
-     * 支持：“名称”、“名称 AS 别名”这两种形式。
-     *
-     * 考虑到“表名 别名”这种用法不易一眼识别。因此表名如果带别名，一律要求都用" as "显式指明。
-     * 如“tb_user AS u”，其中AS的大小写没有关系，用AS、as或As都行。
      */
     protected function splitNameAlias($string)
     {
@@ -1855,10 +1782,6 @@ abstract class Builder
     /**
      * Tests the specified $name is a valid table/column name.
      *
-     * 检查给出的名称字符串是否是一个可用作表名或列名的单词。
-     * 标准是：以下划线或字母开头，后面跟若干个_、字母和数字。
-     * 注意：执行本函数前，要先转换好 ###_tablename
-     *
      * @param string $name
      * @return int   1 for yes, 0 for no
      */
@@ -1874,10 +1797,6 @@ abstract class Builder
     /**
      * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
      *
-     * 检查给出的字符串是否是一个以点分隔的名字。
-     * 主要用于检查列名是否是“表名称.列名称”这种形式。
-     * 注意：执行本函数前，要先转换好 ###_tablename
-     *
      * @param string $name
      * @return int   1 for yes, 0 for no
      */
@@ -1889,8 +1808,6 @@ abstract class Builder
 
     /**
      * Converts simple name columns to full name columns.
-     *
-     * 把一个不含表名的columnlist转换为含表名的columnlist
      *
      * @param string $table
      * @param array $columns

@@ -1,4 +1,4 @@
-# abstract class `Dida\Db\Builder`
+# abstract class `\Dida\Db\Builder`
 
 [TOC]
 
@@ -14,7 +14,7 @@ $users = $db->table('users')  // 生成Builder实例
 
 $users->delete(); // 查询执行后，where条件都还继续有效，可以继续进行其它动作
     ->build()     // 开始构建，生成DELETE语句的$this->sql和$this->sql_parameters
-    ->go();       // 执行SQL（如果有这一步，前面一步的build()可以省略）
+    ->execute();       // 执行SQL（如果有这一步，前面一步的build()可以省略）
 ```
 
 ## 属性
@@ -25,7 +25,7 @@ $users->delete(); // 查询执行后，where条件都还继续有效，可以继
 ### `$sql_parameters`
 > `build()` 出来的SQL表达式的参数。
 
-### `$rowsAffected` -- 影响的行数
+### `$rowsAffected`
 > 执行变更类SQL指令（INSERT / UPDATE / DELETE等）成功后，影响的行数。如果SQL执行失败，这个值是 `null`。
 
 ## 初始化和配置
@@ -54,15 +54,19 @@ $users->delete(); // 查询执行后，where条件都还继续有效，可以继
 > 设置本条语句的后面prepare模式，本条语句之前的语句的prepare模式不受影响。
 
 ### `reset()`
-> 重置所有build相关的变量为初始值。
+> 重置所有build相关的变量为初始值。但是不包括如下类变量：
+> 1. `$preparemode`。一般不会出现有些网页要prepare，另外一些不要prepare。可通过 `prepare()` 改。
+> 2. `$prefix`和`$formal_prefix`。一般类初始化后不会变。可通过 `prefixConfig()` 改。
+> 3. `$alias`。可以通过 `alias()` 改。
 
-## where条件
+## WHERE条件
 
 ### `where($condition, $parameters = [])`
 > 设置一个where条件。
 
-* 如果`$condition`是字符串，则不做任何处理，直接作为条件表达式。并将$parameters作为对应的参数数组一并导入。复杂条件这个用这个方式可以比较灵活的设置。
-* 如果`$condition`是数组，则`$condition`必须是如下格式的一维数组：
+> 如果`$condition`是字符串，则不做任何处理，直接作为条件表达式。并将$parameters作为对应的参数数组一并导入。复杂条件这个用这个方式可以比较灵活的设置。
+
+> 如果`$condition`是数组，则`$condition`必须是如下格式的一维数组：
 
 ```php
 [列名或者列表达式, 比较指令, 数据]           // 适用于大多数比较指令
@@ -70,7 +74,7 @@ $users->delete(); // 查询执行后，where条件都还继续有效，可以继
 [列名或者列表达式, 比较指令, 数据1, 数据2]   // 如比较指令为between等
 ```
 
-举例如下：
+> 举例如下：
 ```php
 ... ->where('id > 5')-> ...             // 为字符串的形式
 ... ->where(['id', '>', 5])-> ...       // 为条件数组的形式
@@ -158,7 +162,7 @@ protected static $opertor_set = [
 | $rel | string | 比较运算符，一般为`=`，`>`，`<`之类。
 | $colB | string | 表B的某列。
 
-假设当前表为user, `join('###_order', 'id', '=', 'user_id')` 会生成：
+> 假设当前表为user, `join('###_order', 'id', '=', 'user_id')` 会生成：
 ```SQL
 INNER JOIN tb_order ON tb_user.id = tb_order.user_id
 ```
