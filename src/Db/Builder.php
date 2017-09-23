@@ -96,7 +96,7 @@ abstract class Builder
      */
 
     /* execution's result */
-    public $rowCount = null;
+    public $rowsAffected = null;
 
     /*
      * ------------------------------------------------------------
@@ -350,7 +350,7 @@ abstract class Builder
 
     public function alias($alias)
     {
-        if ($alias && is_string($alias)) {
+        if ($alias && $this->isName($alias)) {
             $this->table_alias = $alias;
         } else {
             $this->table_alias = null;
@@ -440,7 +440,7 @@ abstract class Builder
     }
 
 
-    protected function joinCommon($joinType, $table, $colA, $rel, $colB)
+    protected function joinCommon($joinType, $tableB, $colA, $rel, $colB)
     {
         $this->buildChanged();
 
@@ -448,7 +448,7 @@ abstract class Builder
             ' ',
             'join type' => $joinType,
             ' ',
-            'table'     => $this->tableNormalize($table),
+            'table'     => $this->tableNormalize($tableB),
             ' ON ',
             'colA'      => $this->columnNormalize($colA),
             ' ',
@@ -462,27 +462,27 @@ abstract class Builder
     }
 
 
-    public function join($table, $colA, $rel, $colB)
+    public function join($tableB, $colA, $rel, $colB)
     {
-        return $this->joinCommon('INNER JOIN', $table, $colA, $rel, $colB);
+        return $this->joinCommon('INNER JOIN', $tableB, $colA, $rel, $colB);
     }
 
 
-    public function innerJoin($table, $colA, $rel, $colB)
+    public function innerJoin($tableB, $colA, $rel, $colB)
     {
-        return $this->joinCommon('INNER JOIN', $table, $colA, $rel, $colB);
+        return $this->joinCommon('INNER JOIN', $tableB, $colA, $rel, $colB);
     }
 
 
-    public function leftJoin($table, $colA, $rel, $colB)
+    public function leftJoin($tableB, $colA, $rel, $colB)
     {
-        return $this->joinCommon('LEFT JOIN', $table, $colA, $rel, $colB);
+        return $this->joinCommon('LEFT JOIN', $tableB, $colA, $rel, $colB);
     }
 
 
-    public function rightJoin($table, $colA, $rel, $colB)
+    public function rightJoin($tableB, $colA, $rel, $colB)
     {
-        return $this->joinCommon('RIGHT JOIN', $table, $colA, $rel, $colB);
+        return $this->joinCommon('RIGHT JOIN', $tableB, $colA, $rel, $colB);
     }
 
 
@@ -997,11 +997,9 @@ abstract class Builder
     /**
      * Executes a DELETE, INSERT, or UPDATE statement (with the parameters).
      *
-     * 执行变更数据类的SQL指令。
-     *
      * @return bool  true on success, false on failure.
      */
-    public function go()
+    public function execute()
     {
         // pre-processing
         switch ($this->verb) {
@@ -1009,7 +1007,7 @@ abstract class Builder
             case 'UPDATE':
             case 'DELETE':
             case 'TRUNCATE':
-                $this->rowCount = null;
+                $this->rowsAffected = null;
                 break;
             default:
                 throw new Exception("Illegal verb type \"$this->verb\", expects INSERT/UPDATE/DELETE/TRUNCATE.");
@@ -1023,7 +1021,7 @@ abstract class Builder
             if (count($this->sql_parameters)) {
                 $stmt = $this->db->pdo->prepare($this->sql);
                 if ($stmt->execute($this->sql_parameters)) {
-                    $this->rowCount = $stmt->rowCount();
+                    $this->rowsAffected = $stmt->rowCount();
                 } else {
                     return false;
                 }
@@ -1032,7 +1030,7 @@ abstract class Builder
                 if ($result === false) {
                     return false;
                 } else {
-                    $this->rowCount = $result;
+                    $this->rowsAffected = $result;
                 }
             }
         } catch (Exception $ex) {
@@ -1047,8 +1045,6 @@ abstract class Builder
 
     /**
      * Fetches a record from the result set.
-     *
-     * 执行一个查询操作，返回匹配的下一条记录。
      */
     public function fetch($fetch_style = null)
     {
@@ -1082,8 +1078,6 @@ abstract class Builder
 
     /**
      * Fetches all records from a result set.
-     *
-     * 执行一个查询操作，返回所有获取的记录。
      */
     public function fetchAll($fetch_style = null)
     {
@@ -1118,11 +1112,7 @@ abstract class Builder
     /**
      * Returns a column value of the next record.
      *
-     * 返回查询操作的下一行的第n列的值，默认是取第1列的值。
-     * 如果返回多列，可指定要取的列的序号，第1列的序号是0。
-     *
      * @param int $column_number
-     * @return mixed 失败返回false，成功返回字符串。
      */
     public function value($column_number = 0)
     {
@@ -1154,9 +1144,7 @@ abstract class Builder
     /**
      * Checks records exists.
      *
-     * 检查当前的SELECT语句的是否能找到至少一条数据。
-     *
-     * @return boolean  有数据返回true，没有数据返回false
+     * @return boolean
      */
     public function exists()
     {
@@ -1876,6 +1864,9 @@ abstract class Builder
      */
     protected function isName($name)
     {
+        if (!is_string($name) || ($name === '')) {
+            return false;
+        }
         return preg_match('/^[_A-Za-z]{1}\w*$/', $name);
     }
 
