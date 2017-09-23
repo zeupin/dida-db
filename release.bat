@@ -1,7 +1,7 @@
-copy /y  README.md        ..\master\
-copy /y  composer.json    ..\master\
+copy /y  README.md       ..\master\
+copy /y  composer.json   ..\master\
 
-xcopy /y  src            ..\master\src\
-xcopy /y  doc            ..\master\doc\
+xcopy /y /s  src         ..\master\src\
+xcopy /y  docs           ..\master\docs\
 
 pause
