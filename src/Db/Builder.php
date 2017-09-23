@@ -30,8 +30,8 @@ abstract class Builder
     /* table and its defination */
     protected $table = null;
     protected $table_alias = null;
-    protected $prefix = null;
-    protected $fsql_prefix = '###_'; /* faked sql */
+    protected $prefix = null; /* table prefix */
+    protected $formal_prefix = '###_'; /* formal table prefix */
     protected $def = null;
     protected $def_columns = null;
     protected $def_basetype = [];
@@ -106,8 +106,8 @@ abstract class Builder
      * ------------------------------------------------------------
      */
 
-    /* SELECT template */
-    protected $SELECT_statement = [
+    /* SELECT statement template */
+    protected $SELECT_STMT = [
         0          => 'SELECT ',
         'distinct' => '',
         'columns'  => '',
@@ -121,7 +121,7 @@ abstract class Builder
         'limit'    => '',
         'union'    => '',
     ];
-    protected $SELECT_parameters = [
+    protected $SELECT_PARAMS = [
         'columns' => [],
         'table'   => [],
         'join'    => [],
@@ -133,17 +133,20 @@ abstract class Builder
         'union'   => [],
     ];
 
-    /* INSERT template */
-    protected $INSERT_statement = [
+    /* INSERT statement template */
+    protected $INSERT_STMT = [
         0         => 'INSERT INTO ',
         'table'   => '',
         'columns' => '',
         1         => ' VALUES ',
         'values'  => '',
     ];
+    protected $INSERT_PARAMS = [
+        'values' => '',
+    ];
 
-    /* UPDATE template */
-    protected $UPDATE_statement = [
+    /* UPDATE statement template */
+    protected $UPDATE_STMT = [
         0       => 'UPDATE ',
         'table' => '',
         1       => ' SET ',
@@ -151,26 +154,26 @@ abstract class Builder
         'join'  => '',
         'where' => '',
     ];
-    protected $UPDATE_parameters = [
+    protected $UPDATE_PARAMS = [
         'set'   => [],
         'join'  => [],
         'where' => [],
     ];
 
-    /* DELETE template */
-    protected $DELETE_statement = [
+    /* DELETE statement template */
+    protected $DELETE_STMT = [
         0       => 'DELETE FROM ',
         'table' => '',
         'join'  => '',
         'where' => '',
     ];
-    protected $DELETE_parameters = [
+    protected $DELETE_PARAMS = [
         'join'  => [],
         'where' => [],
     ];
 
-    /* EXISTS template */
-    protected $EXISTS_statement = [
+    /* EXISTS statement template */
+    protected $EXISTS_STMT = [
         0      => 'SELECT EXISTS (',
         'expr' => '',
         1      => ')',
@@ -256,14 +259,14 @@ abstract class Builder
      * @param \Dida\Db $db
      * @param string $table
      */
-    public function __construct($db, $table, $prefix = '', $fsql_prefix = '###_')
+    public function __construct($db, $table, $prefix = '', $formal_prefix = '###_')
     {
         $this->db = $db;
         $this->pdo_default_fetch_mode = $this->db->pdo->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
 
         $this->table = $prefix . $table;
         $this->prefix = $prefix;
-        $this->fsql_prefix = $fsql_prefix;
+        $this->formal_prefix = $formal_prefix;
 
         $this->def = include($db->workdir . '~SCHEMA' . DIRECTORY_SEPARATOR . $this->table . '.php');
         $this->def_columns = array_keys($this->def['COLUMNS']);
@@ -279,7 +282,7 @@ abstract class Builder
      * 重置所有操作变量到初始状态。
      * 不包括：
      * 1. $preparemode。一般不会出现有些网页要prepare，另外一些不要prepare。可通过prepare()改。
-     * 2. prefix和fsql_prefix。一般类初始化后不会变。可通过prefixConfig()改。
+     * 2. prefix和formal_prefix。一般类初始化后不会变。可通过prefixConfig()改。
      * 3. alias。可以通过alias()改。
      */
     public function reset()
@@ -336,10 +339,10 @@ abstract class Builder
     }
 
 
-    public function prefixConfig($prefix = '', $fsql_prefix = '###_')
+    public function prefixConfig($prefix = '', $formal_prefix = '###_')
     {
         $this->prefix = $prefix;
-        $this->fsql_prefix = $fsql_prefix;
+        $this->formal_prefix = $formal_prefix;
 
         return $this;
     }
@@ -347,7 +350,11 @@ abstract class Builder
 
     public function alias($alias)
     {
-        $this->table_alias = $alias;
+        if ($alias && is_string($alias)) {
+            $this->table_alias = $alias;
+        } else {
+            $this->table_alias = null;
+        }
 
         return $this;
     }
@@ -784,13 +791,13 @@ abstract class Builder
             'having'   => $this->having_statement,
             'orderby'  => $this->select_orderby_statement,
         ];
-        $statement = array_merge($this->SELECT_statement, $statement);
+        $statement = array_merge($this->SELECT_STMT, $statement);
         $this->sql = implode('', $statement);
 
         $parameters = [
             'where' => $this->where_parameters,
         ];
-        $parameters = array_merge($this->SELECT_parameters, $parameters);
+        $parameters = array_merge($this->SELECT_PARAMS, $parameters);
         $this->sql_parameters = $this->combineParameterArray($parameters);
     }
 
@@ -873,7 +880,7 @@ abstract class Builder
             "columns" => $columns_statement,
             'values'  => $values_statement,
         ];
-        $statement = array_merge($this->INSERT_statement, $statement);
+        $statement = array_merge($this->INSERT_STMT, $statement);
 
         $this->sql = implode('', $statement);
         $this->sql_parameters = $values_parameters;
@@ -888,13 +895,13 @@ abstract class Builder
             'table' => $this->quoteTableName($this->table),
             'where' => $this->where_statement,
         ];
-        $statement = array_merge($this->DELETE_statement, $statement);
+        $statement = array_merge($this->DELETE_STMT, $statement);
         $this->sql = implode('', $statement);
 
         $parameters = [
             'where' => $this->where_parameters,
         ];
-        $parameters = array_merge($this->DELETE_parameters, $parameters);
+        $parameters = array_merge($this->DELETE_PARAMS, $parameters);
         $this->sql_parameters = $this->combineParameterArray($parameters);
     }
 
@@ -918,7 +925,7 @@ abstract class Builder
             'join'  => '',
             'where' => $this->where_statement,
         ];
-        $statement = array_merge($this->UPDATE_statement, $statement);
+        $statement = array_merge($this->UPDATE_STMT, $statement);
         $this->sql = implode('', $statement);
 
         // build parameters
@@ -926,7 +933,7 @@ abstract class Builder
             'set'   => $this->update_set_parameters,
             'where' => $this->where_parameters,
         ];
-        $parameters = array_merge($this->UPDATE_parameters, $parameters);
+        $parameters = array_merge($this->UPDATE_PARAMS, $parameters);
         $this->sql_parameters = $this->combineParameterArray($parameters);
     }
 
@@ -1191,7 +1198,7 @@ abstract class Builder
     {
         if (is_string($condition)) {
             $part = [
-                'statement' => $condition,
+                'statement'  => $condition,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1232,7 +1239,7 @@ abstract class Builder
     protected function cond_RAW($column, $op, $data)
     {
         return [
-            'statement' => $column,
+            'statement'  => $column,
             'parameters' => $data,
         ];
     }
@@ -1256,7 +1263,7 @@ abstract class Builder
             $statement = implode('', $tpl);
             $parameters[] = $data;
             $part = [
-                'statement' => $statement,
+                'statement'  => $statement,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1266,7 +1273,7 @@ abstract class Builder
 
         $statement = implode('', $tpl);
         $part = [
-            'statement' => $statement,
+            'statement'  => $statement,
             'parameters' => [],
         ];
         return $part;
@@ -1341,7 +1348,7 @@ abstract class Builder
             $parameters = array_values($data);
 
             $part = [
-                'statement' => $statement,
+                'statement'  => $statement,
                 'parameters' => $parameters,
             ];
             return $part;
@@ -1351,7 +1358,7 @@ abstract class Builder
         $tpl['list'] = implode(', ', $data);
 
         $part = [
-            'statement' => implode('', $tpl),
+            'statement'  => implode('', $tpl),
             'parameters' => [],
         ];
         return $part;
@@ -1381,7 +1388,7 @@ abstract class Builder
         }
 
         $part = [
-            'statement' => $statement,
+            'statement'  => $statement,
             'parameters' => $parameters,
         ];
         return $part;
@@ -1416,7 +1423,7 @@ abstract class Builder
         }
 
         $part = [
-            'statement' => $statement,
+            'statement'  => $statement,
             'parameters' => $parameters,
         ];
         return $part;
@@ -1433,7 +1440,7 @@ abstract class Builder
     {
         $column_quoted = $this->makeColumn($column);
         $part = [
-            'statement' => "$column_quoted IS NULL",
+            'statement'  => "$column_quoted IS NULL",
             'parameters' => [],
         ];
         return $part;
@@ -1444,7 +1451,7 @@ abstract class Builder
     {
         $column_quoted = $this->makeColumn($column);
         $part = [
-            'statement' => "$column_quoted IS NOT NULL",
+            'statement'  => "$column_quoted IS NOT NULL",
             'parameters' => [],
         ];
         return $part;
@@ -1456,7 +1463,7 @@ abstract class Builder
         $sql = $this->fsql($column);
 
         $part = [
-            'statement' => "EXISTS ($sql)",
+            'statement'  => "EXISTS ($sql)",
             'parameters' => $data,
         ];
         return $part;
@@ -1468,7 +1475,7 @@ abstract class Builder
         $sql = $this->fsql($column);
 
         $part = [
-            'statement' => "NOT EXISTS ($sql)",
+            'statement'  => "NOT EXISTS ($sql)",
             'parameters' => $data,
         ];
         return $part;
@@ -1495,7 +1502,7 @@ abstract class Builder
         $parameters = $this->combineParameterArray($parameters);
 
         return [
-            'statement' => $statement,
+            'statement'  => $statement,
             'parameters' => $parameters,
         ];
     }
@@ -1563,9 +1570,9 @@ abstract class Builder
 
 
     /**
-     * Converts a Faked SQL to a normal SQL.
+     * Converts a formal SQL to a normal SQL.
      *
-     * 把一个伪SQL片段转变为常规SQL片段，替换掉其中的伪变量(如：###_等)
+     * 把一个形式SQL片段转变为常规SQL片段，替换掉其中的模板(如：###_等)
      */
     protected function fsql($fsql)
     {
@@ -1573,8 +1580,10 @@ abstract class Builder
         $replace = [];
 
         // prefix
-        $search[] = $this->fsql_prefix;
-        $replace[] = $this->prefix;
+        if ($this->formal_prefix) {
+            $search[] = $this->formal_prefix;
+            $replace[] = $this->prefix;
+        }
 
         // execute
         return str_replace($search, $replace, $fsql);
@@ -1660,7 +1669,7 @@ abstract class Builder
 
 
     /**
-     * Returns a SQL code snippet of a table name (with an alias).
+     * Returns an SQL statement of a table name (with an alias).
      *
      * 返回一个表的名称表达式的代码片段。
      * 注意：表的Alias一定会被quote的。
@@ -1682,7 +1691,7 @@ abstract class Builder
 
 
     /**
-     * Returns a SQL code snippet of a table list names (with aliases).
+     * Returns an SQL statement of a table list names (with aliases).
      *
      * 返回一个tablelist的quoted的表达式。
      *
@@ -1784,7 +1793,7 @@ abstract class Builder
 
 
     /**
-     * Returns a column name statement snippet.
+     * Returns a column name statement.
      *
      * 返回一个列名的quoted全名表达式。
      *
@@ -1806,7 +1815,7 @@ abstract class Builder
 
 
     /**
-     * Returns a columnlist statement snippet
+     * Returns a columnlist statement.
      *
      * 返回一个列名数组对应的columnlist表达式。
      * 输入的$columns只允许以如下格式：
@@ -1834,7 +1843,7 @@ abstract class Builder
 
 
     /**
-     * Converts a table/column name string to an array of a specified format.
+     * Converts a table/column name string to an array of a fixed format.
      *
      * 把一个表名或者列名字符串转换为标准格式待用。
      * 支持：“名称”、“名称 AS 别名”这两种形式。
