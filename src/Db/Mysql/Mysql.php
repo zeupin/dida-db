@@ -7,7 +7,7 @@
 namespace Dida\Db\Mysql;
 
 use \PDO;
-use \Dida\Db;
+use \Dida\Db\Db;
 use \Dida\Db\SchemaInterface;
 use \Exception;
 use \Dida\Db\Mysql\MysqlBuilder;

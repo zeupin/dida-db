@@ -4,7 +4,7 @@
  * http://dida.zeupin.com
  */
 
-namespace Dida;
+namespace Dida\Db;
 
 use \PDO;
 use \PDOException;

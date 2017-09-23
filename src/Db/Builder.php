@@ -22,7 +22,7 @@ abstract class Builder
      * ------------------------------------------------------------
      */
     /**
-     * @var \Dida\Db
+     * @var \Dida\Db\Db
      */
     protected $db = null;
     protected $pdo_default_fetch_mode = null;
@@ -256,7 +256,7 @@ abstract class Builder
 
 
     /**
-     * @param \Dida\Db $db
+     * @param \Dida\Db\Db $db
      * @param string $table
      */
     public function __construct($db, $table, $prefix = '', $formal_prefix = '###_')
