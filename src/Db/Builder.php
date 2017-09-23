@@ -47,7 +47,7 @@ abstract class Builder
     protected $builded = false;
 
     /* verb */
-    protected $verb = 'SELECT';
+    public $verb = 'SELECT';
 
     /* WHERE */
     protected $where_changed = true;
@@ -90,8 +90,21 @@ abstract class Builder
      * Execution result variables.
      * ------------------------------------------------------------
      */
+    protected $query_result = null;
+    protected $execute_result = null;
 
-    /* execution's result */
+    /**
+     * query() result
+     *
+     * @var \PDOStatement|null
+     */
+    public $recordset = null;
+
+    /**
+     * execute() result
+     *
+     * @var int|null
+     */
     public $rowsAffected = null;
 
     /*
@@ -312,6 +325,12 @@ abstract class Builder
         /* final sql */
         $this->sql = '';
         $this->sql_parameters = [];
+
+        /* execute/query result */
+        $this->query_result = null;
+        $this->recordset = null;
+        $this->execute_result = null;
+        $this->rowsAffected = null;
     }
 
 
@@ -964,13 +983,59 @@ abstract class Builder
     protected function buildChanged()
     {
         $this->builded = false;
+        $this->query_result = null;
+        $this->execute_result = null;
     }
 
 
     /**
-     * Executes a DELETE, INSERT, or UPDATE statement (with the parameters).
+     * Executes a SELECT statement.
      *
-     * @return bool  true on success, false on failure.
+     * @return bool Returns true on success, false on failure.
+     */
+    public function query()
+    {
+        // check verb
+        $this->checkVerbQuery();
+
+        // check query_result
+        if (is_bool($this->query_result)) {
+            return $this->query_result;
+        }
+
+        // build
+        $this->build();
+
+        if (count($this->sql_parameters) === 0) {
+            $stmt = $this->db->pdo->query($this->sql);
+            if ($stmt === false) {
+                $this->recordset = null;
+                $this->query_result = false;
+                return $this->query_result;
+            } else {
+                $this->recordset = $stmt;
+                $this->query_result = true;
+                return $this->query_result;
+            }
+        } else {
+            $stmt = $this->db->pdo->prepare($this->sql);
+            if ($stmt === false) {
+                $this->recordset = null;
+                $this->query_result = false;
+                return $this->query_result;
+            } else {
+                $this->recordset = $stmt;
+                $this->query_result = true;
+                return $this->query_result;
+            }
+        }
+    }
+
+
+    /**
+     * Executes a DELETE, INSERT, or UPDATE statement.
+     *
+     * @return bool Returns true on success, false on failure.
      */
     public function execute()
     {
@@ -1019,65 +1084,38 @@ abstract class Builder
     /**
      * Fetches a record from the result set.
      */
-    public function fetch($fetch_style = null)
+    public function fetch($fetch_style = null, $cursor_orientation = PDO::FETCH_ORI_NEXT, $cursor_offset = 0)
     {
-        // check verb
-        $this->checkVerbQuery();
-
-        // build
-        $this->build();
-
-        if (is_null($fetch_style)) {
-            $fetch_style = $this->pdo_default_fetch_mode;
+        if ($this->query_result === null) {
+            $this->query();
         }
-        if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                return $stmt->fetch($fetch_style);
-            }
-        } else {
-            $stmt = $this->db->pdo->prepare($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                $stmt->execute($this->sql_parameters);
-                return $stmt->fetch($fetch_style);
-            }
+        if ($this->query_result === false) {
+            return false;
         }
+        return $this->recordset->fetch($fetch_style, $cursor_orientation, $cursor_offset);
     }
 
 
     /**
-     * Fetches all records from a result set.
+     * Fetches all rest records from a result set.
      */
-    public function fetchAll($fetch_style = null)
+    public function fetchAll($fetch_style = null, $fetch_argument = null, array $ctor_args = null)
     {
-        // check verb
-        $this->checkVerbQuery();
-
-        // build
-        $this->build();
-
-        if (is_null($fetch_style)) {
-            $fetch_style = $this->pdo_default_fetch_mode;
+        if ($this->query_result === null) {
+            $this->query();
         }
-        if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                return $stmt->fetchAll($fetch_style);
-            }
+        if ($this->query_result === false) {
+            return false;
+        }
+
+        if ($ctor_args !== null) {
+            return $this->recordset->fetchAll($fetch_style, $fetch_argument, $ctor_args);
+        } elseif ($fetch_argument !== null) {
+            return $this->recordset->fetchAll($fetch_style, $fetch_argument);
+        } elseif ($fetch_style !== null) {
+            return $this->recordset->fetchAll($fetch_style);
         } else {
-            $stmt = $this->db->pdo->prepare($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                $stmt->execute($this->sql_parameters);
-                return $stmt->fetchAll($fetch_style);
-            }
+            return $this->recordset->fetchAll();
         }
     }
 
@@ -1089,36 +1127,17 @@ abstract class Builder
      */
     public function value($column_number = 0)
     {
-        // check verb
-        $this->checkVerbQuery();
-
-        // build
-        $this->build();
-
-        if (count($this->sql_parameters) === 0) {
-            $stmt = $this->db->pdo->query($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                return $stmt->fetchColumn($column_number);
-            }
-        } else {
-            $stmt = $this->db->pdo->prepare($this->sql);
-            if ($stmt === false) {
-                return false;
-            } else {
-                $stmt->execute($this->sql_parameters);
-                return $stmt->fetchColumn($column_number);
-            }
+        if ($this->query_result === null) {
+            $this->query();
         }
+        if ($this->query_result === false) {
+            return false;
+        }
+
+        return $this->recordset->fetchColumn($column_number);
     }
 
 
-    /**
-     * Checks records exists.
-     *
-     * @return boolean
-     */
     public function exists()
     {
         // check verb
@@ -1498,11 +1517,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Brackets a string value.
-     *
-     * @param string $string
-     */
     protected function bracket($string)
     {
         return ($string === '') ? '' : "($string)";
@@ -1544,11 +1558,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Normalizes a table name statement.
-     *
-     * @param string $table
-     */
     protected function tableNormalize($table)
     {
         $s = trim($table);
@@ -1558,11 +1567,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Normalizes a column name statement.
-     *
-     * @param string $column
-     */
     protected function columnNormalize($column)
     {
         $s = trim($column);
@@ -1572,12 +1576,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Returns a quoted table statement.
-     *
-     * @param string $table
-     * @return string
-     */
     protected function makeTable($table)
     {
         $table = trim($table);
@@ -1595,15 +1593,8 @@ abstract class Builder
     }
 
 
-    /**
-     * If $alias is not null or ''， returns the quoted table alias statement.
-     *
-     * @param string $alias
-     * @return string
-     */
     protected function makeTableAlias($alias)
     {
-        $alias = trim($alias);
         if ($alias && is_string($alias)) {
             return $this->quoteTableName($alias);
         } else {
@@ -1612,12 +1603,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Returns an SQL statement of a table name (with an alias).
-     *
-     * @param string $table
-     * @param string $alias
-     */
     protected function makeTableFullname($table, $alias = null)
     {
         $table_quoted = $this->makeTable($table);
@@ -1631,12 +1616,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Returns an SQL statement of a table list names (with aliases).
-     *
-     * @param array $tablelist
-     * @return string
-     */
     protected function makeTableList(array $tablelist)
     {
         $array = [];
@@ -1652,11 +1631,7 @@ abstract class Builder
 
 
     /**
-     * Returns quoted alias when alias exists, else returns quoted table name.
-     *
-     * @param string $table
-     * @param string $alias
-     * @return string
+     * Determines to return alias or tablename
      */
     protected function makeTableRef($table, $alias = null)
     {
@@ -1668,12 +1643,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Returns a quoted column name
-     *
-     * @param string $column
-     * @return string
-     */
     protected function makeColumn($column)
     {
         $column = trim($column);
@@ -1683,37 +1652,24 @@ abstract class Builder
 
         $column = $this->fsql($column);
 
-        /*
-         * case "column"
-         */
+        //case "column"
         if ($this->isName($column)) {
             return $this->quoteColumnName($column);
         }
 
-        /*
-         * case "table.column"
-         */
+        // case "table.column"
         if ($this->isNameWithDot($column)) {
             $array = explode('.', $column);
             return $this->quoteTableName($array[0]) . '.' . $this->quoteColumnName($array[1]);
         }
 
-        /*
-         * case else
-         */
+        // case else
         return $column;
     }
 
 
-    /**
-     * If $alias is not null or ''， returns the quoted column alias statement.
-     *
-     * @param string $alias
-     * @return string
-     */
     protected function makeColumnAlias($alias)
     {
-        $alias = trim($alias);
         if ($alias && is_string($alias)) {
             return $this->quoteColumnName($alias);
         } else {
@@ -1722,13 +1678,6 @@ abstract class Builder
     }
 
 
-    /**
-     * Returns a column name statement.
-     *
-     * @param string $column
-     * @param string $alias
-     * @return string
-     */
     protected function makeColumnFullname($column, $alias = null)
     {
         $column_quoted = $this->makeColumn($column);
@@ -1743,10 +1692,7 @@ abstract class Builder
 
 
     /**
-     * Returns a columnlist statement.
-     *
-     * @param array $columns ['alias'=>'column', 'column',]
-     * @return string
+     * @param array $columns ['alias'=>'column',]
      */
     protected function makeColumnList(array $columns)
     {
@@ -1783,7 +1729,7 @@ abstract class Builder
      * Tests the specified $name is a valid table/column name.
      *
      * @param string $name
-     * @return int   1 for yes, 0 for no
+     * @return int 1 for yes, 0 for no
      */
     protected function isName($name)
     {
@@ -1798,7 +1744,7 @@ abstract class Builder
      * Tests the specified $name is a name splitted by a dot, like "tb_user.address"
      *
      * @param string $name
-     * @return int   1 for yes, 0 for no
+     * @return int 1 for yes, 0 for no
      */
     protected function isNameWithDot($name)
     {
