@@ -11,8 +11,6 @@ namespace Dida\Db\Builder;
  */
 trait TruncateTrait
 {
-
-
     public function truncate()
     {
         $this->buildChanged();
