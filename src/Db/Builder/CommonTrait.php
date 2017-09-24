@@ -22,6 +22,13 @@ trait CommonTrait
     protected $pdo_default_fetch_mode = null;
 
 
+    protected function buildChanged()
+    {
+        $this->built = false;
+        $this->query_result = null;
+        $this->execute_result = null;
+    }
+
     protected function bracket($string)
     {
         return ($string === '') ? '' : "($string)";

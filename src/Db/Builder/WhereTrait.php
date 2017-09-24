@@ -419,4 +419,29 @@ trait WhereTrait
         ];
         return $part;
     }
+
+    /**
+     * Builds the WHERE statement.
+     */
+    protected function build_WHERE()
+    {
+        // if not changed, do nothing
+        if (!$this->where_changed) {
+            return;
+        }
+
+        // combine the where_parts
+        $where = $this->combineConditionParts($this->where_parts, 'AND');
+
+        if ($where['statement'] === '') {
+            $this->where_statement = '';
+            $this->where_parameters = [];
+        } else {
+            $this->where_statement = " WHERE " . $where['statement'];
+            $this->where_parameters = $where['parameters'];
+        }
+
+        // build completed
+        $this->where_changed = false;
+    }
 }
