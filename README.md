@@ -6,7 +6,8 @@ It extends PDO and PDOStatement classes and adds some advanced features such as 
 
 * Supports various SQL database, including MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite and more.
 * Friendly MIT License.
-* Lazy database connection.
+* Lazy database connection. Connects to the database only on method calls that require a connection. You can create an instance and not incur the cost of a connection if you never make a query.
+
 
 ## Requires
 
