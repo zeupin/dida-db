@@ -36,12 +36,6 @@ abstract class Db
         'persistence' => false, // set if a persistence connection is persistence.
         'prefix'      => '', // default table prefix
         'vprefix'     => '###_', // default table prefix string.
-
-        /* driver relative */
-        'table_quote_prefix'   => '',
-        'table_quote_postfix'  => '',
-        'column_quote_prefix'  => '',
-        'column_quote_postfix' => '',
     ];
 
     /**
@@ -178,10 +172,6 @@ abstract class Db
         $sql = new SQL($this, [
             'prefix'               => $this->cfg['prefix'],
             'vprefix'              => $this->cfg['vprefix'],
-            'table_quote_prefix'   => $this->cfg['table_quote_prefix'],
-            'table_quote_postfix'  => $this->cfg['table_quote_postfix'],
-            'column_quote_prefix'  => $this->cfg['column_quote_prefix'],
-            'column_quote_postfix' => $this->cfg['column_quote_postfix'],
         ]);
         return $sql;
     }
