@@ -36,6 +36,12 @@ abstract class Db
         'persistence' => false, // set if a persistence connection is persistence.
         'prefix'      => '', // default table prefix
         'vprefix'     => '###_', // default table prefix string.
+
+        /* driver relative */
+        'table_quote_prefix'   => '',
+        'table_quote_postfix'  => '',
+        'column_quote_prefix'  => '',
+        'column_quote_postfix' => '',
     ];
 
     /**
@@ -95,7 +101,6 @@ abstract class Db
             $this->pdo = new PDO($this->cfg['dsn'], $this->cfg['username'], $this->cfg['password'], $this->cfg['options']);
             return true;
         } catch (PDOException $e) {
-            $this->pdoexception = $e;
             return false;
         }
     }
@@ -142,7 +147,6 @@ abstract class Db
     public function disconnect()
     {
         $this->pdo = null;
-        $this->pdoexception = null;
     }
 
 
@@ -167,20 +171,39 @@ abstract class Db
 
 
     /**
+     * @return Statement
+     */
+    protected function newSQL()
+    {
+        $sql = new SQL($this, [
+            'prefix'               => $this->cfg['prefix'],
+            'vprefix'              => $this->cfg['vprefix'],
+            'table_quote_prefix'   => $this->cfg['table_quote_prefix'],
+            'table_quote_postfix'  => $this->cfg['table_quote_postfix'],
+            'column_quote_prefix'  => $this->cfg['column_quote_prefix'],
+            'column_quote_postfix' => $this->cfg['column_quote_postfix'],
+        ]);
+        return $sql;
+    }
+
+
+    /**
      * Creates a Statement object and sets statement and parameters directly.
      *
-     * @param string $sql
-     * @param array $sql_parameters
+     * @param string $statement
+     * @param array $parameters
      *
-     * @return \Dida\Db\Statement
+     * @return \Dida\Db\SQL
      */
-    public function sql($sql, $sql_parameters = [])
+    public function sql($statement, $parameters = [])
     {
-        $stmt = new Statement($this);
-        $stmt->sql = $sql;
-        $stmt->sql_parameters = $sql_parameters;
+        $sql = $this->newSQL();
 
-        return $stmt;
+        $sql->statement = $statement;
+        $sql->parameters = $parameters;
+        $sql->built = true;
+
+        return $sql;
     }
 
 
@@ -189,14 +212,16 @@ abstract class Db
      *
      * @param string $table
      * @param string $alias
+     * @param string $prefix
      *
-     * @return \Dida\Db\Statement
+     * @return \Dida\Db\SQL
      */
-    public function table($table, $alias = null)
+    public function table($table, $alias = null, $prefix = null)
     {
-        $stmt = new Statement($this);
-        $stmt->table($table, $alias);
+        $sql = $this->newSQL();
 
-        return $stmt;
+        $sql->table($table, $alias, $prefix);
+
+        return $sql;
     }
 }
