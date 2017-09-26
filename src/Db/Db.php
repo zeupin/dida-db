@@ -13,7 +13,7 @@ use \Exception;
 /**
  * Db
  */
-class Db
+abstract class Db
 {
     /**
      * Default configurations.
@@ -31,11 +31,11 @@ class Db
         'workdir' => null, // Set the work directory.
 
         /* optional parameters */
-        'dbname'        => null, // the database name
-        'charset'       => 'utf8', // set the default connection charset.
-        'persistence'   => false, // set if a persistence connection is persistence.
-        'prefix'        => '', // default table prefix
-        'formal_prefix' => '###_', // default formal table prefix.
+        'dbname'      => null, // the database name
+        'charset'     => 'utf8', // set the default connection charset.
+        'persistence' => false, // set if a persistence connection is persistence.
+        'prefix'      => '', // default table prefix
+        'vprefix'     => '###_', // default table prefix string.
     ];
 
     /**
@@ -46,25 +46,11 @@ class Db
     public $pdo = null;
 
     /**
-     * Returns the PDO Exception instance.
-     *
-     * @var \PDOException
-     */
-    public $pdoexception = null;
-
-    /**
      * Specifies a work directory.
      *
      * @var string
      */
     public $workdir = null;
-
-    /**
-     * Returns the number of execute() affected rows.
-     *
-     * @var int
-     */
-    public $rowsAffected = null;
 
 
     /**
@@ -77,12 +63,9 @@ class Db
         // Checks if the work directory is valid.
         $workdir = $this->cfg['workdir'];
         if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception('You must specify a valid writable work directory by $cfg["workdir"]');
+            throw new Exception('$cfg["workdir"] "' . $workdir . '" does not exists or cannot be written');
         }
         $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
-
-        // $cfg['persistence']
-        $this->cfg['persistence'] = ($this->cfg['persistence']) ? true : false;
     }
 
 
@@ -92,7 +75,6 @@ class Db
     public function __destruct()
     {
         $this->pdo = null;
-        $this->pdoexception = null;
     }
 
 
@@ -121,30 +103,34 @@ class Db
 
     /**
      * Checks if the connection is already established.
-     * If $strict_mode is true, further checks if the database connection works.
-     *
-     * @param boolean $strict_mode Strict mode
      */
-    public function isConnected($strict_mode = false)
+    public function isConnected()
+    {
+        if ($this->pdo === null) {
+            return false;
+        }
+    }
+
+
+    /**
+     * Checks if the connection works well.
+     *
+     * @return boolean
+     */
+    public function worksWell()
     {
         if ($this->pdo === null) {
             return false;
         }
 
-        if (!$strict_mode) {
-            return true;
-        }
+        // Checks if a simple SQL could be executed successfully,
         try {
-            $result = $this->pdo->query('SELECT 1');
-            if ($result === false) {
-                $this->pdo = null;
+            if ($this->pdo->query('SELECT 1') === false) {
                 return false;
             } else {
                 return true;
             }
         } catch (PDOException $e) {
-            $this->pdo = null;
-            $this->pdoexception = $e;
             return false;
         }
     }
@@ -161,66 +147,56 @@ class Db
 
 
     /**
-     * Executes an SQL statement that does not affect the data.
+     * Executes an SQL statement directly.
      *
      * @param string $sql
-     * @param null|array $data  -- If $data is array, executes the statement under the prepared mode.
+     * @param array $sql_parameters
      *
-     * @return \PDOStatement|FALSE -- Returns a result set as a PDOStatement object or FALSE on failure.
+     * @return mixed
      */
-    public function query($sql, $data = null)
+    public function execute($sql, $sql_parameters = [])
     {
-        if ($data === null) {
-            return $this->pdo->query($sql);
-        } elseif (is_array($data)) {
+        $this->connect();
+        try {
             $stmt = $this->pdo->prepare($sql);
-            $result = $stmt->execute($data);
-            if ($result === false) {
-                return false;
-            } else {
-                return $stmt;
-            }
-        } else {
+            return $stmt->execute($sql_parameters);
+        } catch (Exception $ex) {
             return false;
         }
     }
 
 
     /**
-     * Executes an SQL statement that might affect the data.
-     * Returns TRUE on success, and puts $this->rowsAffected.
-     * Returns FALSE on failure, and puts $this->rowsAffected null.
+     * Creates a Statement object and sets statement and parameters directly.
      *
      * @param string $sql
-     * @param null|array $data  -- If $data is array, executes the statement under the prepared mode.
+     * @param array $sql_parameters
      *
-     * @return boolean -- Returns TRUE on success or FALSE on failure.
+     * @return \Dida\Db\Statement
      */
-    public function execute($sql, $data = null)
+    public function sql($sql, $sql_parameters = [])
     {
-        if ($data === null) {
-            $result = $this->pdo->exec($sql);
+        $stmt = new Statement($this);
+        $stmt->sql = $sql;
+        $stmt->sql_parameters = $sql_parameters;
 
-            if ($result === false) {
-                $this->rowsAffected = null;
-                return false;
-            } else {
-                $this->rowsAffected = $result;
-                return true;
-            }
-        } elseif (is_array($data)) {
-            $stmt = $this->pdo->prepare($sql);
-            $result = $stmt->execute($data);
+        return $stmt;
+    }
 
-            if ($result === false) {
-                $this->rowsAffected = null;
-                return false;
-            } else {
-                $this->rowsAffected = $stmt->rowCount();
-                return true;
-            }
-        } else {
-            throw new Exception('Invalid parameter type "$data".');
-        }
+
+    /**
+     * Creates a Statement object and sets the master table.
+     *
+     * @param string $table
+     * @param string $alias
+     *
+     * @return \Dida\Db\Statement
+     */
+    public function table($table, $alias = null)
+    {
+        $stmt = new Statement($this);
+        $stmt->table($table, $alias);
+
+        return $stmt;
     }
 }
