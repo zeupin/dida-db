@@ -131,8 +131,15 @@ class SQL
     }
 
 
-    public function where($condition)
+    public function where($condition, $data = [])
     {
+        if (is_string($condition)) {
+            if (substr($condition, 0, 1) !== '(') {
+                $condition = "($condition)";
+            }
+            $condition = [$condition, 'RAW', $data];
+        }
+
         $this->input['where'][] = $condition;
         $this->input['where_built'] = false;
 
