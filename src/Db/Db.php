@@ -75,7 +75,6 @@ abstract class Db
     public function __destruct()
     {
         $this->pdo = null;
-        $this->pdoexception = null;
     }
 
 
@@ -104,11 +103,8 @@ abstract class Db
 
     /**
      * Checks if the connection is already established.
-     * If $strict_mode is true, further checks if the database connection works.
-     *
-     * @param boolean $strict_mode Strict mode
      */
-    public function isConnected($strict_mode = false)
+    public function isConnected()
     {
         if ($this->pdo === null) {
             return false;
@@ -118,6 +114,8 @@ abstract class Db
 
     /**
      * Checks if the connection works well.
+     *
+     * @return boolean
      */
     public function worksWell()
     {
@@ -149,9 +147,31 @@ abstract class Db
 
 
     /**
+     * Executes an SQL statement directly.
      *
      * @param string $sql
      * @param array $sql_parameters
+     *
+     * @return mixed
+     */
+    public function execute($sql, $sql_parameters = [])
+    {
+        $this->connect();
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            return $stmt->execute($sql_parameters);
+        } catch (Exception $ex) {
+            return false;
+        }
+    }
+
+
+    /**
+     * Creates a Statement object and sets statement and parameters directly.
+     *
+     * @param string $sql
+     * @param array $sql_parameters
+     *
      * @return \Dida\Db\Statement
      */
     public function sql($sql, $sql_parameters = [])
@@ -164,23 +184,19 @@ abstract class Db
     }
 
 
+    /**
+     * Creates a Statement object and sets the master table.
+     *
+     * @param string $table
+     * @param string $alias
+     *
+     * @return \Dida\Db\Statement
+     */
     public function table($table, $alias = null)
     {
         $stmt = new Statement($this);
         $stmt->table($table, $alias);
 
         return $stmt;
-    }
-
-
-    public function execute($sql, $sql_parameters = [])
-    {
-        $this->connect();
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            return $stmt->execute($sql_parameters);
-        } catch (Exception $ex) {
-            return false;
-        }
     }
 }
