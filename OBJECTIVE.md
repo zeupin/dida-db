@@ -38,7 +38,7 @@ $db = new \Dida\Db\Mysql\MysqlDb($cfg);
 
 ```php
 $cfg = [
-    /* 若干 pdo driver 配置 */
+    /* PDO driver 配置 */
     'dsn'      => 'mysql:host=localhost;port=3306;dbname=数据库',
     'username' => '数据库用户',
     'password' => '数据库密码',
@@ -48,10 +48,16 @@ $cfg = [
         PDO::ATTR_PERSISTENT         => false,
     ],
 
-    // 若干必填参数
+    // 和驱动相关的配置
+    'table_quote_prefix'   => '`',
+    'table_quote_postfix'  => '`',
+    'column_quote_prefix'  => '`',
+    'column_quote_postfix' => '`',
+
+    // 必填参数
     'workdir'  => __DIR__ . '/zeupin',
 
-    // 若干选填参数
+    // 选填参数
     'prefix'   => 'zp_',
     'vprefix'  => '###_',
 
@@ -71,15 +77,17 @@ $cfg = [
 Db -> Statement -> Builder -> ResultSet
 ```
 
-## 8. 一律使用Prepare模式。
+## 8. 执行时，统一使用预处理模式（Prepare）。
 
 * 更安全。
 * 一致化处理，减少代码量。
 
-## 9. Builder分为Builder和BuilderLite两个版本。
+## ~~9. Builder分为Builder和BuilderLite两个版本。~~
 
 * `Builder` 是全功能版本，会Quote表名/列名的。
-* `BuilderLite` 则不quote表名/列名，大幅简化了处理流程，加快了处理速度，但是只建议用于标准的数据库。
+* `BuilderLite` 则不quote表名/列名，大幅简化了处理流程，加快了处理速度。参见 `#10 数据库命名建议`。
+
+**此条已经废弃，参见#15直接改为Lite版的做法，不在框架中去quote表名/列名**
 
 ## 10. 数据库的表名和列名的命名建议。
 
@@ -87,3 +95,28 @@ Db -> Statement -> Builder -> ResultSet
 
 1. 数据库的数据表用`prefix_`开头。
 2. 列名中的每个单词都用`_`结束，（`id_`, `name_`, `modified_at_`）。
+
+## 11. 从Db类生成SQL类
+
+通过 `Db` 类的如下方法，生成 `Statement` 类实例
+
+* $db->sql($statement, $parameters=[])
+* $db->table(表名, 别名=null, prefix=null)
+
+## 12. $db->sql($statement, $parameters=[])
+
+直接设置sql
+
+## 13. $db->table(pure_表名, 别名=null, 不要prefix)
+
+设置主表的表名和别名。
+
+```
+$db->table('user', 'u');
+```
+
+## 14. SQL类只负责往设置各种指令，具体building工作全部给Builder去干。
+
+## 15. 去除自动quote表名和列名的功能。
+
+感觉这个功能非常鸡肋，如果觉得会和SQL关键字有冲突的话，完全可以自己去quote表名/列名。参见 #9
