@@ -405,7 +405,7 @@ $admin = $db->table('admin', 'a')
     ->setValue('name', 'Me')
     ->setExpr('age', 'age + ?', [1])
     ->setFromTable('fullname', '###_admin_info', 'fullname', 'id', 'id', false)
-    ->join('###_admin_info AS b', 'a.id=b.id')
+    ->join('###_admin_info AS b', 'a.id > b.id+?', [99])
     ->leftJoin('###_admin_info AS c', 'a.id=c.id')
     ->find([
         'id'      => [1, 2, 3],
@@ -423,7 +423,7 @@ SELECT
 FROM
     zp_admin AS a
 JOIN zp_admin_info AS b
-    ON a.id=b.id
+    ON a.id > b.id+?
 LEFT JOIN zp_admin_info AS c
     ON a.id=c.id
 WHERE
@@ -431,9 +431,10 @@ WHERE
     AND (valid = 1)
 
 array (
-  0 => 1,
-  1 => 2,
-  2 => 3,
-  3 => 'zeupin',
+  0 => 99,
+  1 => 1,
+  2 => 2,
+  3 => 3,
+  4 => 'zeupin',
 )
 ```

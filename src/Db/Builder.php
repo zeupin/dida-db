@@ -189,6 +189,7 @@ class Builder
             'where' => $this->dictStatement['where'],
         ];
         $PARAMS = [
+            'join'  => $this->dictParameters['join'],
             'where' => $this->dictParameters['where']
         ];
 
@@ -221,7 +222,8 @@ class Builder
             'where'              => $this->dictStatement['where'],
         ];
         $PARAMS = [
-            'where' => $this->dictParameters['where']
+            'join'  => $this->dictParameters['join'],
+            'where' => $this->dictParameters['where'],
         ];
 
         return [
@@ -672,6 +674,7 @@ class Builder
         ];
         $PARAMS = [
             'set'   => $this->dictParameters['set'],
+            'join'  => $this->dictParameters['join'],
             'where' => $this->dictParameters['where'],
         ];
 
@@ -767,14 +770,20 @@ class Builder
 
     protected function clause_JOIN()
     {
-        $parts = [];
+        $stmts = [];
+        $params = [];
+
         $joins = $this->input['join'];
         foreach ($joins as $join) {
-            list($jointype, $table, $on) = $join;
+            list($jointype, $table, $on, $parameters) = $join;
+
             $table = $this->vsql($table);
             $on = $this->vsql($on);
-            $parts[] = "\n$jointype {$table}\n    ON $on";
+
+            $stmts[] = "\n$jointype {$table}\n    ON $on";
+            $params[] = $parameters;
         }
-        $this->dictStatement["join"] = implode("", $parts);
+        $this->dictStatement["join"] = implode("", $stmts);
+        $this->dictParameters['join'] = $this->combineParameterArray($params);
     }
 }

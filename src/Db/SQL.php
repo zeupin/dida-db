@@ -286,30 +286,30 @@ class SQL
     }
 
 
-    public function join($tableB, $on)
+    public function join($tableB, $on, $parameters=[])
     {
-        $this->input['join'][] = ['JOIN', $tableB, $on];
+        $this->input['join'][] = ['JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function innerJoin($tableB, $on)
+    public function innerJoin($tableB, $on, $parameters=[])
     {
-        $this->input['join'][] = ['INNER JOIN', $tableB, $on];
+        $this->input['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function leftJoin($tableB, $on)
+    public function leftJoin($tableB, $on, $parameters=[])
     {
-        $this->input['join'][] = ['LEFT JOIN', $tableB, $on];
+        $this->input['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function rightJoin($tableB, $on)
+    public function rightJoin($tableB, $on, $parameters=[])
     {
-        $this->input['join'][] = ['RIGHT JOIN', $tableB, $on];
+        $this->input['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
         return $this;
     }
 }
