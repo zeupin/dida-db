@@ -627,22 +627,19 @@ class Builder
      */
     protected function clause_WHERE()
     {
-        if (!isset($this->input['where_built'])) {
-            $this->input['where_built'] = true;
-            $this->dictStatement['where'] = '';
-            $this->dictParameters['where'] = [];
-            return;
-        }
-
-        // already done
-        if ($this->input['where_built']) {
-            return;
-        }
-
         if (!isset($this->input['where'])) {
             $this->input['where_built'] = true;
             $this->dictStatement['where'] = '';
             $this->dictParameters['where'] = [];
+            return;
+        }
+
+        if (!isset($this->input['where_built'])) {
+            $this->input['where_built'] = false;
+        }
+
+        // already done
+        if ($this->input['where_built']) {
             return;
         }
 
