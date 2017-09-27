@@ -106,10 +106,12 @@ class Builder
             'join'               => $this->dictStatement['join'],
             'where'              => $this->dictStatement['where'],
             'groupby'            => $this->dictStatement['groupby'],
+            'having'             => $this->dictStatement['having'],
         ];
         $PARAMS = [
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where'],
+            'join'   => $this->dictParameters['join'],
+            'where'  => $this->dictParameters['where'],
+            'having' => $this->dictParameters['having'],
         ];
 
         return [
@@ -154,11 +156,13 @@ class Builder
             'join'    => $this->dictStatement['join'],
             'where'   => $this->dictStatement['where'],
             'groupby' => $this->dictStatement['groupby'],
+            'having'  => $this->dictStatement['having'],
         ];
         $PARAMS = [
-            'set'   => $this->dictParameters['set'],
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where'],
+            'set'    => $this->dictParameters['set'],
+            'join'   => $this->dictParameters['join'],
+            'where'  => $this->dictParameters['where'],
+            'having' => $this->dictParameters['having'],
         ];
 
         return [
@@ -178,10 +182,12 @@ class Builder
             'join'    => $this->dictStatement['join'],
             'where'   => $this->dictStatement['where'],
             'groupby' => $this->dictStatement['groupby'],
+            'having'  => $this->dictStatement['having'],
         ];
         $PARAMS = [
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where']
+            'join'   => $this->dictParameters['join'],
+            'where'  => $this->dictParameters['where'],
+            'having' => $this->dictParameters['having'],
         ];
 
         return [
@@ -235,7 +241,7 @@ class Builder
         $this->clause_JOIN();
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
-        //$this->clause_HAVING();
+        $this->clause_HAVING();
     }
 
 
@@ -650,7 +656,12 @@ class Builder
         }
 
         $conditions = $this->input['where'];
-        $logic = $this->input['where_logic'];
+
+        if (!array_key_exists("having_logic", $this->input)) {
+            $logic = 'AND';
+        } else {
+            $logic = $this->input['having_logic'];
+        }
 
         $parts = [];
         foreach ($conditions as $condition) {
@@ -825,5 +836,39 @@ class Builder
         }
 
         return $this->input["{$key}_built"];
+    }
+
+
+    /**
+     * Builds the HAVING clause.
+     */
+    protected function clause_HAVING()
+    {
+        if ($this->isBuilt('having')) {
+            return;
+        }
+
+        $conditions = $this->input['having'];
+        if (!array_key_exists("having_logic", $this->input)) {
+            $logic = 'AND';
+        } else {
+            $logic = $this->input['having_logic'];
+        }
+
+        $parts = [];
+        foreach ($conditions as $condition) {
+            $parts[] = $this->cond($condition);
+        }
+
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
+        if ($statement) {
+            $this->dictStatement['having'] = "\nHAVING\n    $statement";
+            $this->dictParameters['having'] = $parameters;
+        }
+
+        $this->input['having_built'] = true;
+        return;
     }
 }

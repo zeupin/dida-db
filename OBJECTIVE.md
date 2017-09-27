@@ -463,3 +463,35 @@ WHERE
 
 ## 32. 优化update、insert、delete时的表名子句，不加AS。
 
+## 33. `GROUP BY`
+
+## 34. `HAVING`
+
+```php
+$admin = $db->table('admin', 'a')
+    ->where('valid = 1')
+    ->groupBy(['name', 'age'])
+    ->having(['sum(age)', '>', 100])
+    ->having(['avg(age)', '>', 20])
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+SELECT
+    *
+FROM
+    zp_admin AS a
+WHERE
+    (valid = 1)
+GROUP BY
+    name, age
+HAVING
+    (sum(age) > ?)
+    AND (avg(age) > ?)
+    
+array (
+  0 => 100,
+  1 => 20,
+)
+```

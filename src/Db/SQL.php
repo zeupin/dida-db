@@ -360,4 +360,53 @@ class SQL
         $this->built = false;
         return $this;
     }
+
+
+    public function having($condition, $data = [])
+    {
+        if (is_string($condition)) {
+            if (substr($condition, 0, 1) !== '(') {
+                $condition = "($condition)";
+            }
+            $condition = [$condition, 'RAW', $data];
+        }
+
+        $this->input['having'][] = $condition;
+        $this->input['having_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function havingMany(array $conditions, $logic = 'AND')
+    {
+        $logic = strtoupper(trim($logic));
+
+        $cond = new \stdClass();
+        $cond->logic = $logic;
+        $cond->items = $conditions;
+
+        $this->input['having'][] = $cond;
+        $this->input['having_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function havingLogic($logic)
+    {
+        $logic = strtoupper(trim($logic));
+
+        if ($logic === $this->input['having_logic']) {
+            return $this;
+        }
+
+        $this->input['having_logic'] = $logic;
+        $this->input['having_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
 }
