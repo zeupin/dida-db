@@ -289,11 +289,6 @@ class Builder
 
     protected function clause_TABLE()
     {
-        // already done
-        if ($this->input['table_built']) {
-            return;
-        }
-
         // built, name, alias, prefix
         extract($this->input['table']);
 
@@ -316,7 +311,14 @@ class Builder
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
         /* dictStatement */
-        $this->dictStatement['table'] = $this->dict['table']['name_as_alias'];
+        switch ($this->input['verb']) {
+            case 'SELECT':
+                $this->dictStatement['table'] = $this->dict['table']['name_as_alias'];
+                break;
+            default :
+                $this->dictStatement['table'] = $this->dict['table']['name'];
+        }
+
         $this->input['table_built'] = true;
         return;
     }

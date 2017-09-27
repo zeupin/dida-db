@@ -460,3 +460,6 @@ SET
 WHERE
     (valid = 1)
 ```
+
+## 32. 优化update、insert、delete时的表名子句，不加AS。
+
