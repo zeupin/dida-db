@@ -127,7 +127,11 @@ Dida框架的主要目标是**快**，适度编码，加快运行速度，绝对
 
 ## 16. WHERE条件
 
-用 `where` 新增一个where条件。
+用 `where` 新增一个标准where条件。 `where([列表达式，运算，数据])`，参见 #17。
+
+可以链式调用where，生成多个条件。`->where(条件1)->where(条件2)->where(条件3)`
+
+可以直接设置字符串格式的条件。`where(字符串，参数数组)`
 
 ## 17. where条件(Condition)的数据格式
 
@@ -208,18 +212,29 @@ protected static $opertor_set = [
 
 注意：第三个参数`数据`必须是一个**参数数组**。
 
-## 18. whereLogic
+## 18. whereLogic()
 
 设置各个where条件间的逻辑关系
 
-## 19. whereMany
+## 19. whereMany()
 
-一次设置很多条件
+一次设置很多条件，`whereMany( 多个条件，逻辑 )`
 
 ```php
 $db->table('user', 'u')->whereMany([
     ['列表达式', '运算', '数据'],
     ['列表达式', '运算', '数据'],
     ['列表达式', '运算', '数据'],
-], 'OR')->...
+], 'AND')->...
+```
+
+## 20. find(数组)
+
+一个常见的使用场景是根据一个数组为条件，直接搜索出符合的记录，为此，设计了这个函数。
+
+```php
+->find([
+    'color' => 'red',
+    'brand' => 'Zeupin'
+])->...                    // (`color`='red') AND (`brand`='Zeupin')
 ```

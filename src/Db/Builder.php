@@ -15,8 +15,8 @@ class Builder
     protected $dict = [
         'table' => '',
     ];
-    protected $stmtdict = [];
-    protected $paramdict = [];
+    protected $dictStatement = [];
+    protected $dictParameters = [];
     protected $output = [
         'statement'  => '',
         'parameters' => [],
@@ -98,14 +98,14 @@ class Builder
 
         $tpl = [
             'SELECT ',
-            'select_column_list' => $this->stmtdict['select_column_list'],
+            'select_column_list' => $this->dictStatement['select_column_list'],
             ' FROM ',
-            'table'              => $this->stmtdict['table'],
-            'where'              => $this->stmtdict['where'],
+            'table'              => $this->dictStatement['table'],
+            'where'              => $this->dictStatement['where'],
         ];
         $params = [
-            'where' => $this->paramdict['where']
-            ];
+            'where' => $this->dictParameters['where']
+        ];
 
         return [
             'statement'  => implode('', $tpl),
@@ -119,7 +119,7 @@ class Builder
         if (!isset($this->input['select_column_list'])) {
             $this->input['select_column_list'] = [];
             $this->input['select_column_list_built'] = true;
-            $this->stmtdict['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
+            $this->dictStatement['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
             return;
         }
 
@@ -129,7 +129,7 @@ class Builder
 
         $columnlist = $this->input['select_column_list'];
         if (empty($columnlist)) {
-            $this->stmtdict['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
+            $this->dictStatement['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
             $this->input['select_column_list_built'] = true;
             return;
         }
@@ -170,8 +170,8 @@ class Builder
         $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
-        /* stmtdict */
-        $this->stmtdict['table'] = $this->dict['table']['name_as_alias'];
+        /* dictStatement */
+        $this->dictStatement['table'] = $this->dict['table']['name_as_alias'];
         $this->input['table_built'] = true;
         return;
     }
@@ -218,10 +218,20 @@ class Builder
             return $part;
         }
 
-        if (!is_array($condition)) {
-            throw new Exception("Invalid condition format");
+        if (is_array($condition)) {
+            return $this->condAsArray($condition);
         }
 
+        if (is_object($condition)) {
+            return $this->condAsObject($condition->logic, $condition->items);
+        }
+
+        throw new Exception("Invalid condition format");
+    }
+
+
+    protected function condAsArray($condition)
+    {
         // check condition is valid
         $cnt = count($condition);
         if ($cnt === 3) {
@@ -247,6 +257,27 @@ class Builder
         // calls the 'cond_*' function
         $method_name = 'cond_' . self::$opertor_set[$op];
         return $this->$method_name($column, $op, $data);
+    }
+
+
+    protected function condAsObject($logic, $conditions)
+    {
+        $parts = [];
+        foreach ($conditions as $condition) {
+            $part = $this->cond($condition);
+            $parts[] = $part;
+        }
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, $logic, $statement, $parameters);
+        if (count($conditions) > 1) {
+            $statement = "($statement)";
+        }
+
+        return [
+            'statement'  => "$statement",
+            'parameters' => $parameters,
+        ];
     }
 
 
@@ -360,7 +391,7 @@ class Builder
     {
         $column = $this->vsql($column);
         $part = [
-            'statement'  => "$column $op ? AND ?",
+            'statement'  => "($column $op ? AND ?)",
             'parameters' => $data,
         ];
         return $part;
@@ -431,8 +462,8 @@ class Builder
 
         if (!isset($this->input['where'])) {
             $this->input['where_built'] = true;
-            $this->stmtdict['where'] = '';
-            $this->paramdict['where'] = [];
+            $this->dictStatement['where'] = '';
+            $this->dictParameters['where'] = [];
             return;
         }
 
@@ -448,8 +479,8 @@ class Builder
         $parameters = [];
         $this->combineParts($parts, $logic, $statement, $parameters);
         if ($statement) {
-            $this->stmtdict['where'] = " WHERE $statement";
-            $this->paramdict['where'] = $parameters;
+            $this->dictStatement['where'] = " WHERE $statement";
+            $this->dictParameters['where'] = $parameters;
         }
 
         $this->input['where_built'] = true;

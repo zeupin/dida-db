@@ -147,23 +147,16 @@ class SQL
     }
 
 
-    public function whereMany($conditions, $logic = 'AND')
+    public function whereMany(array $conditions, $logic = 'AND')
     {
-        $this->input['where'] = $conditions;
-        $this->input['where_logic'] = $logic;
+        $logic = strtoupper(trim($logic));
+
+        $cond = new \stdClass();
+        $cond->logic = $logic;
+        $cond->items = $conditions;
+
+        $this->input['where'][] = $cond;
         $this->input['where_built'] = false;
-
-        return $this;
-    }
-
-
-    public function whereMatch(array $array)
-    {
-        $conditions = [];
-        foreach ($array as $key => $value) {
-            $conditions[] = [$key, '=', $value];
-        }
-        $this->whereMany($conditions);
 
         return $this;
     }
@@ -171,12 +164,26 @@ class SQL
 
     public function whereLogic($logic)
     {
+        $logic = strtoupper(trim($logic));
+
         if ($logic === $this->input['where_logic']) {
             return $this;
         }
 
         $this->input['where_logic'] = $logic;
         $this->input['where_built'] = false;
+
+        return $this;
+    }
+
+
+    public function find(array $array)
+    {
+        $conditions = [];
+        foreach ($array as $key => $value) {
+            $conditions[] = [$key, '=', $value];
+        }
+        $this->whereMany($conditions);
 
         return $this;
     }
