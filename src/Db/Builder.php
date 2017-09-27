@@ -105,6 +105,7 @@ class Builder
             'table'              => "\n    " . $this->dictStatement['table'],
             'join'               => $this->dictStatement['join'],
             'where'              => $this->dictStatement['where'],
+            'groupby'            => $this->dictStatement['groupby'],
         ];
         $PARAMS = [
             'join'  => $this->dictParameters['join'],
@@ -147,11 +148,12 @@ class Builder
 
         $TPL = [
             'UPDATE ',
-            'table' => "\n    " . $this->dictStatement['table'],
+            'table'   => "\n    " . $this->dictStatement['table'],
             "\nSET",
-            'set'   => "\n    " . $this->dictStatement['set'],
-            'join'  => $this->dictStatement['join'],
-            'where' => $this->dictStatement['where'],
+            'set'     => "\n    " . $this->dictStatement['set'],
+            'join'    => $this->dictStatement['join'],
+            'where'   => $this->dictStatement['where'],
+            'groupby' => $this->dictStatement['groupby'],
         ];
         $PARAMS = [
             'set'   => $this->dictParameters['set'],
@@ -172,9 +174,10 @@ class Builder
 
         $TPL = [
             'DELETE FROM ',
-            'table' => $this->dictStatement['table'],
-            'join'  => $this->dictStatement['join'],
-            'where' => $this->dictStatement['where'],
+            'table'   => $this->dictStatement['table'],
+            'join'    => $this->dictStatement['join'],
+            'where'   => $this->dictStatement['where'],
+            'groupby' => $this->dictStatement['groupby'],
         ];
         $PARAMS = [
             'join'  => $this->dictParameters['join'],
@@ -185,22 +188,6 @@ class Builder
             'statement'  => implode('', $TPL),
             'parameters' => $this->combineParameterArray($PARAMS),
         ];
-    }
-
-
-    protected function prepare_INSERT()
-    {
-        $this->clause_TABLE();
-        $this->clause_JOIN();
-
-        $record = &$this->input['record'];
-        $record = $this->pickItemsWithKey($record);
-        $columns = array_keys($record);
-        $values = array_values($record);
-
-        $this->dictStatement['insert_column_list'] = '(' . implode(', ', $columns) . ')';
-        $this->dictStatement['insert_values'] = $this->makeQuestionMarkList($columns, true);
-        $this->dictParameters['insert_values'] = $values;
     }
 
 
@@ -241,20 +228,51 @@ class Builder
     }
 
 
-    protected function prepare_DELETE()
-    {
-        $this->clause_TABLE();
-        $this->clause_JOIN();
-        $this->clause_WHERE();
-    }
-
-
     protected function prepare_SELECT()
     {
         $this->clause_TABLE();
         $this->clause_SELECT_COLUMN_LIST();
         $this->clause_JOIN();
         $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        //$this->clause_HAVING();
+    }
+
+
+    protected function prepare_INSERT()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+
+        $record = &$this->input['record'];
+        $record = $this->pickItemsWithKey($record);
+        $columns = array_keys($record);
+        $values = array_values($record);
+
+        $this->dictStatement['insert_column_list'] = '(' . implode(', ', $columns) . ')';
+        $this->dictStatement['insert_values'] = $this->makeQuestionMarkList($columns, true);
+        $this->dictParameters['insert_values'] = $values;
+    }
+
+
+    protected function prepare_UPDATE()
+    {
+        $this->clause_TABLE();
+        $this->clause_SET();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
+    }
+
+
+    protected function prepare_DELETE()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
     }
 
 
@@ -627,19 +645,7 @@ class Builder
      */
     protected function clause_WHERE()
     {
-        if (!isset($this->input['where'])) {
-            $this->input['where_built'] = true;
-            $this->dictStatement['where'] = '';
-            $this->dictParameters['where'] = [];
-            return;
-        }
-
-        if (!isset($this->input['where_built'])) {
-            $this->input['where_built'] = false;
-        }
-
-        // already done
-        if ($this->input['where_built']) {
+        if ($this->isBuilt('where')) {
             return;
         }
 
@@ -684,17 +690,12 @@ class Builder
     }
 
 
-    protected function prepare_UPDATE()
-    {
-        $this->clause_TABLE();
-        $this->clause_SET();
-        $this->clause_JOIN();
-        $this->clause_WHERE();
-    }
-
-
     protected function clause_SET()
     {
+        if ($this->isBuilt('set')) {
+            return;
+        }
+
         $set = $this->input['set'];
 
         $parts = [];
@@ -769,6 +770,10 @@ class Builder
 
     protected function clause_JOIN()
     {
+        if ($this->isBuilt('join')) {
+            return;
+        }
+
         $stmts = [];
         $params = [];
 
@@ -784,5 +789,41 @@ class Builder
         }
         $this->dictStatement["join"] = implode("", $stmts);
         $this->dictParameters['join'] = $this->combineParameterArray($params);
+        $this->input['join_built'] = true;
+    }
+
+
+    protected function clause_GROUP_BY()
+    {
+        if ($this->isBuilt('groupby')) {
+            return;
+        }
+
+        $columns = $this->input['groupby'];
+        $statement = implode(', ', $columns);
+        if ($statement) {
+            $this->dictStatement['groupby'] = "\nGROUP BY\n    $statement";
+        } else {
+            $this->dictStatement['groupby'] = '';
+        }
+
+        $this->input['groupby_built'] = true;
+        return;
+    }
+
+
+    protected function isBuilt($key)
+    {
+        if (!array_key_exists("{$key}_built", $this->input)) {
+            $this->input["{$key}_built"] = false;
+        }
+
+        if (!array_key_exists($key, $this->input)) {
+            $this->dictStatement[$key] = '';
+            $this->dictParameters[$key] = [];
+            $this->input["{$key}_built"] = true;
+        }
+
+        return $this->input["{$key}_built"];
     }
 }

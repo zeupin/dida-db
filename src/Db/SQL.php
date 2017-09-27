@@ -48,8 +48,6 @@ class SQL
         'prefix'      => '',
         'vprefix'     => '###_',
         'where_logic' => 'AND',
-        'join'        => [],
-        'where'       => [],
     ];
 
     /**
@@ -101,6 +99,7 @@ class SQL
 
         var_dump($this->input);
 
+        $this->built = true;
         return $this;
     }
 
@@ -111,8 +110,8 @@ class SQL
 
         $this->statement = $statement;
         $this->parameters = $parameters;
-        $this->built = true;
 
+        $this->built = true;
         return $this;
     }
 
@@ -127,8 +126,8 @@ class SQL
             'prefix' => $prefix,
         ];
         $this->input['table_built'] = false;
-        $this->built = false;
 
+        $this->built = false;
         return $this;
     }
 
@@ -145,6 +144,7 @@ class SQL
         $this->input['where'][] = $condition;
         $this->input['where_built'] = false;
 
+        $this->built = false;
         return $this;
     }
 
@@ -160,6 +160,7 @@ class SQL
         $this->input['where'][] = $cond;
         $this->input['where_built'] = false;
 
+        $this->built = false;
         return $this;
     }
 
@@ -175,6 +176,7 @@ class SQL
         $this->input['where_logic'] = $logic;
         $this->input['where_built'] = false;
 
+        $this->built = false;
         return $this;
     }
 
@@ -187,6 +189,7 @@ class SQL
         }
         $this->whereMany($conditions, $logic);
 
+        $this->built = false;
         return $this;
     }
 
@@ -194,11 +197,11 @@ class SQL
     public function select(array $columnlist = [])
     {
         $this->input['verb'] = 'SELECT';
+
         $this->input['select_column_list'] = $columnlist;
         $this->input['select_column_list_built'] = false;
 
         $this->built = false;
-
         return $this;
     }
 
@@ -206,6 +209,7 @@ class SQL
     public function delete()
     {
         $this->input['verb'] = 'DELETE';
+
         $this->built = false;
         return $this;
     }
@@ -225,6 +229,7 @@ class SQL
     public function update()
     {
         $this->input['verb'] = 'UPDATE';
+
         $this->built = false;
         return $this;
     }
@@ -235,7 +240,7 @@ class SQL
         if (!isset($this->input['set'])) {
             $this->input['set'] = [];
         }
-        $this->built = false;
+        $this->input['set_built'] = false;
     }
 
 
@@ -249,6 +254,7 @@ class SQL
             'value'  => $value,
         ];
 
+        $this->built = false;
         return $this;
     }
 
@@ -264,6 +270,7 @@ class SQL
             'parameters' => $parameters,
         ];
 
+        $this->built = false;
         return $this;
     }
 
@@ -282,6 +289,7 @@ class SQL
             'checkExistsInWhere' => $checkExistsInWhere,
         ];
 
+        $this->built = false;
         return $this;
     }
 
@@ -289,6 +297,9 @@ class SQL
     public function join($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['JOIN', $tableB, $on, $parameters];
+        $this->input['join_built'] = false;
+
+        $this->built = false;
         return $this;
     }
 
@@ -296,6 +307,9 @@ class SQL
     public function innerJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
+        $this->input['join_built'] = false;
+
+        $this->built = false;
         return $this;
     }
 
@@ -303,6 +317,9 @@ class SQL
     public function leftJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
+        $this->input['join_built'] = false;
+
+        $this->built = false;
         return $this;
     }
 
@@ -310,6 +327,9 @@ class SQL
     public function rightJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
+        $this->input['join_built'] = false;
+
+        $this->built = false;
         return $this;
     }
 
@@ -327,6 +347,17 @@ class SQL
             $this->setExpr($column, "$column + $value");
         }
 
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function groupBy(array $columns)
+    {
+        $this->input['groupby'] = $columns;
+        $this->input['groupby_built'] = false;
+
+        $this->built = false;
         return $this;
     }
 }
