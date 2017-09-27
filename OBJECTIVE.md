@@ -238,3 +238,42 @@ $db->table('user', 'u')->whereMany([
     'brand' => 'Zeupin'
 ])->...                    // (`color`='red') AND (`brand`='Zeupin')
 ```
+
+## 21. find(数据， 逻辑)
+
+```php
+$admin = $db->table('admin')
+    ->find([
+        'id'      => [1, 2, 3],
+        'company' => 'zeupin',
+    ], 'OR')
+    ->build();
+echo var_export($admin->statement, true) . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+```
+
+结果：
+```php
+SELECT * FROM zp_admin WHERE ((id IN (?, ?, ?)) OR (company = ?))
+
+array (
+  0 => 1,
+  1 => 2,
+  2 => 3,
+  3 => 'zeupin',
+)
+```
+
+## 22. select($columnlist = [])
+
+### 22.1 columnlist 参数
+
+标准的columnlist的参数格式如下：
+```php
+[
+    别名 => 列表达式，
+    别名 => 列表达式
+]
+```
+
+### 22.2 如果不设置columnlist参数，等效于 SELECT *。

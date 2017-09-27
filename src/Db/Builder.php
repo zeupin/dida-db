@@ -127,12 +127,38 @@ class Builder
             return;
         }
 
-        $columnlist = $this->input['select_column_list'];
+        $columnlist = &$this->input['select_column_list'];
         if (empty($columnlist)) {
             $this->dictStatement['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
             $this->input['select_column_list_built'] = true;
             return;
         }
+
+        $this->dictStatement['select_column_list'] = $this->combineColumnList($columnlist);
+        $this->input['select_column_list_built'] = true;
+        return;
+    }
+
+
+    /**
+     * @param array $columns ['alias'=>'column',]
+     */
+    protected function combineColumnList(array $columns, $table = null)
+    {
+        $array = [];
+        foreach ($columns as $alias => $column) {
+            if (is_string($table) && $table) {
+                $column = "$table.$column";
+            }
+
+            if (is_string($alias)) {
+                $array[] = "$column AS $alias";
+            } else {
+                $array[] = $column;
+            }
+        }
+
+        return implode(', ', $array);
     }
 
 
@@ -354,7 +380,7 @@ class Builder
         $column = $this->vsql($column);
         $marks = implode(', ', array_fill(0, count($data), '?'));
         $part = [
-            'statement'  => '($column $op ($marks))',
+            'statement'  => "($column $op ($marks))",
             'parameters' => array_values($data),
         ];
         return $part;
@@ -455,6 +481,13 @@ class Builder
      */
     protected function part_WHERE()
     {
+        if (!isset($this->input['where_built'])) {
+            $this->input['where_built'] = true;
+            $this->dictStatement['where'] = '';
+            $this->dictParameters['where'] = [];
+            return;
+        }
+
         // already done
         if ($this->input['where_built']) {
             return;

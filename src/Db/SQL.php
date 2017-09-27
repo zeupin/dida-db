@@ -177,14 +177,50 @@ class SQL
     }
 
 
-    public function find(array $array)
+    public function find(array $array, $logic = 'AND')
     {
         $conditions = [];
         foreach ($array as $key => $value) {
             $conditions[] = [$key, '=', $value];
         }
-        $this->whereMany($conditions);
+        $this->whereMany($conditions, $logic);
 
+        return $this;
+    }
+
+
+    public function select(array $columnlist = [])
+    {
+        $this->input['verb'] = 'SELECT';
+        $this->input['select_column_list'] = $columnlist;
+        $this->input['select_column_list_built'] = false;
+
+        $this->built = false;
+
+        return $this;
+    }
+
+
+    public function delete()
+    {
+        $this->input['verb'] = 'DELETE';
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function insert(array $data)
+    {
+        $this->input['verb'] = 'INSERT';
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function update(array $data)
+    {
+        $this->input['verb'] = 'UPDATE';
+        $this->built = false;
         return $this;
     }
 }
