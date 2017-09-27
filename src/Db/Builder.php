@@ -17,10 +17,6 @@ class Builder
     ];
     protected $dictStatement = [];
     protected $dictParameters = [];
-    protected $output = [
-        'statement'  => '',
-        'parameters' => [],
-    ];
 
     /*
      * All supported operater set.
@@ -86,35 +82,156 @@ class Builder
         switch ($this->input['verb']) {
             case 'SELECT':
                 return $this->build_SELECT();
+            case 'DELETE':
+                return $this->build_DELETE();
+            case 'INSERT':
+                return $this->build_INSERT();
+            case 'UPDATE':
+                return $this->build_UPDATE();
+            default :
+                throw new Exception("Invalid build verb: {$this->input['verb']}");
         }
+    }
+
+
+    protected function prepare_INSERT()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+
+        $record = &$this->input['record'];
+        $record = $this->pickItemsWithKey($record);
+        $columns = array_keys($record);
+        $values = array_values($record);
+
+        $this->dictStatement['insert_column_list'] = '(' . implode(', ', $columns) . ')';
+        $this->dictStatement['insert_values'] = $this->makeQuestionMarkList($columns, true);
+        $this->dictParameters['insert_values'] = $values;
+    }
+
+
+    /**
+     * Picks all items with a string key.
+     *
+     * @param array $array
+     */
+    protected function pickItemsWithKey(array $array)
+    {
+        $return = [];
+        foreach ($array as $key => $value) {
+            if (is_string($key)) {
+                $return[$key] = $value;
+            }
+        }
+        return $return;
+    }
+
+
+    /**
+     * Makes a question mark list with includes $count '?'.
+     *
+     * @param int|array $count
+     * @param boolean $braket
+     *
+     * @return string
+     */
+    protected function makeQuestionMarkList($count, $braket = false)
+    {
+        if (is_array($count)) {
+            $count = count($count);
+        }
+        $list = implode(', ', array_fill(0, $count, '?'));
+        if ($braket) {
+            return ($braket) ? "($list)" : $list;
+        }
+    }
+
+
+    protected function build_INSERT()
+    {
+        $this->prepare_INSERT();
+
+        /* INSERT statement template */
+        $TPL = [
+            'INSERT INTO ',
+            'table'   => $this->dictStatement['table'],
+            'columns' => $this->dictStatement['insert_column_list'],
+            ' VALUES ',
+            'values'  => $this->dictStatement['insert_values'],
+        ];
+        $PARAMS = [
+            'values' => $this->dictParameters['insert_values'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function prepare_DELETE()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+    }
+
+
+    protected function build_DELETE()
+    {
+        $this->prepare_DELETE();
+
+        $TPL = [
+            'DELETE FROM ',
+            'table' => $this->dictStatement['table'],
+            'join'  => $this->dictStatement['join'],
+            'where' => $this->dictStatement['where'],
+        ];
+        $PARAMS = [
+            'where' => $this->dictParameters['where']
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function prepare_SELECT()
+    {
+        $this->clause_TABLE();
+        $this->clause_SELECT_COLUMN_LIST();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
     }
 
 
     protected function build_SELECT()
     {
-        $this->part_TABLE();
-        $this->part_SELECT_COLUMN_LIST();
-        $this->part_WHERE();
+        $this->prepare_SELECT();
 
-        $tpl = [
-            'SELECT ',
-            'select_column_list' => $this->dictStatement['select_column_list'],
-            ' FROM ',
-            'table'              => $this->dictStatement['table'],
+        $TPL = [
+            'SELECT',
+            'select_column_list' => "\n    " . $this->dictStatement['select_column_list'],
+            "\nFROM",
+            'table'              => "\n    " . $this->dictStatement['table'],
+            'join'               => $this->dictStatement['join'],
             'where'              => $this->dictStatement['where'],
         ];
-        $params = [
+        $PARAMS = [
             'where' => $this->dictParameters['where']
         ];
 
         return [
-            'statement'  => implode('', $tpl),
-            'parameters' => $this->combineParameterArray($params),
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
         ];
     }
 
 
-    protected function part_SELECT_COLUMN_LIST()
+    protected function clause_SELECT_COLUMN_LIST()
     {
         if (!isset($this->input['select_column_list'])) {
             $this->input['select_column_list'] = [];
@@ -168,7 +285,7 @@ class Builder
     }
 
 
-    protected function part_TABLE()
+    protected function clause_TABLE()
     {
         // already done
         if ($this->input['table_built']) {
@@ -295,7 +412,7 @@ class Builder
         }
         $statement = '';
         $parameters = [];
-        $this->combineParts($parts, $logic, $statement, $parameters);
+        $this->combineParts($parts, " $logic ", $statement, $parameters);
         if (count($conditions) > 1) {
             $statement = "($statement)";
         }
@@ -479,7 +596,7 @@ class Builder
     /**
      * Builds the WHERE statement.
      */
-    protected function part_WHERE()
+    protected function clause_WHERE()
     {
         if (!isset($this->input['where_built'])) {
             $this->input['where_built'] = true;
@@ -510,9 +627,9 @@ class Builder
 
         $statement = '';
         $parameters = [];
-        $this->combineParts($parts, $logic, $statement, $parameters);
+        $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
         if ($statement) {
-            $this->dictStatement['where'] = " WHERE $statement";
+            $this->dictStatement['where'] = "\nWHERE\n    $statement";
             $this->dictParameters['where'] = $parameters;
         }
 
@@ -521,10 +638,10 @@ class Builder
     }
 
 
-    protected function combineParts($parts, $logic, &$statement, &$parameters)
+    protected function combineParts($parts, $glue, &$statement, &$parameters)
     {
         $statement_array = array_column($parts, 'statement');
-        $statement = implode(" $logic ", $statement_array);
+        $statement = implode($glue, $statement_array);
 
         $parameters_array = array_column($parts, 'parameters');
         $parameters = $this->combineParameterArray($parameters_array);
@@ -538,5 +655,126 @@ class Builder
             $ret = array_merge($ret, array_values($array));
         }
         return $ret;
+    }
+
+
+    protected function build_UPDATE()
+    {
+        $this->prepare_UPDATE();
+
+        $TPL = [
+            'UPDATE ',
+            'table' => "\n    " . $this->dictStatement['table'],
+            "\nSET",
+            'set'   => "\n    " . $this->dictStatement['set'],
+            'join'  => $this->dictStatement['join'],
+            'where' => $this->dictStatement['where'],
+        ];
+        $PARAMS = [
+            'set'   => $this->dictParameters['set'],
+            'where' => $this->dictParameters['where'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function prepare_UPDATE()
+    {
+        $this->clause_TABLE();
+        $this->clause_SET();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+    }
+
+
+    protected function clause_SET()
+    {
+        $set = $this->input['set'];
+
+        $parts = [];
+        foreach ($set as $item) {
+            switch ($item['type']) {
+                case 'value':
+                    $parts[] = $this->setValue($item);
+                    break;
+                case 'expr':
+                    $parts[] = $this->setExpr($item);
+                    break;
+                case 'from_table':
+                    $parts[] = $this->setFromTable($item);
+                    break;
+            }
+        }
+
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, ",\n    ", $statement, $parameters);
+
+        $this->dictStatement['set'] = $statement;
+        $this->dictParameters['set'] = $parameters;
+    }
+
+
+    protected function setValue($item)
+    {
+        extract($item);
+
+        return [
+            'statement'  => "$column = ?",
+            'parameters' => [$value],
+        ];
+    }
+
+
+    protected function setExpr($item)
+    {
+        extract($item);
+
+        return [
+            'statement'  => "$column = $expr",
+            'parameters' => $parameters,
+        ];
+    }
+
+
+    /**
+     * Set column from other table.
+     */
+    protected function setFromTable($item)
+    {
+        extract($item);
+        $tableB = $this->vsql($tableB);
+
+        $tableRef = $this->dict['table']['ref'];
+
+        $target = "(SELECT $tableB.$columnB FROM $tableB WHERE $tableRef.$colA = $tableB.$colB)";
+        $statement = "$column = $target";
+
+        if ($checkExistsInWhere) {
+            $this->input['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+        }
+
+        return [
+            'statement'  => $statement,
+            'parameters' => [],
+        ];
+    }
+
+
+    protected function clause_JOIN()
+    {
+        $parts = [];
+        $joins = $this->input['join'];
+        foreach ($joins as $join) {
+            list($jointype, $table, $on) = $join;
+            $table = $this->vsql($table);
+            $on = $this->vsql($on);
+            $parts[] = "\n$jointype {$table}\n    ON $on";
+        }
+        $this->dictStatement["join"] = implode("", $parts);
     }
 }

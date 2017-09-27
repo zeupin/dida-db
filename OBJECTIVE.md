@@ -252,7 +252,7 @@ echo var_export($admin->statement, true) . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
 ```
 
-结果：
+结果是：
 ```php
 SELECT * FROM zp_admin WHERE ((id IN (?, ?, ?)) OR (company = ?))
 
@@ -277,3 +277,163 @@ array (
 ```
 
 ### 22.2 如果不设置columnlist参数，等效于 SELECT *。
+
+## 23. delete()
+
+```php
+$admin = $db->table('admin')
+    ->delete()
+    ->build();
+echo var_export($admin->statement, true) . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+'DELETE FROM zp_admin'
+array()
+```
+
+## 24. delete() 带where条件
+
+```php
+$admin = $db->table('admin')
+    ->find([
+        'id'      => [1, 2, 3],
+        'company' => 'zeupin',
+    ])
+    ->delete()
+    ->build();
+echo var_export($admin->statement, true) . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+'DELETE FROM zp_admin WHERE ((id IN (?, ?, ?)) AND (brand = ?))'
+array (
+  0 => 1,
+  1 => 2,
+  2 => 3,
+  3 => 'zeupin',
+)
+```
+
+## 25. insert($record)
+
+插入一条记录
+
+```php
+$admin = $db->table('admin')
+    ->insert([
+        'name'  => 'James Band',
+        'level' => 40,
+    ])
+    ->build();
+echo var_export($admin->statement, true) . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+'INSERT INTO zp_admin(name, level) VALUES (?, ?)'
+array (
+  0 => 'James Band',
+  1 => 40,
+)
+```
+
+## 26. update()
+
+## 27. setValue(字段，值)
+
+## 28. setExpr(字段，表达式，参数数组)
+
+## 29. setFromTable(字段，表B，目标列B，表A的字段A，表B的字段B，是否检查表B的记录存在)
+
+```php
+$admin = $db->table('admin')
+    ->setValue('name', 'Me')
+    ->setExpr('age', 'age + ?', [1])
+    ->setFromTable('fullname', '###_admin_info', 'fullname', 'id', 'id', true)
+    ->find([
+        'id'      => [1, 2, 3],
+        'company' => 'zeupin',
+    ])
+    ->where('valid = 1')
+    ->update()
+    ->build();
+echo var_export($admin->statement, true) . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+'UPDATE
+    zp_admin
+SET
+    name = ?,
+    age = age + ?,
+    fullname = (SELECT zp_admin_info.fullname FROM zp_admin_info WHERE zp_admin.id = zp_admin_info.id)
+WHERE
+    ((id IN (?, ?, ?)) AND (company = ?))
+    AND (valid = 1)
+    AND (EXISTS (SELECT zp_admin_info.fullname FROM zp_admin_info WHERE zp_admin.id = zp_admin_info.id))'
+
+array (
+  0 => 'Me',
+  1 => 1,
+  2 => 1,
+  3 => 2,
+  4 => 3,
+  5 => 'zeupin',
+)
+
+如果“是否检查表B的记录存在”设置为了false，则结果为：
+'UPDATE
+    zp_admin
+SET
+    name = ?,
+    age = age + ?,
+    fullname = (SELECT zp_admin_info.fullname FROM zp_admin_info WHERE zp_admin.id = zp_admin_info.id)
+WHERE
+    ((id IN (?, ?, ?)) AND (company = ?))
+    AND (valid = 1)'
+上面的WHERE条件中的Exists那行就没有了。
+```
+
+## 30. JOIN
+
+四种JOIN：`JOIN`，`INNER JOIN`，`LEFT JOIN`， `RIGHT JOIN`
+
+`join(表，on条件)`
+
+```php
+$admin = $db->table('admin', 'a')
+    ->setValue('name', 'Me')
+    ->setExpr('age', 'age + ?', [1])
+    ->setFromTable('fullname', '###_admin_info', 'fullname', 'id', 'id', false)
+    ->join('###_admin_info AS b', 'a.id=b.id')
+    ->leftJoin('###_admin_info AS c', 'a.id=c.id')
+    ->find([
+        'id'      => [1, 2, 3],
+        'company' => 'zeupin',
+    ])
+    ->where('valid = 1')
+    ->select()
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+SELECT
+    *
+FROM
+    zp_admin AS a
+JOIN zp_admin_info AS b
+    ON a.id=b.id
+LEFT JOIN zp_admin_info AS c
+    ON a.id=c.id
+WHERE
+    ((id IN (?, ?, ?)) AND (company = ?))
+    AND (valid = 1)
+
+array (
+  0 => 1,
+  1 => 2,
+  2 => 3,
+  3 => 'zeupin',
+)
+```

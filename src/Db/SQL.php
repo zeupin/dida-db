@@ -48,6 +48,8 @@ class SQL
         'prefix'      => '',
         'vprefix'     => '###_',
         'where_logic' => 'AND',
+        'join'        => [],
+        'where'       => [],
     ];
 
     /**
@@ -209,18 +211,105 @@ class SQL
     }
 
 
-    public function insert(array $data)
+    public function insert(array $record)
     {
         $this->input['verb'] = 'INSERT';
+
+        $this->input['record'] = $record;
+
         $this->built = false;
         return $this;
     }
 
 
-    public function update(array $data)
+    protected function set_Begin()
+    {
+        if (!isset($this->input['set'])) {
+            $this->input['set'] = [];
+        }
+        $this->built = false;
+    }
+
+
+    public function update()
     {
         $this->input['verb'] = 'UPDATE';
         $this->built = false;
+        return $this;
+    }
+
+
+    public function setValue($column, $value)
+    {
+        $this->set_Begin();
+
+        $this->input['set'][$column] = [
+            'type'   => 'value',
+            'column' => $column,
+            'value'  => $value,
+        ];
+
+        return $this;
+    }
+
+
+    public function setExpr($column, $expr, $parameters = [])
+    {
+        $this->set_Begin();
+
+        $this->input['set'][$column] = [
+            'type'       => 'expr',
+            'column'     => $column,
+            'expr'       => $expr,
+            'parameters' => $parameters,
+        ];
+
+        return $this;
+    }
+
+
+    public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
+    {
+        $this->set_Begin();
+
+        $this->input['set'][$column] = [
+            'type'               => 'from_table',
+            'column'             => $column,
+            'tableB'             => $tableB,
+            'columnB'            => $columnB,
+            'colA'               => $colA,
+            'colB'               => $colB,
+            'checkExistsInWhere' => $checkExistsInWhere,
+        ];
+
+        return $this;
+    }
+
+
+    public function join($tableB, $on)
+    {
+        $this->input['join'][] = ['JOIN', $tableB, $on];
+        return $this;
+    }
+
+
+    public function innerJoin($tableB, $on)
+    {
+        $this->input['join'][] = ['INNER JOIN', $tableB, $on];
+        return $this;
+    }
+
+
+    public function leftJoin($tableB, $on)
+    {
+        $this->input['join'][] = ['LEFT JOIN', $tableB, $on];
+        return $this;
+    }
+
+
+    public function rightJoin($tableB, $on)
+    {
+        $this->input['join'][] = ['RIGHT JOIN', $tableB, $on];
         return $this;
     }
 }
