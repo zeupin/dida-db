@@ -117,8 +117,109 @@ $db->table('user', 'u');
 
 ## 14. SQL类只负责往设置各种指令，具体building工作全部给Builder去干。
 
-## 15. 去除自动quote表名和列名的功能。
+## 15. 去除自动转义表名和列名的功能。
 
 感觉这个功能非常鸡肋，如果觉得会和SQL关键字有冲突的话，完全可以自己去quote表名/列名。参见 #9
 
+因为不同数据库的转义处理不一样，仅仅为了转义的要求，而将Db拆分成MysqlDb，SqliteDb，SqlsrvDb等等，增加了复杂度不说，生成的SQL代码看上去也很紊乱，完全脱离了框架初衷，有过度编程的感觉。
+
+Dida框架的主要目标是**快**，适度编码，加快运行速度，绝对是考虑的要点。
+
 ## 16. WHERE条件
+
+用 `where` 新增一个where条件。
+
+## 17. where条件(Condition)的数据格式
+
+where条件的标准格式是： `[列表达式，运算符，数据]`，如：`['id', '=', 2]`。
+
+### 17.1 条件中的列表达式
+
+对列表达式，会进行vsql处理，替换掉其中的 `###_` 表前缀。
+
+注意：列表式不会自动转义，需要自己进行，参见 #15。
+```
+比如对Mysql，一般列名用 "name"，特殊情况下如果需要的话，你可以自己转义成 "`name`"。
+```
+
+### 17.2 条件中的数据个数
+
+有些运算符可没有上述的"数据"，比如 `ISNULL`运算，如：`['name', 'isnull']`。
+
+还有些运算符可以支持2个数据，比如`BETWEEN`运算，如：`['age', 'between', 20, 40]`。
+
+### 17.3 支持的运算符
+
+```php
+/*
+ * All supported operater set.
+ */
+protected static $opertor_set = [
+    /* Raw SQL */
+    'RAW'         => 'RAW',
+    /* equal */
+    'EQ'          => 'EQ',
+    '='           => 'EQ',
+    '=='          => 'EQ',
+    /* not equal */
+    'NEQ'         => 'NEQ',
+    '<>'          => 'NEQ',
+    '!='          => 'NEQ',
+    /* <,>,<=,>= */
+    'GT'          => 'GT',
+    '>'           => 'GT',
+    'EGT'         => 'EGT',
+    '>='          => 'EGT',
+    'LT'          => 'LT',
+    '<'           => 'LT',
+    'ELT'         => 'ELT',
+    '<='          => 'ELT',
+    /* LIKE */
+    'LIKE'        => 'LIKE',
+    'NOT LIKE'    => 'NOTLIKE',
+    'NOTLIKE'     => 'NOTLIKE',
+    /* IN */
+    'IN'          => 'IN',
+    'NOT IN'      => 'NOTIN',
+    'NOTIN'       => 'NOTIN',
+    /* BETWEEN */
+    'BETWEEN'     => 'BETWEEN',
+    'NOT BETWEEN' => 'NOTBETWEEN',
+    'NOTBETWEEN'  => 'NOTBETWEEN',
+    /* EXISTS */
+    'EXISTS'      => 'EXISTS',
+    'NOT EXISTS'  => 'NOTEXISTS',
+    'NOTEXISTS'   => 'NOTEXISTS',
+    /* NULL */
+    'ISNULL'      => 'ISNULL',
+    'NULL'        => 'ISNULL',
+    'ISNOTNULL'   => 'ISNOTNULL',
+    'IS NOT NULL' => 'ISNOTNULL',
+    'NOTNULL'     => 'ISNOTNULL',
+    'NOT NULL'    => 'ISNOTNULL',
+];
+```
+
+### 17.4 RAW
+
+`[列表达式，'RAW'，数据]`
+
+如果有一个复杂的条件运算，可以用`RAW`运算符来处理，框架会把条件中的`列表达式`部分原样保留(相当于statement部分)，同时把`数据`作为表达式的参数数组（相当于parameters部分）。
+
+注意：第三个参数`数据`必须是一个**参数数组**。
+
+## 18. whereLogic
+
+设置各个where条件间的逻辑关系
+
+## 19. whereMany
+
+一次设置很多条件
+
+```php
+$db->table('user', 'u')->whereMany([
+    ['列表达式', '运算', '数据'],
+    ['列表达式', '运算', '数据'],
+    ['列表达式', '运算', '数据'],
+], 'OR')->...
+```
