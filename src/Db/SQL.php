@@ -222,20 +222,20 @@ class SQL
     }
 
 
+    public function update()
+    {
+        $this->input['verb'] = 'UPDATE';
+        $this->built = false;
+        return $this;
+    }
+
+
     protected function set_Begin()
     {
         if (!isset($this->input['set'])) {
             $this->input['set'] = [];
         }
         $this->built = false;
-    }
-
-
-    public function update()
-    {
-        $this->input['verb'] = 'UPDATE';
-        $this->built = false;
-        return $this;
     }
 
 
