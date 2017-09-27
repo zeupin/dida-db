@@ -94,6 +94,100 @@ class Builder
     }
 
 
+    protected function build_SELECT()
+    {
+        $this->prepare_SELECT();
+
+        $TPL = [
+            'SELECT',
+            'select_column_list' => "\n    " . $this->dictStatement['select_column_list'],
+            "\nFROM",
+            'table'              => "\n    " . $this->dictStatement['table'],
+            'join'               => $this->dictStatement['join'],
+            'where'              => $this->dictStatement['where'],
+        ];
+        $PARAMS = [
+            'join'  => $this->dictParameters['join'],
+            'where' => $this->dictParameters['where'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function build_INSERT()
+    {
+        $this->prepare_INSERT();
+
+        /* INSERT statement template */
+        $TPL = [
+            'INSERT INTO ',
+            'table'   => $this->dictStatement['table'],
+            'columns' => $this->dictStatement['insert_column_list'],
+            ' VALUES ',
+            'values'  => $this->dictStatement['insert_values'],
+        ];
+        $PARAMS = [
+            'values' => $this->dictParameters['insert_values'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function build_UPDATE()
+    {
+        $this->prepare_UPDATE();
+
+        $TPL = [
+            'UPDATE ',
+            'table' => "\n    " . $this->dictStatement['table'],
+            "\nSET",
+            'set'   => "\n    " . $this->dictStatement['set'],
+            'join'  => $this->dictStatement['join'],
+            'where' => $this->dictStatement['where'],
+        ];
+        $PARAMS = [
+            'set'   => $this->dictParameters['set'],
+            'join'  => $this->dictParameters['join'],
+            'where' => $this->dictParameters['where'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
+    protected function build_DELETE()
+    {
+        $this->prepare_DELETE();
+
+        $TPL = [
+            'DELETE FROM ',
+            'table' => $this->dictStatement['table'],
+            'join'  => $this->dictStatement['join'],
+            'where' => $this->dictStatement['where'],
+        ];
+        $PARAMS = [
+            'join'  => $this->dictParameters['join'],
+            'where' => $this->dictParameters['where']
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
+
+
     protected function prepare_INSERT()
     {
         $this->clause_TABLE();
@@ -147,56 +241,11 @@ class Builder
     }
 
 
-    protected function build_INSERT()
-    {
-        $this->prepare_INSERT();
-
-        /* INSERT statement template */
-        $TPL = [
-            'INSERT INTO ',
-            'table'   => $this->dictStatement['table'],
-            'columns' => $this->dictStatement['insert_column_list'],
-            ' VALUES ',
-            'values'  => $this->dictStatement['insert_values'],
-        ];
-        $PARAMS = [
-            'values' => $this->dictParameters['insert_values'],
-        ];
-
-        return [
-            'statement'  => implode('', $TPL),
-            'parameters' => $this->combineParameterArray($PARAMS),
-        ];
-    }
-
-
     protected function prepare_DELETE()
     {
         $this->clause_TABLE();
         $this->clause_JOIN();
         $this->clause_WHERE();
-    }
-
-
-    protected function build_DELETE()
-    {
-        $this->prepare_DELETE();
-
-        $TPL = [
-            'DELETE FROM ',
-            'table' => $this->dictStatement['table'],
-            'join'  => $this->dictStatement['join'],
-            'where' => $this->dictStatement['where'],
-        ];
-        $PARAMS = [
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where']
-        ];
-
-        return [
-            'statement'  => implode('', $TPL),
-            'parameters' => $this->combineParameterArray($PARAMS),
-        ];
     }
 
 
@@ -206,30 +255,6 @@ class Builder
         $this->clause_SELECT_COLUMN_LIST();
         $this->clause_JOIN();
         $this->clause_WHERE();
-    }
-
-
-    protected function build_SELECT()
-    {
-        $this->prepare_SELECT();
-
-        $TPL = [
-            'SELECT',
-            'select_column_list' => "\n    " . $this->dictStatement['select_column_list'],
-            "\nFROM",
-            'table'              => "\n    " . $this->dictStatement['table'],
-            'join'               => $this->dictStatement['join'],
-            'where'              => $this->dictStatement['where'],
-        ];
-        $PARAMS = [
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where'],
-        ];
-
-        return [
-            'statement'  => implode('', $TPL),
-            'parameters' => $this->combineParameterArray($PARAMS),
-        ];
     }
 
 
@@ -659,31 +684,6 @@ class Builder
             $ret = array_merge($ret, array_values($array));
         }
         return $ret;
-    }
-
-
-    protected function build_UPDATE()
-    {
-        $this->prepare_UPDATE();
-
-        $TPL = [
-            'UPDATE ',
-            'table' => "\n    " . $this->dictStatement['table'],
-            "\nSET",
-            'set'   => "\n    " . $this->dictStatement['set'],
-            'join'  => $this->dictStatement['join'],
-            'where' => $this->dictStatement['where'],
-        ];
-        $PARAMS = [
-            'set'   => $this->dictParameters['set'],
-            'join'  => $this->dictParameters['join'],
-            'where' => $this->dictParameters['where'],
-        ];
-
-        return [
-            'statement'  => implode('', $TPL),
-            'parameters' => $this->combineParameterArray($PARAMS),
-        ];
     }
 
 
