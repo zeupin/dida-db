@@ -286,30 +286,47 @@ class SQL
     }
 
 
-    public function join($tableB, $on, $parameters=[])
+    public function join($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function innerJoin($tableB, $on, $parameters=[])
+    public function innerJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function leftJoin($tableB, $on, $parameters=[])
+    public function leftJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
         return $this;
     }
 
 
-    public function rightJoin($tableB, $on, $parameters=[])
+    public function rightJoin($tableB, $on, $parameters = [])
     {
         $this->input['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
+        return $this;
+    }
+
+
+    /**
+     * @param string $column
+     * @param mixed $value
+     */
+    public function inc($column, $value = 1)
+    {
+        if ($value < 0) {
+            $value = abs($value);
+            $this->setExpr($column, "$column - $value");
+        } else {
+            $this->setExpr($column, "$column + $value");
+        }
+
         return $this;
     }
 }

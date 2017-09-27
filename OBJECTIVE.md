@@ -438,3 +438,25 @@ array (
   4 => 'zeupin',
 )
 ```
+
+## 31. inc(列名，值)
+
+把指定的列自增一个值
+
+```php
+$admin = $db->table('admin', 'a')
+    ->where('valid = 1')
+    ->inc('age')
+    ->update()
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+
+结果是：
+UPDATE
+    zp_admin AS a
+SET
+    age = age + 1
+WHERE
+    (valid = 1)
+```
