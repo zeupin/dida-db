@@ -66,6 +66,11 @@ class Builder
         'NOT NULL'    => 'ISNOTNULL',
     ];
 
+    /**
+     * Leading spacing
+     */
+    const LEADING_SPACING = '\n    ';
+
 
     /**
      * Builds.
@@ -100,6 +105,7 @@ class Builder
 
         $TPL = [
             'SELECT',
+            'distinct'           => $this->dictStatement['distinct'],
             'select_column_list' => "\n    " . $this->dictStatement['select_column_list'],
             "\nFROM",
             'table'              => "\n    " . $this->dictStatement['table'],
@@ -107,6 +113,7 @@ class Builder
             'where'              => $this->dictStatement['where'],
             'groupby'            => $this->dictStatement['groupby'],
             'having'             => $this->dictStatement['having'],
+            'orderby'            => $this->dictStatement['orderby'],
         ];
         $PARAMS = [
             'join'   => $this->dictParameters['join'],
@@ -157,6 +164,7 @@ class Builder
             'where'   => $this->dictStatement['where'],
             'groupby' => $this->dictStatement['groupby'],
             'having'  => $this->dictStatement['having'],
+            'orderby' => $this->dictStatement['orderby'],
         ];
         $PARAMS = [
             'set'    => $this->dictParameters['set'],
@@ -183,6 +191,7 @@ class Builder
             'where'   => $this->dictStatement['where'],
             'groupby' => $this->dictStatement['groupby'],
             'having'  => $this->dictStatement['having'],
+            'orderby' => $this->dictStatement['orderby'],
         ];
         $PARAMS = [
             'join'   => $this->dictParameters['join'],
@@ -237,11 +246,13 @@ class Builder
     protected function prepare_SELECT()
     {
         $this->clause_TABLE();
+        $this->clause_DISTINCT();
         $this->clause_SELECT_COLUMN_LIST();
         $this->clause_JOIN();
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
+        $this->clause_ORDER_BY();
     }
 
 
@@ -249,6 +260,9 @@ class Builder
     {
         $this->clause_TABLE();
         $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
 
         $record = &$this->input['record'];
         $record = $this->pickItemsWithKey($record);
@@ -269,6 +283,7 @@ class Builder
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
+        $this->clause_ORDER_BY();
     }
 
 
@@ -279,6 +294,7 @@ class Builder
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
+        $this->clause_ORDER_BY();
     }
 
 
@@ -870,5 +886,86 @@ class Builder
 
         $this->input['having_built'] = true;
         return;
+    }
+
+
+    protected function clause_DISTINCT()
+    {
+        if ($this->isBuilt('distinct')) {
+            return;
+        }
+
+        $flag = $this->input['distinct'];
+        if ($flag) {
+            $this->dictStatement['distinct'] = "\n    DISTINCT";
+        } else {
+            $this->dictStatement['distinct'] = '';
+        }
+
+        $this->input['distinct_built'] = true;
+        return;
+    }
+
+
+    protected function clause_ORDER_BY()
+    {
+        if ($this->isBuilt('orderby')) {
+            return;
+        }
+
+        $array = [];
+        $orders = $this->input['orderby'];
+        foreach ($orders as $order) {
+            if (is_string($order)) {
+                $array[] = $this->processOrder($order);
+            } elseif (is_array($order)) {
+                foreach ($order as $key => $value) {
+                    if (is_int($key)) {
+                        $array[] = $this->processOrder($value);
+                    } else {
+                        $key = $this->vsql($key);
+                        $value = strtoupper(trim($value));
+                        if ($value === 'ASC' || $value === 'DESC') {
+                            $array[] = "$key $value";
+                        } else {
+                            $array[] = $key;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (count($array)) {
+            $this->dictStatement['orderby'] = "\nORDER BY\n    " . implode(', ', $array);
+        } else {
+            $this->dictStatement['orderby'] = '';
+        }
+        $this->input['orderby_built'];
+    }
+
+
+    protected function processOrder($string)
+    {
+        $search = [
+            '/\s{1,}asc$/i',
+            '/\s{1,}desc$/i'
+        ];
+        $replace = [
+            ' ASC',
+            ' DESC'
+        ];
+
+        $return = [];
+        $string = $this->vsql($string);
+        $array = explode(',', $string);
+        foreach ($array as $item) {
+            $item = trim($item);
+            if ($item) {
+                $item = preg_replace($search, $replace, $item);
+                $return[] = $item;
+            }
+        }
+
+        return implode(', ', $return);
     }
 }

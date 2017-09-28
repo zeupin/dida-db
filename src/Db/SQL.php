@@ -409,4 +409,28 @@ class SQL
         $this->built = false;
         return $this;
     }
+
+
+    public function distinct($distinct = true)
+    {
+        $this->input['distinct'] = $distinct;
+        $this->input['distinct_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function orderBy($columns)
+    {
+        if (!isset($this->input['orderby'])) {
+            $this->input['orderby'] = [];
+        }
+
+        $this->input['orderby'][] = $columns;
+        $this->input['orderby_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
 }

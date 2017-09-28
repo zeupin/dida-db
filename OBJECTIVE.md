@@ -286,8 +286,10 @@ $admin = $db->table('admin')
     ->build();
 echo var_export($admin->statement, true) . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 'DELETE FROM zp_admin'
 array()
 ```
@@ -304,8 +306,10 @@ $admin = $db->table('admin')
     ->build();
 echo var_export($admin->statement, true) . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 'DELETE FROM zp_admin WHERE ((id IN (?, ?, ?)) AND (brand = ?))'
 array (
   0 => 1,
@@ -328,8 +332,10 @@ $admin = $db->table('admin')
     ->build();
 echo var_export($admin->statement, true) . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 'INSERT INTO zp_admin(name, level) VALUES (?, ?)'
 array (
   0 => 'James Band',
@@ -359,8 +365,10 @@ $admin = $db->table('admin')
     ->build();
 echo var_export($admin->statement, true) . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 'UPDATE
     zp_admin
 SET
@@ -416,8 +424,10 @@ $admin = $db->table('admin', 'a')
     ->build();
 echo $admin->statement . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 SELECT
     *
 FROM
@@ -451,8 +461,10 @@ $admin = $db->table('admin', 'a')
     ->build();
 echo $admin->statement . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 UPDATE
     zp_admin AS a
 SET
@@ -476,8 +488,10 @@ $admin = $db->table('admin', 'a')
     ->build();
 echo $admin->statement . PHP_EOL;
 echo var_export($admin->parameters, true) . PHP_EOL;
+```
 
 结果是：
+```php
 SELECT
     *
 FROM
@@ -495,3 +509,53 @@ array (
   1 => 20,
 )
 ```
+
+## 35. distinct
+
+```php
+$admin = $db->table('admin', 'a')
+    ->distinct()
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+```
+
+结果是：
+```php
+SELECT
+    DISTINCT
+    *
+FROM
+    zp_admin AS a
+```
+
+## 36. count()
+
+## 37. orderBy($columns)
+
+设置order by子句，允许多次链式调用。
+
+参数 `$columns` 可以为如下格式：
+* 数组：格式为 `[列名=>asc/desc/空串, 列名, '列名 DESC']`
+* 字符串：列名 DESC, 列名, 列名 DESC （以逗号分隔的字符串）
+
+```php
+$admin = $db->table('admin', 'a')
+    ->orderBy('id desc, name ,###_admin.name DESC, age asc, ')
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+```
+
+结果是：
+```php
+SELECT
+    *
+FROM
+    zp_admin AS a
+ORDER BY
+    id DESC, name, zp_admin.name DESC, age ASC
+```
+
+## 38. limit
+
