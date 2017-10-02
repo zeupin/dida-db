@@ -7,11 +7,11 @@
 namespace Dida\Db;
 
 /**
- * Builder
+ * Builds an SQL statement accoding from the given $storeage[] demands.
  */
 class Builder
 {
-    protected $input = [];
+    protected $storage = [];
 
     /**
      * Stores some temporary variables.
@@ -91,18 +91,18 @@ class Builder
 
 
     /**
-     * Builds the final SQL statement from $input array.
+     * Builds the final SQL statement from $storage array.
      *
-     * @param array $input
+     * @param array $storage
      */
-    public function build(&$input)
+    public function build(&$storage)
     {
         $this->done = null;
 
-        $this->input = &$input;
+        $this->storage = &$storage;
         $this->output = [];
 
-        switch ($this->input['verb']) {
+        switch ($this->storage['verb']) {
             case 'SELECT':
                 return $this->build_SELECT();
             case 'DELETE':
@@ -112,7 +112,7 @@ class Builder
             case 'UPDATE':
                 return $this->build_UPDATE();
             default :
-                throw new Exception("Invalid build verb: {$this->input['verb']}");
+                throw new Exception("Invalid build verb: {$this->storage['verb']}");
         }
     }
 
@@ -291,7 +291,7 @@ class Builder
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
 
-        $record = &$this->input['record'];
+        $record = &$this->storage['record'];
         $record = $this->pickItemsWithKey($record);
         $columns = array_keys($record);
         $values = array_values($record);
@@ -352,12 +352,12 @@ class Builder
 
     protected function clause_SELECT_COLUMN_LIST()
     {
-        if (!isset($this->input['columnlist'])) {
+        if (!isset($this->storage['columnlist'])) {
             $this->dict['columnlist'] = $this->process_SelectColumnList(null);
             return;
         }
 
-        $columns = $this->input['columnlist'];
+        $columns = $this->storage['columnlist'];
         $this->dict['columnlist'] = $this->process_SelectColumnList($columns);
     }
 
@@ -382,10 +382,10 @@ class Builder
     protected function clause_TABLE()
     {
         // built, name, alias, prefix
-        extract($this->input['table']);
+        extract($this->storage['table']);
 
         if (!is_string($prefix)) {
-            $prefix = $this->input['prefix'];
+            $prefix = $this->storage['prefix'];
         }
 
         $name = $prefix . $name;
@@ -403,7 +403,7 @@ class Builder
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
         /* ST */
-        switch ($this->input['verb']) {
+        switch ($this->storage['verb']) {
             case 'SELECT':
                 $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
@@ -411,7 +411,7 @@ class Builder
                 $this->ST['table'] = $this->dict['table']['name'];
         }
 
-        $this->input['table_built'] = true;
+        $this->storage['table_built'] = true;
         return;
     }
 
@@ -437,8 +437,8 @@ class Builder
      */
     protected function vsql($vsql)
     {
-        $prefix = $this->input['prefix'];
-        $vprefix = $this->input['vprefix'];
+        $prefix = $this->storage['prefix'];
+        $vprefix = $this->storage['vprefix'];
         if ($vprefix) {
             return str_replace($vprefix, $prefix, $vsql);
         } else {
@@ -701,14 +701,14 @@ class Builder
         if (!$this->has('where')) {
             $this->ST['where'] = '';
             $this->PA['where'] = [];
-            $this->input['where_built'] = true;
+            $this->storage['where_built'] = true;
             return;
         }
 
-        $conditions = $this->input['where'];
+        $conditions = $this->storage['where'];
 
         if ($this->has('where_logic')) {
-            $logic = $this->input['where_logic'];
+            $logic = $this->storage['where_logic'];
         } else {
             $logic = 'AND';
         }
@@ -726,7 +726,7 @@ class Builder
             $this->PA['where'] = $parameters;
         }
 
-        $this->input['where_built'] = true;
+        $this->storage['where_built'] = true;
         return;
     }
 
@@ -757,7 +757,7 @@ class Builder
             return;
         }
 
-        $set = $this->input['set'];
+        $set = $this->storage['set'];
 
         $parts = [];
         foreach ($set as $item) {
@@ -819,7 +819,7 @@ class Builder
         $statement = "$column = $target";
 
         if ($checkExistsInWhere) {
-            $this->input['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+            $this->storage['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
         }
 
         return [
@@ -838,14 +838,14 @@ class Builder
         if (!$this->has('join')) {
             $this->ST['join'] = '';
             $this->PA['join'] = [];
-            $this->input['join_built'] = true;
+            $this->storage['join_built'] = true;
             return;
         }
 
         $stmts = [];
         $params = [];
 
-        $joins = $this->input['join'];
+        $joins = $this->storage['join'];
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
@@ -857,7 +857,7 @@ class Builder
         }
         $this->ST["join"] = implode("", $stmts);
         $this->PA['join'] = $this->combineParameterArray($params);
-        $this->input['join_built'] = true;
+        $this->storage['join_built'] = true;
     }
 
 
@@ -869,11 +869,11 @@ class Builder
 
         if (!$this->has('groupby')) {
             $this->ST['groupby'] = '';
-            $this->input['groupby_built'] = true;
+            $this->storage['groupby_built'] = true;
             return;
         }
 
-        $columns = $this->input['groupby'];
+        $columns = $this->storage['groupby'];
         $columnlist = $this->process_SelectColumnList($columns);
 
         if ($columnlist) {
@@ -882,21 +882,21 @@ class Builder
             $this->ST['groupby'] = '';
         }
 
-        $this->input['groupby_built'] = true;
+        $this->storage['groupby_built'] = true;
         return;
     }
 
 
     protected function has($key)
     {
-        return array_key_exists($key, $this->input);
+        return array_key_exists($key, $this->storage);
     }
 
 
     protected function isBuilt($key)
     {
         $built = $key . '_built';
-        return ($this->has($built) && $this->input[$built] === true);
+        return ($this->has($built) && $this->storage[$built] === true);
     }
 
 
@@ -912,14 +912,14 @@ class Builder
         if (!$this->has('having')) {
             $this->ST['having'] = '';
             $this->PA['having'] = [];
-            $this->input['having_built'] = true;
+            $this->storage['having_built'] = true;
             return;
         }
 
-        $conditions = $this->input['having'];
+        $conditions = $this->storage['having'];
 
         if ($this->has('having_logic')) {
-            $logic = $this->input['having_logic'];
+            $logic = $this->storage['having_logic'];
         } else {
             $logic = 'AND';
         }
@@ -937,7 +937,7 @@ class Builder
             $this->PA['having'] = $parameters;
         }
 
-        $this->input['having_built'] = true;
+        $this->storage['having_built'] = true;
         return;
     }
 
@@ -949,7 +949,7 @@ class Builder
             return;
         }
 
-        $flag = $this->input['distinct'];
+        $flag = $this->storage['distinct'];
         if ($flag) {
             $this->dict['distinct'] = "DISTINCT ";
         } else {
@@ -968,12 +968,12 @@ class Builder
 
         if (!$this->has('orderby')) {
             $this->ST['orderby'] = '';
-            $this->input['orderby_built'] = true;
+            $this->storage['orderby_built'] = true;
             return;
         }
 
         $array = [];
-        $orders = $this->input['orderby'];
+        $orders = $this->storage['orderby'];
         foreach ($orders as $order) {
             if (is_string($order)) {
                 $array[] = $this->processOrder($order);
@@ -999,7 +999,7 @@ class Builder
         } else {
             $this->ST['orderby'] = '';
         }
-        $this->input['orderby_built'] = true;
+        $this->storage['orderby_built'] = true;
     }
 
 
@@ -1031,7 +1031,7 @@ class Builder
 
     protected function clause_COUNT()
     {
-        list($columns, $alias) = $this->input['count'];
+        list($columns, $alias) = $this->storage['count'];
 
         if (is_string($alias) && $alias) {
             $asAlias = " AS $alias";
