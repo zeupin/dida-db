@@ -12,11 +12,29 @@ namespace Dida\Db;
 class Builder
 {
     protected $input = [];
+
+    /**
+     * Stores some temporary variables.
+     *
+     * @var array
+     */
     protected $dict = [
         'table' => '',
     ];
-    protected $dictStatement = [];
-    protected $dictParameters = [];
+
+    /**
+     * Final statement clause.
+     *
+     * @var array
+     */
+    protected $ST = [];
+
+    /**
+     * Final parameters clause.
+     *
+     * @var array
+     */
+    protected $PA = [];
 
     /*
      * All supported operater set.
@@ -73,9 +91,9 @@ class Builder
 
 
     /**
-     * Builds.
+     * Builds the final SQL statement from $input array.
      *
-     * @param type $input
+     * @param array $input
      */
     public function build(&$input)
     {
@@ -104,21 +122,20 @@ class Builder
         $this->prepare_SELECT();
 
         $TPL = [
-            'SELECT',
-            'distinct'           => $this->dictStatement['distinct'],
-            'select_column_list' => "\n    " . $this->dictStatement['select_column_list'],
-            "\nFROM",
-            'table'              => "\n    " . $this->dictStatement['table'],
-            'join'               => $this->dictStatement['join'],
-            'where'              => $this->dictStatement['where'],
-            'groupby'            => $this->dictStatement['groupby'],
-            'having'             => $this->dictStatement['having'],
-            'orderby'            => $this->dictStatement['orderby'],
+            "SELECT\n    ",
+            'columnlist' => $this->ST['columnlist'],
+            "\nFROM\n    ",
+            'table'      => $this->ST['table'],
+            'join'       => $this->ST['join'],
+            'where'      => $this->ST['where'],
+            'groupby'    => $this->ST['groupby'],
+            'having'     => $this->ST['having'],
+            'orderby'    => $this->ST['orderby'],
         ];
         $PARAMS = [
-            'join'   => $this->dictParameters['join'],
-            'where'  => $this->dictParameters['where'],
-            'having' => $this->dictParameters['having'],
+            'join'   => $this->PA['join'],
+            'where'  => $this->PA['where'],
+            'having' => $this->PA['having'],
         ];
 
         return [
@@ -135,13 +152,13 @@ class Builder
         /* INSERT statement template */
         $TPL = [
             'INSERT INTO ',
-            'table'   => $this->dictStatement['table'],
-            'columns' => $this->dictStatement['insert_column_list'],
+            'table'   => $this->ST['table'],
+            'columns' => $this->ST['insert_column_list'],
             ' VALUES ',
-            'values'  => $this->dictStatement['insert_values'],
+            'values'  => $this->ST['insert_values'],
         ];
         $PARAMS = [
-            'values' => $this->dictParameters['insert_values'],
+            'values' => $this->PA['insert_values'],
         ];
 
         return [
@@ -157,20 +174,20 @@ class Builder
 
         $TPL = [
             'UPDATE ',
-            'table'   => "\n    " . $this->dictStatement['table'],
+            'table'   => "\n    " . $this->ST['table'],
             "\nSET",
-            'set'     => "\n    " . $this->dictStatement['set'],
-            'join'    => $this->dictStatement['join'],
-            'where'   => $this->dictStatement['where'],
-            'groupby' => $this->dictStatement['groupby'],
-            'having'  => $this->dictStatement['having'],
-            'orderby' => $this->dictStatement['orderby'],
+            'set'     => "\n    " . $this->ST['set'],
+            'join'    => $this->ST['join'],
+            'where'   => $this->ST['where'],
+            'groupby' => $this->ST['groupby'],
+            'having'  => $this->ST['having'],
+            'orderby' => $this->ST['orderby'],
         ];
         $PARAMS = [
-            'set'    => $this->dictParameters['set'],
-            'join'   => $this->dictParameters['join'],
-            'where'  => $this->dictParameters['where'],
-            'having' => $this->dictParameters['having'],
+            'set'    => $this->PA['set'],
+            'join'   => $this->PA['join'],
+            'where'  => $this->PA['where'],
+            'having' => $this->PA['having'],
         ];
 
         return [
@@ -186,17 +203,17 @@ class Builder
 
         $TPL = [
             'DELETE FROM ',
-            'table'   => $this->dictStatement['table'],
-            'join'    => $this->dictStatement['join'],
-            'where'   => $this->dictStatement['where'],
-            'groupby' => $this->dictStatement['groupby'],
-            'having'  => $this->dictStatement['having'],
-            'orderby' => $this->dictStatement['orderby'],
+            'table'   => $this->ST['table'],
+            'join'    => $this->ST['join'],
+            'where'   => $this->ST['where'],
+            'groupby' => $this->ST['groupby'],
+            'having'  => $this->ST['having'],
+            'orderby' => $this->ST['orderby'],
         ];
         $PARAMS = [
-            'join'   => $this->dictParameters['join'],
-            'where'  => $this->dictParameters['where'],
-            'having' => $this->dictParameters['having'],
+            'join'   => $this->PA['join'],
+            'where'  => $this->PA['where'],
+            'having' => $this->PA['having'],
         ];
 
         return [
@@ -246,8 +263,18 @@ class Builder
     protected function prepare_SELECT()
     {
         $this->clause_TABLE();
-        $this->clause_DISTINCT();
+
+        /* Prepares the column list expression. */
         $this->clause_SELECT_COLUMN_LIST();
+        $this->clause_DISTINCT();
+
+        /* If count() */
+        if ($this->has('count')) {
+            $this->clause_COUNT();
+        } else {
+            $this->ST['columnlist'] = $this->dict['distinct'] . $this->dict['columnlist'];
+        }
+
         $this->clause_JOIN();
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
@@ -269,9 +296,9 @@ class Builder
         $columns = array_keys($record);
         $values = array_values($record);
 
-        $this->dictStatement['insert_column_list'] = '(' . implode(', ', $columns) . ')';
-        $this->dictStatement['insert_values'] = $this->makeQuestionMarkList($columns, true);
-        $this->dictParameters['insert_values'] = $values;
+        $this->ST['insert_column_list'] = '(' . implode(', ', $columns) . ')';
+        $this->ST['insert_values'] = $this->makeQuestionMarkList($columns, true);
+        $this->PA['insert_values'] = $values;
     }
 
 
@@ -298,29 +325,40 @@ class Builder
     }
 
 
+    protected function process_SelectColumnList($columns)
+    {
+        // if $columns = ''/null/[]
+        if (!$columns) {
+            return $this->getAllColumnNames($this->dict['table']['name']);
+        }
+
+        if (is_string($columns)) {
+            return $columns;
+        }
+
+        if (is_array($columns)) {
+            $array = [];
+            foreach ($columns as $alias => $column) {
+                if (is_string($alias)) {
+                    $array[] = "$column AS $alias";
+                } else {
+                    $array[] = $column;
+                }
+            }
+            return implode(', ', $array);
+        }
+    }
+
+
     protected function clause_SELECT_COLUMN_LIST()
     {
-        if (!isset($this->input['select_column_list'])) {
-            $this->input['select_column_list'] = [];
-            $this->input['select_column_list_built'] = true;
-            $this->dictStatement['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
+        if (!isset($this->input['columnlist'])) {
+            $this->dict['columnlist'] = $this->process_SelectColumnList(null);
             return;
         }
 
-        if ($this->input['select_column_list_built']) {
-            return;
-        }
-
-        $columnlist = &$this->input['select_column_list'];
-        if (empty($columnlist)) {
-            $this->dictStatement['select_column_list'] = $this->getAllColumnNames($this->dict['table']['name']);
-            $this->input['select_column_list_built'] = true;
-            return;
-        }
-
-        $this->dictStatement['select_column_list'] = $this->combineColumnList($columnlist);
-        $this->input['select_column_list_built'] = true;
-        return;
+        $columns = $this->input['columnlist'];
+        $this->dict['columnlist'] = $this->process_SelectColumnList($columns);
     }
 
 
@@ -329,20 +367,9 @@ class Builder
      */
     protected function combineColumnList(array $columns, $table = null)
     {
-        $array = [];
-        foreach ($columns as $alias => $column) {
-            if (is_string($table) && $table) {
-                $column = "$table.$column";
-            }
-
-            if (is_string($alias)) {
-                $array[] = "$column AS $alias";
-            } else {
-                $array[] = $column;
-            }
+        if (is_string($table) && $table) {
+            $table = $table . '.';
         }
-
-        return implode(', ', $array);
     }
 
 
@@ -375,13 +402,13 @@ class Builder
         $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
-        /* dictStatement */
+        /* ST */
         switch ($this->input['verb']) {
             case 'SELECT':
-                $this->dictStatement['table'] = $this->dict['table']['name_as_alias'];
+                $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
             default :
-                $this->dictStatement['table'] = $this->dict['table']['name'];
+                $this->ST['table'] = $this->dict['table']['name'];
         }
 
         $this->input['table_built'] = true;
@@ -671,12 +698,19 @@ class Builder
             return;
         }
 
+        if (!$this->has('where')) {
+            $this->ST['where'] = '';
+            $this->PA['where'] = [];
+            $this->input['where_built'] = true;
+            return;
+        }
+
         $conditions = $this->input['where'];
 
-        if (!array_key_exists("having_logic", $this->input)) {
-            $logic = 'AND';
+        if ($this->has('where_logic')) {
+            $logic = $this->input['where_logic'];
         } else {
-            $logic = $this->input['having_logic'];
+            $logic = 'AND';
         }
 
         $parts = [];
@@ -688,8 +722,8 @@ class Builder
         $parameters = [];
         $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
         if ($statement) {
-            $this->dictStatement['where'] = "\nWHERE\n    $statement";
-            $this->dictParameters['where'] = $parameters;
+            $this->ST['where'] = "\nWHERE\n    $statement";
+            $this->PA['where'] = $parameters;
         }
 
         $this->input['where_built'] = true;
@@ -744,8 +778,8 @@ class Builder
         $parameters = [];
         $this->combineParts($parts, ",\n    ", $statement, $parameters);
 
-        $this->dictStatement['set'] = $statement;
-        $this->dictParameters['set'] = $parameters;
+        $this->ST['set'] = $statement;
+        $this->PA['set'] = $parameters;
     }
 
 
@@ -801,6 +835,13 @@ class Builder
             return;
         }
 
+        if (!$this->has('join')) {
+            $this->ST['join'] = '';
+            $this->PA['join'] = [];
+            $this->input['join_built'] = true;
+            return;
+        }
+
         $stmts = [];
         $params = [];
 
@@ -814,8 +855,8 @@ class Builder
             $stmts[] = "\n$jointype {$table}\n    ON $on";
             $params[] = $parameters;
         }
-        $this->dictStatement["join"] = implode("", $stmts);
-        $this->dictParameters['join'] = $this->combineParameterArray($params);
+        $this->ST["join"] = implode("", $stmts);
+        $this->PA['join'] = $this->combineParameterArray($params);
         $this->input['join_built'] = true;
     }
 
@@ -826,12 +867,19 @@ class Builder
             return;
         }
 
+        if (!$this->has('groupby')) {
+            $this->ST['groupby'] = '';
+            $this->input['groupby_built'] = true;
+            return;
+        }
+
         $columns = $this->input['groupby'];
-        $statement = implode(', ', $columns);
-        if ($statement) {
-            $this->dictStatement['groupby'] = "\nGROUP BY\n    $statement";
+        $columnlist = $this->process_SelectColumnList($columns);
+
+        if ($columnlist) {
+            $this->ST['groupby'] = "\nGROUP BY\n    $columnlist";
         } else {
-            $this->dictStatement['groupby'] = '';
+            $this->ST['groupby'] = '';
         }
 
         $this->input['groupby_built'] = true;
@@ -839,19 +887,16 @@ class Builder
     }
 
 
+    protected function has($key)
+    {
+        return array_key_exists($key, $this->input);
+    }
+
+
     protected function isBuilt($key)
     {
-        if (!array_key_exists("{$key}_built", $this->input)) {
-            $this->input["{$key}_built"] = false;
-        }
-
-        if (!array_key_exists($key, $this->input)) {
-            $this->dictStatement[$key] = '';
-            $this->dictParameters[$key] = [];
-            $this->input["{$key}_built"] = true;
-        }
-
-        return $this->input["{$key}_built"];
+        $built = $key . '_built';
+        return ($this->has($built) && $this->input[$built] === true);
     }
 
 
@@ -864,11 +909,19 @@ class Builder
             return;
         }
 
+        if (!$this->has('having')) {
+            $this->ST['having'] = '';
+            $this->PA['having'] = [];
+            $this->input['having_built'] = true;
+            return;
+        }
+
         $conditions = $this->input['having'];
-        if (!array_key_exists("having_logic", $this->input)) {
-            $logic = 'AND';
-        } else {
+
+        if ($this->has('having_logic')) {
             $logic = $this->input['having_logic'];
+        } else {
+            $logic = 'AND';
         }
 
         $parts = [];
@@ -880,8 +933,8 @@ class Builder
         $parameters = [];
         $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
         if ($statement) {
-            $this->dictStatement['having'] = "\nHAVING\n    $statement";
-            $this->dictParameters['having'] = $parameters;
+            $this->ST['having'] = "\nHAVING\n    $statement";
+            $this->PA['having'] = $parameters;
         }
 
         $this->input['having_built'] = true;
@@ -891,18 +944,18 @@ class Builder
 
     protected function clause_DISTINCT()
     {
-        if ($this->isBuilt('distinct')) {
+        if (!$this->has('distinct')) {
+            $this->dict['distinct'] = '';
             return;
         }
 
         $flag = $this->input['distinct'];
         if ($flag) {
-            $this->dictStatement['distinct'] = "\n    DISTINCT";
+            $this->dict['distinct'] = "DISTINCT ";
         } else {
-            $this->dictStatement['distinct'] = '';
+            $this->dict['distinct'] = '';
         }
 
-        $this->input['distinct_built'] = true;
         return;
     }
 
@@ -910,6 +963,12 @@ class Builder
     protected function clause_ORDER_BY()
     {
         if ($this->isBuilt('orderby')) {
+            return;
+        }
+
+        if (!$this->has('orderby')) {
+            $this->ST['orderby'] = '';
+            $this->input['orderby_built'] = true;
             return;
         }
 
@@ -936,11 +995,11 @@ class Builder
         }
 
         if (count($array)) {
-            $this->dictStatement['orderby'] = "\nORDER BY\n    " . implode(', ', $array);
+            $this->ST['orderby'] = "\nORDER BY\n    " . implode(', ', $array);
         } else {
-            $this->dictStatement['orderby'] = '';
+            $this->ST['orderby'] = '';
         }
-        $this->input['orderby_built'];
+        $this->input['orderby_built'] = true;
     }
 
 
@@ -967,5 +1026,25 @@ class Builder
         }
 
         return implode(', ', $return);
+    }
+
+
+    protected function clause_COUNT()
+    {
+        list($columns, $alias) = $this->input['count'];
+
+        if (is_string($alias) && $alias) {
+            $asAlias = " AS $alias";
+        } else {
+            $asAlias = '';
+        }
+
+        if (!$columns) {
+            $columnlist = $this->dict['distinct'] . $this->dict['columnlist'];
+        } elseif (is_array($columns)) {
+            $columnlist = $this->process_SelectColumnList($columns);
+        }
+
+        $this->ST['columnlist'] = "COUNT({$columnlist}){$asAlias}";
     }
 }
