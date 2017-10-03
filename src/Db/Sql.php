@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * SQL
+ * SQL Statement
  */
-class SQL
+class Sql
 {
     /**
      * @var \Dida\Db\Db
@@ -57,11 +57,11 @@ class SQL
     protected $tasklist = [];
 
 
-    public function __construct(&$db, array $base)
+    public function __construct(&$db, array $options)
     {
         $this->db = $db;
 
-        $this->base = array_merge($this->base, $base);
+        $this->base = array_merge($this->base, $options);
         $this->resetAll();
     }
 
@@ -437,5 +437,10 @@ class SQL
 
         $this->built = false;
         return $this;
+    }
+
+    public function limit()
+    {
+        
     }
 }
