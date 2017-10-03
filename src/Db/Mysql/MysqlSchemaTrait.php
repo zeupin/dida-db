@@ -9,7 +9,6 @@ namespace Dida\Db\Mysql;
 use \PDO;
 
 /**
- * Mysql Schema Trait
  * Schema generation/reflection features for MySQL
  */
 trait MysqlSchemaTrait
@@ -154,7 +153,7 @@ EOT;
             /* binary */
             case 'varbinary':
                 return 'varbinary';
-                
+
             /* unknown type */
             default:
                 return '';

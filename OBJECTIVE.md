@@ -561,5 +561,25 @@ ORDER BY
 
 设置limit条件。$limit为一个字符串，会照原样输出
 
+```php
+$admin = $db->table('admin', 'a')
+    ->orderBy('id desc, name ,###_admin.name DESC, age asc, ')
+    ->limit(5)
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
 
+```
+
+结果是：
+```php
+SELECT
+    *
+FROM
+    zp_admin AS a
+ORDER BY
+    id DESC, name, zp_admin.name DESC, age ASC
+LIMIT
+    5
+```
 
