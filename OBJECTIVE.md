@@ -557,5 +557,9 @@ ORDER BY
     id DESC, name, zp_admin.name DESC, age ASC
 ```
 
-## 38. limit
+## 38. limit($limit)
+
+设置limit条件。$limit为一个字符串，会照原样输出
+
+
 

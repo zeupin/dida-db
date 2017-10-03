@@ -51,6 +51,7 @@ class Sql
     ];
 
     /**
+     * Task list.
      *
      * @var array
      */
@@ -439,8 +440,12 @@ class Sql
         return $this;
     }
 
-    public function limit()
+
+    public function limit($limit)
     {
-        
+        $this->tasklist['limit'] = $limit;
+
+        $this->built = false;
+        return $this;
     }
 }

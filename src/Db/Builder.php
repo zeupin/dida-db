@@ -130,6 +130,7 @@ class Builder
             'groupby'    => &$this->ST['groupby'],
             'having'     => &$this->ST['having'],
             'orderby'    => &$this->ST['orderby'],
+            'limit'      => &$this->ST['limit'],
         ];
         $PARAMS = [
             'join'   => &$this->PA['join'],
@@ -279,6 +280,7 @@ class Builder
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
         $this->clause_ORDER_BY();
+        $this->clause_LIMIT();
     }
 
 
@@ -1073,5 +1075,24 @@ class Builder
             'name'  => $name,
             'alias' => $alias,
         ];
+    }
+
+
+    protected function clause_LIMIT()
+    {
+        if ($this->isBuilt('limit')) {
+            return;
+        }
+
+        if (!$this->has('limit')) {
+            $this->ST['limit'] = '';
+            $this->tasklist['limit_built'] = true;
+            return;
+        }
+
+        $limit = $this->tasklist['limit'];
+        $this->ST['limit'] = "\nLIMIT\n    $limit";
+
+        $this->tasklist['limit_built'] = true;
     }
 }
