@@ -53,6 +53,13 @@ abstract class Db
      */
     public $workdir = null;
 
+    /**
+     * Specifies the DB type
+     *
+     * @var string
+     */
+    public $dbtype = null;
+
 
     /**
      * Constructs this class.
@@ -77,6 +84,7 @@ abstract class Db
             default:
                 throw new Exception('Invalid $cfg["dbtype"]!');
         }
+        $this->dbtype = $this->cfg['dbtype'];
     }
 
 
