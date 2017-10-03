@@ -30,7 +30,7 @@ class Builder
     protected $ST = [];
 
     /**
-     * Final parameters clause.
+     * Final parameters.
      *
      * @var array
      */
@@ -75,7 +75,7 @@ class Builder
         'EXISTS'      => 'EXISTS',
         'NOT EXISTS'  => 'NOTEXISTS',
         'NOTEXISTS'   => 'NOTEXISTS',
-        /* NULL */
+        /* ISNULL */
         'ISNULL'      => 'ISNULL',
         'NULL'        => 'ISNULL',
         'ISNOTNULL'   => 'ISNOTNULL',
@@ -100,7 +100,6 @@ class Builder
         $this->done = null;
 
         $this->storage = &$storage;
-        $this->output = [];
 
         switch ($this->storage['verb']) {
             case 'SELECT':
@@ -123,19 +122,19 @@ class Builder
 
         $TPL = [
             "SELECT\n    ",
-            'columnlist' => $this->ST['columnlist'],
+            'columnlist' => &$this->ST['columnlist'],
             "\nFROM\n    ",
-            'table'      => $this->ST['table'],
-            'join'       => $this->ST['join'],
-            'where'      => $this->ST['where'],
-            'groupby'    => $this->ST['groupby'],
-            'having'     => $this->ST['having'],
-            'orderby'    => $this->ST['orderby'],
+            'table'      => &$this->ST['table'],
+            'join'       => &$this->ST['join'],
+            'where'      => &$this->ST['where'],
+            'groupby'    => &$this->ST['groupby'],
+            'having'     => &$this->ST['having'],
+            'orderby'    => &$this->ST['orderby'],
         ];
         $PARAMS = [
-            'join'   => $this->PA['join'],
-            'where'  => $this->PA['where'],
-            'having' => $this->PA['having'],
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
         ];
 
         return [
@@ -152,13 +151,13 @@ class Builder
         /* INSERT statement template */
         $TPL = [
             'INSERT INTO ',
-            'table'   => $this->ST['table'],
-            'columns' => $this->ST['insert_column_list'],
+            'table'   => &$this->ST['table'],
+            'columns' => &$this->ST['insert_column_list'],
             ' VALUES ',
-            'values'  => $this->ST['insert_values'],
+            'values'  => &$this->ST['insert_values'],
         ];
         $PARAMS = [
-            'values' => $this->PA['insert_values'],
+            'values' => &$this->PA['insert_values'],
         ];
 
         return [
@@ -173,21 +172,21 @@ class Builder
         $this->prepare_UPDATE();
 
         $TPL = [
-            'UPDATE ',
-            'table'   => "\n    " . $this->ST['table'],
-            "\nSET",
-            'set'     => "\n    " . $this->ST['set'],
-            'join'    => $this->ST['join'],
-            'where'   => $this->ST['where'],
-            'groupby' => $this->ST['groupby'],
-            'having'  => $this->ST['having'],
-            'orderby' => $this->ST['orderby'],
+            'UPDATE\n    ',
+            'table'   => &$this->ST['table'],
+            "\nSET\n    ",
+            'set'     => &$this->ST['set'],
+            'join'    => &$this->ST['join'],
+            'where'   => &$this->ST['where'],
+            'groupby' => &$this->ST['groupby'],
+            'having'  => &$this->ST['having'],
+            'orderby' => &$this->ST['orderby'],
         ];
         $PARAMS = [
-            'set'    => $this->PA['set'],
-            'join'   => $this->PA['join'],
-            'where'  => $this->PA['where'],
-            'having' => $this->PA['having'],
+            'set'    => &$this->PA['set'],
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
         ];
 
         return [
@@ -203,17 +202,17 @@ class Builder
 
         $TPL = [
             'DELETE FROM ',
-            'table'   => $this->ST['table'],
-            'join'    => $this->ST['join'],
-            'where'   => $this->ST['where'],
-            'groupby' => $this->ST['groupby'],
-            'having'  => $this->ST['having'],
-            'orderby' => $this->ST['orderby'],
+            'table'   => &$this->ST['table'],
+            'join'    => &$this->ST['join'],
+            'where'   => &$this->ST['where'],
+            'groupby' => &$this->ST['groupby'],
+            'having'  => &$this->ST['having'],
+            'orderby' => &$this->ST['orderby'],
         ];
         $PARAMS = [
-            'join'   => $this->PA['join'],
-            'where'  => $this->PA['where'],
-            'having' => $this->PA['having'],
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
         ];
 
         return [
@@ -265,8 +264,8 @@ class Builder
         $this->clause_TABLE();
 
         /* Prepares the column list expression. */
-        $this->clause_SELECT_COLUMN_LIST();
-        $this->clause_DISTINCT();
+        $this->dict_SELECT_COLUMN_LIST();
+        $this->dict_DISTINCT();
 
         /* If count() */
         if ($this->has('count')) {
@@ -350,7 +349,7 @@ class Builder
     }
 
 
-    protected function clause_SELECT_COLUMN_LIST()
+    protected function dict_SELECT_COLUMN_LIST()
     {
         if (!isset($this->storage['columnlist'])) {
             $this->dict['columnlist'] = $this->process_SelectColumnList(null);
@@ -942,7 +941,7 @@ class Builder
     }
 
 
-    protected function clause_DISTINCT()
+    protected function dict_DISTINCT()
     {
         if (!$this->has('distinct')) {
             $this->dict['distinct'] = '';
