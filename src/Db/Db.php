@@ -29,6 +29,7 @@ abstract class Db
 
         /* required parameters */
         'workdir' => null, // Set the work directory.
+        'dbtype'  => null, // Set the DB type to use, 'Mysql',
 
         /* optional parameters */
         'dbname'      => null, // the database name
@@ -63,9 +64,19 @@ abstract class Db
         // Checks if the work directory is valid.
         $workdir = $this->cfg['workdir'];
         if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception('$cfg["workdir"] "' . $workdir . '" does not exists or cannot be written');
+            throw new Exception('Invalid $cfg["workdir"]! "' . $workdir . '" does not exists or cannot be written');
         }
         $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
+
+        // Checks the db type is valid.
+        $dbtype = strtolower($this->cfg['dbtype']);
+        switch ($dbtype) {
+            case 'mysql':
+                $this->cfg['dbtype'] = 'Mysql';
+                break;
+            default:
+                throw new Exception('Invalid $cfg["dbtype"]!');
+        }
     }
 
 
@@ -79,7 +90,7 @@ abstract class Db
 
 
     /**
-     * Connects the specified database driver.
+     * Connects the database driver.
      *
      * @return boolean -- Returns TRUE on success or FALSE on failure.
      */
@@ -152,12 +163,12 @@ abstract class Db
      *
      * @return mixed
      */
-    public function execute($sql, $sql_parameters = [])
+    public function execute($statement, $parameters = [])
     {
         $this->connect();
         try {
-            $stmt = $this->pdo->prepare($sql);
-            return $stmt->execute($sql_parameters);
+            $stmt = $this->pdo->prepare($statement);
+            return $stmt->execute($parameters);
         } catch (Exception $ex) {
             return false;
         }
@@ -165,13 +176,15 @@ abstract class Db
 
 
     /**
+     * Returns a new SQL class instance with necessary parameters.
+     *
      * @return Statement
      */
-    protected function newSQL()
+    protected function newSql()
     {
-        $sql = new SQL($this, [
-            'prefix'               => $this->cfg['prefix'],
-            'vprefix'              => $this->cfg['vprefix'],
+        $sql = new Sql($this, [
+            'prefix'  => $this->cfg['prefix'],
+            'vprefix' => $this->cfg['vprefix'],
         ]);
         return $sql;
     }
@@ -183,11 +196,11 @@ abstract class Db
      * @param string $statement
      * @param array $parameters
      *
-     * @return \Dida\Db\SQL
+     * @return \Dida\Db\Sql
      */
     public function sql($statement, $parameters = [])
     {
-        $sql = $this->newSQL();
+        $sql = $this->newSql();
 
         $sql->statement = $statement;
         $sql->parameters = $parameters;
@@ -204,11 +217,11 @@ abstract class Db
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\SQL
+     * @return \Dida\Db\Sql
      */
     public function table($table, $alias = null, $prefix = null)
     {
-        $sql = $this->newSQL();
+        $sql = $this->newSql();
 
         $sql->table($table, $alias, $prefix);
 
