@@ -985,11 +985,11 @@ class Builder
         $orders = $this->tasklist['orderby'];
         foreach ($orders as $order) {
             if (is_string($order)) {
-                $array[] = $this->processOrder($order);
+                $array[] = $this->process_OrderBy($order);
             } elseif (is_array($order)) {
                 foreach ($order as $key => $value) {
                     if (is_int($key)) {
-                        $array[] = $this->processOrder($value);
+                        $array[] = $this->process_OrderBy($value);
                     } else {
                         $key = $this->vsql($key);
                         $value = strtoupper(trim($value));
@@ -1012,7 +1012,7 @@ class Builder
     }
 
 
-    protected function processOrder($string)
+    protected function process_OrderBy($string)
     {
         $search = [
             '/\s{1,}asc$/i',
@@ -1055,5 +1055,23 @@ class Builder
         }
 
         $this->ST['columnlist'] = "COUNT({$columnlist}){$asAlias}";
+    }
+
+
+    /**
+     * Converts a table/column name string to an array of a fixed format.
+     *
+     * @param string $string Format:"NAME" or "name AS alias"
+     */
+    protected function splitNameAlias($string)
+    {
+        $result = preg_split('/\s+(AS)\s+/i', $string, 2);
+        $name = $result[0];
+        $alias = (isset($result[1])) ? $result[1] : null;
+
+        return [
+            'name'  => $name,
+            'alias' => $alias,
+        ];
     }
 }
