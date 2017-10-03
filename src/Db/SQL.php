@@ -54,7 +54,7 @@ class SQL
      *
      * @var array
      */
-    protected $input = [];
+    protected $tasklist = [];
 
 
     public function __construct(&$db, array $base)
@@ -62,13 +62,21 @@ class SQL
         $this->db = $db;
 
         $this->base = array_merge($this->base, $base);
-        $this->reset();
+        $this->resetAll();
     }
 
 
-    public function reset()
+    public function resetAll()
     {
-        $this->input = $this->base;
+        $this->tasklist = $this->base;
+        return $this;
+    }
+
+
+    public function resetCount()
+    {
+        unset($this->tasklist['count'], $this->tasklist['count_built']);
+        return $this;
     }
 
 
@@ -87,7 +95,7 @@ class SQL
             $this->builder = new Builder();
         }
 
-        $result = $this->builder->build($this->input);
+        $result = $this->builder->build($this->tasklist);
 
         if ($result === false) {
             $this->statement = null;
@@ -97,7 +105,7 @@ class SQL
             $this->parameters = $result['parameters'];
         }
 
-        var_dump($this->input);
+        //var_dump($this->tasklist);
 
         $this->built = true;
         return $this;
@@ -106,7 +114,7 @@ class SQL
 
     public function sql($statement, $parameters = [])
     {
-        $this->reset();
+        $this->resetAll();
 
         $this->statement = $statement;
         $this->parameters = $parameters;
@@ -118,14 +126,14 @@ class SQL
 
     public function table($name, $alias = null, $prefix = null)
     {
-        $this->reset();
+        $this->resetAll();
 
-        $this->input['table'] = [
+        $this->tasklist['table'] = [
             'name'   => $name,
             'alias'  => $alias,
             'prefix' => $prefix,
         ];
-        $this->input['table_built'] = false;
+        $this->tasklist['table_built'] = false;
 
         $this->built = false;
         return $this;
@@ -141,8 +149,8 @@ class SQL
             $condition = [$condition, 'RAW', $data];
         }
 
-        $this->input['where'][] = $condition;
-        $this->input['where_built'] = false;
+        $this->tasklist['where'][] = $condition;
+        $this->tasklist['where_built'] = false;
 
         $this->built = false;
         return $this;
@@ -157,8 +165,8 @@ class SQL
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->input['where'][] = $cond;
-        $this->input['where_built'] = false;
+        $this->tasklist['where'][] = $cond;
+        $this->tasklist['where_built'] = false;
 
         $this->built = false;
         return $this;
@@ -169,12 +177,12 @@ class SQL
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->input['where_logic']) {
+        if ($logic === $this->tasklist['where_logic']) {
             return $this;
         }
 
-        $this->input['where_logic'] = $logic;
-        $this->input['where_built'] = false;
+        $this->tasklist['where_logic'] = $logic;
+        $this->tasklist['where_built'] = false;
 
         $this->built = false;
         return $this;
@@ -194,12 +202,12 @@ class SQL
     }
 
 
-    public function select(array $columnlist = [])
+    public function select(array $columnAsAliasArray = [])
     {
-        $this->input['verb'] = 'SELECT';
+        $this->tasklist['verb'] = 'SELECT';
 
-        $this->input['select_column_list'] = $columnlist;
-        $this->input['select_column_list_built'] = false;
+        $this->tasklist['select_column_list'] = $columnAsAliasArray;
+        $this->tasklist['select_column_list_built'] = false;
 
         $this->built = false;
         return $this;
@@ -208,7 +216,7 @@ class SQL
 
     public function delete()
     {
-        $this->input['verb'] = 'DELETE';
+        $this->tasklist['verb'] = 'DELETE';
 
         $this->built = false;
         return $this;
@@ -217,9 +225,9 @@ class SQL
 
     public function insert(array $record)
     {
-        $this->input['verb'] = 'INSERT';
+        $this->tasklist['verb'] = 'INSERT';
 
-        $this->input['record'] = $record;
+        $this->tasklist['record'] = $record;
 
         $this->built = false;
         return $this;
@@ -228,27 +236,16 @@ class SQL
 
     public function update()
     {
-        $this->input['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
         $this->built = false;
         return $this;
     }
 
 
-    protected function set_Begin()
-    {
-        if (!isset($this->input['set'])) {
-            $this->input['set'] = [];
-        }
-        $this->input['set_built'] = false;
-    }
-
-
     public function setValue($column, $value)
     {
-        $this->set_Begin();
-
-        $this->input['set'][$column] = [
+        $this->tasklist['set'][$column] = [
             'type'   => 'value',
             'column' => $column,
             'value'  => $value,
@@ -261,9 +258,7 @@ class SQL
 
     public function setExpr($column, $expr, $parameters = [])
     {
-        $this->set_Begin();
-
-        $this->input['set'][$column] = [
+        $this->tasklist['set'][$column] = [
             'type'       => 'expr',
             'column'     => $column,
             'expr'       => $expr,
@@ -277,9 +272,7 @@ class SQL
 
     public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
-        $this->set_Begin();
-
-        $this->input['set'][$column] = [
+        $this->tasklist['set'][$column] = [
             'type'               => 'from_table',
             'column'             => $column,
             'tableB'             => $tableB,
@@ -296,8 +289,8 @@ class SQL
 
     public function join($tableB, $on, $parameters = [])
     {
-        $this->input['join'][] = ['JOIN', $tableB, $on, $parameters];
-        $this->input['join_built'] = false;
+        $this->tasklist['join'][] = ['JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -306,8 +299,8 @@ class SQL
 
     public function innerJoin($tableB, $on, $parameters = [])
     {
-        $this->input['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
-        $this->input['join_built'] = false;
+        $this->tasklist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -316,8 +309,8 @@ class SQL
 
     public function leftJoin($tableB, $on, $parameters = [])
     {
-        $this->input['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
-        $this->input['join_built'] = false;
+        $this->tasklist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -326,8 +319,8 @@ class SQL
 
     public function rightJoin($tableB, $on, $parameters = [])
     {
-        $this->input['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
-        $this->input['join_built'] = false;
+        $this->tasklist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -354,8 +347,8 @@ class SQL
 
     public function groupBy(array $columns)
     {
-        $this->input['groupby'] = $columns;
-        $this->input['groupby_built'] = false;
+        $this->tasklist['groupby'] = $columns;
+        $this->tasklist['groupby_built'] = false;
 
         $this->built = false;
         return $this;
@@ -371,8 +364,8 @@ class SQL
             $condition = [$condition, 'RAW', $data];
         }
 
-        $this->input['having'][] = $condition;
-        $this->input['having_built'] = false;
+        $this->tasklist['having'][] = $condition;
+        $this->tasklist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -387,8 +380,8 @@ class SQL
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->input['having'][] = $cond;
-        $this->input['having_built'] = false;
+        $this->tasklist['having'][] = $cond;
+        $this->tasklist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -399,12 +392,12 @@ class SQL
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->input['having_logic']) {
+        if ($logic === $this->tasklist['having_logic']) {
             return $this;
         }
 
-        $this->input['having_logic'] = $logic;
-        $this->input['having_built'] = false;
+        $this->tasklist['having_logic'] = $logic;
+        $this->tasklist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -413,8 +406,8 @@ class SQL
 
     public function distinct($distinct = true)
     {
-        $this->input['distinct'] = $distinct;
-        $this->input['distinct_built'] = false;
+        $this->tasklist['distinct'] = $distinct;
+        $this->tasklist['distinct_built'] = false;
 
         $this->built = false;
         return $this;
@@ -423,12 +416,24 @@ class SQL
 
     public function orderBy($columns)
     {
-        if (!isset($this->input['orderby'])) {
-            $this->input['orderby'] = [];
+        if (!isset($this->tasklist['orderby'])) {
+            $this->tasklist['orderby'] = [];
         }
 
-        $this->input['orderby'][] = $columns;
-        $this->input['orderby_built'] = false;
+        $this->tasklist['orderby'][] = $columns;
+        $this->tasklist['orderby_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
+
+
+    public function count(array $columns = null, $alias = null)
+    {
+        $this->tasklist['verb'] = 'SELECT';
+
+        $this->tasklist['count'] = [$columns, $alias];
+        $this->tasklist['count_built'] = false;
 
         $this->built = false;
         return $this;

@@ -11,7 +11,7 @@ namespace Dida\Db;
  */
 class Builder
 {
-    protected $storage = [];
+    protected $tasklist = [];
 
     /**
      * Stores some temporary variables.
@@ -87,21 +87,21 @@ class Builder
     /**
      * Leading spacing
      */
-    const LEADING_SPACING = '\n    ';
+    const LEADING_SPACING = "\n    ";
 
 
     /**
-     * Builds the final SQL statement from $storage array.
+     * Builds the final SQL statement from $tasklist array.
      *
-     * @param array $storage
+     * @param array $tasklist
      */
-    public function build(&$storage)
+    public function build(&$tasklist)
     {
         $this->done = null;
 
-        $this->storage = &$storage;
+        $this->tasklist = &$tasklist;
 
-        switch ($this->storage['verb']) {
+        switch ($this->tasklist['verb']) {
             case 'SELECT':
                 return $this->build_SELECT();
             case 'DELETE':
@@ -111,7 +111,7 @@ class Builder
             case 'UPDATE':
                 return $this->build_UPDATE();
             default :
-                throw new Exception("Invalid build verb: {$this->storage['verb']}");
+                throw new Exception("Invalid build verb: {$this->tasklist['verb']}");
         }
     }
 
@@ -172,7 +172,7 @@ class Builder
         $this->prepare_UPDATE();
 
         $TPL = [
-            'UPDATE\n    ',
+            "UPDATE\n    ",
             'table'   => &$this->ST['table'],
             "\nSET\n    ",
             'set'     => &$this->ST['set'],
@@ -271,7 +271,7 @@ class Builder
         if ($this->has('count')) {
             $this->clause_COUNT();
         } else {
-            $this->ST['columnlist'] = $this->dict['distinct'] . $this->dict['columnlist'];
+            $this->ST['columnlist'] = $this->dict['distinct'] . $this->dict['select_column_list'];
         }
 
         $this->clause_JOIN();
@@ -290,7 +290,7 @@ class Builder
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
 
-        $record = &$this->storage['record'];
+        $record = &$this->tasklist['record'];
         $record = $this->pickItemsWithKey($record);
         $columns = array_keys($record);
         $values = array_values($record);
@@ -324,6 +324,16 @@ class Builder
     }
 
 
+    /**
+     * Returns a SELECT columnlist clause.
+     *
+     * If $columns = null/[]/'', equivalent to return '*' (with all column names of the table)
+     * If $columns is a string, returns it directly.
+     * If $columns is an array, returns the imploded expression.
+     *
+     * @param strig|array $columns
+     * @return string
+     */
     protected function process_SelectColumnList($columns)
     {
         // if $columns = ''/null/[]
@@ -351,13 +361,13 @@ class Builder
 
     protected function dict_SELECT_COLUMN_LIST()
     {
-        if (!isset($this->storage['columnlist'])) {
-            $this->dict['columnlist'] = $this->process_SelectColumnList(null);
+        if (!isset($this->tasklist['columnlist'])) {
+            $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
             return;
         }
 
-        $columns = $this->storage['columnlist'];
-        $this->dict['columnlist'] = $this->process_SelectColumnList($columns);
+        $columns = $this->tasklist['columnlist'];
+        $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
     }
 
 
@@ -381,10 +391,10 @@ class Builder
     protected function clause_TABLE()
     {
         // built, name, alias, prefix
-        extract($this->storage['table']);
+        extract($this->tasklist['table']);
 
         if (!is_string($prefix)) {
-            $prefix = $this->storage['prefix'];
+            $prefix = $this->tasklist['prefix'];
         }
 
         $name = $prefix . $name;
@@ -402,7 +412,7 @@ class Builder
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
         /* ST */
-        switch ($this->storage['verb']) {
+        switch ($this->tasklist['verb']) {
             case 'SELECT':
                 $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
@@ -410,7 +420,7 @@ class Builder
                 $this->ST['table'] = $this->dict['table']['name'];
         }
 
-        $this->storage['table_built'] = true;
+        $this->tasklist['table_built'] = true;
         return;
     }
 
@@ -436,8 +446,8 @@ class Builder
      */
     protected function vsql($vsql)
     {
-        $prefix = $this->storage['prefix'];
-        $vprefix = $this->storage['vprefix'];
+        $prefix = $this->tasklist['prefix'];
+        $vprefix = $this->tasklist['vprefix'];
         if ($vprefix) {
             return str_replace($vprefix, $prefix, $vsql);
         } else {
@@ -700,14 +710,14 @@ class Builder
         if (!$this->has('where')) {
             $this->ST['where'] = '';
             $this->PA['where'] = [];
-            $this->storage['where_built'] = true;
+            $this->tasklist['where_built'] = true;
             return;
         }
 
-        $conditions = $this->storage['where'];
+        $conditions = $this->tasklist['where'];
 
         if ($this->has('where_logic')) {
-            $logic = $this->storage['where_logic'];
+            $logic = $this->tasklist['where_logic'];
         } else {
             $logic = 'AND';
         }
@@ -725,7 +735,7 @@ class Builder
             $this->PA['where'] = $parameters;
         }
 
-        $this->storage['where_built'] = true;
+        $this->tasklist['where_built'] = true;
         return;
     }
 
@@ -756,7 +766,7 @@ class Builder
             return;
         }
 
-        $set = $this->storage['set'];
+        $set = $this->tasklist['set'];
 
         $parts = [];
         foreach ($set as $item) {
@@ -818,7 +828,7 @@ class Builder
         $statement = "$column = $target";
 
         if ($checkExistsInWhere) {
-            $this->storage['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+            $this->tasklist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
         }
 
         return [
@@ -837,14 +847,14 @@ class Builder
         if (!$this->has('join')) {
             $this->ST['join'] = '';
             $this->PA['join'] = [];
-            $this->storage['join_built'] = true;
+            $this->tasklist['join_built'] = true;
             return;
         }
 
         $stmts = [];
         $params = [];
 
-        $joins = $this->storage['join'];
+        $joins = $this->tasklist['join'];
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
@@ -856,7 +866,7 @@ class Builder
         }
         $this->ST["join"] = implode("", $stmts);
         $this->PA['join'] = $this->combineParameterArray($params);
-        $this->storage['join_built'] = true;
+        $this->tasklist['join_built'] = true;
     }
 
 
@@ -868,11 +878,11 @@ class Builder
 
         if (!$this->has('groupby')) {
             $this->ST['groupby'] = '';
-            $this->storage['groupby_built'] = true;
+            $this->tasklist['groupby_built'] = true;
             return;
         }
 
-        $columns = $this->storage['groupby'];
+        $columns = $this->tasklist['groupby'];
         $columnlist = $this->process_SelectColumnList($columns);
 
         if ($columnlist) {
@@ -881,21 +891,21 @@ class Builder
             $this->ST['groupby'] = '';
         }
 
-        $this->storage['groupby_built'] = true;
+        $this->tasklist['groupby_built'] = true;
         return;
     }
 
 
     protected function has($key)
     {
-        return array_key_exists($key, $this->storage);
+        return array_key_exists($key, $this->tasklist);
     }
 
 
     protected function isBuilt($key)
     {
         $built = $key . '_built';
-        return ($this->has($built) && $this->storage[$built] === true);
+        return ($this->has($built) && $this->tasklist[$built] === true);
     }
 
 
@@ -911,14 +921,14 @@ class Builder
         if (!$this->has('having')) {
             $this->ST['having'] = '';
             $this->PA['having'] = [];
-            $this->storage['having_built'] = true;
+            $this->tasklist['having_built'] = true;
             return;
         }
 
-        $conditions = $this->storage['having'];
+        $conditions = $this->tasklist['having'];
 
         if ($this->has('having_logic')) {
-            $logic = $this->storage['having_logic'];
+            $logic = $this->tasklist['having_logic'];
         } else {
             $logic = 'AND';
         }
@@ -936,7 +946,7 @@ class Builder
             $this->PA['having'] = $parameters;
         }
 
-        $this->storage['having_built'] = true;
+        $this->tasklist['having_built'] = true;
         return;
     }
 
@@ -948,7 +958,7 @@ class Builder
             return;
         }
 
-        $flag = $this->storage['distinct'];
+        $flag = $this->tasklist['distinct'];
         if ($flag) {
             $this->dict['distinct'] = "DISTINCT ";
         } else {
@@ -967,12 +977,12 @@ class Builder
 
         if (!$this->has('orderby')) {
             $this->ST['orderby'] = '';
-            $this->storage['orderby_built'] = true;
+            $this->tasklist['orderby_built'] = true;
             return;
         }
 
         $array = [];
-        $orders = $this->storage['orderby'];
+        $orders = $this->tasklist['orderby'];
         foreach ($orders as $order) {
             if (is_string($order)) {
                 $array[] = $this->processOrder($order);
@@ -998,7 +1008,7 @@ class Builder
         } else {
             $this->ST['orderby'] = '';
         }
-        $this->storage['orderby_built'] = true;
+        $this->tasklist['orderby_built'] = true;
     }
 
 
@@ -1030,7 +1040,7 @@ class Builder
 
     protected function clause_COUNT()
     {
-        list($columns, $alias) = $this->storage['count'];
+        list($columns, $alias) = $this->tasklist['count'];
 
         if (is_string($alias) && $alias) {
             $asAlias = " AS $alias";
@@ -1039,7 +1049,7 @@ class Builder
         }
 
         if (!$columns) {
-            $columnlist = $this->dict['distinct'] . $this->dict['columnlist'];
+            $columnlist = $this->dict['distinct'] . $this->dict['select_column_list'];
         } elseif (is_array($columns)) {
             $columnlist = $this->process_SelectColumnList($columns);
         }
