@@ -431,6 +431,12 @@ class Sql
     }
 
 
+    /**
+     * ORDER BY clause.
+     *
+     * @param type $columns
+     * @return $this
+     */
     public function orderBy($columns)
     {
         if (!isset($this->tasklist['orderby'])) {
@@ -457,6 +463,12 @@ class Sql
     }
 
 
+    /**
+     * LIMIT clause.
+     *
+     * @param int|string $limit
+     * @return $this
+     */
     public function limit($limit)
     {
         $this->tasklist['limit'] = $limit;

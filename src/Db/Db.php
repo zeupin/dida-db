@@ -16,6 +16,11 @@ use \Exception;
 abstract class Db
 {
     /**
+     * Version
+     */
+    const VERSION = '1.0.0';
+
+    /**
      * Default configurations.
      *
      * @var array
