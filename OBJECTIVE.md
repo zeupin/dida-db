@@ -583,3 +583,26 @@ LIMIT
     5
 ```
 
+## 39. dec($column, $value)
+
+把指定的列自减一个值。
+
+```php
+$admin = $db->table('admin', 'a')
+    ->where('valid = 1')
+    ->dec('age')
+    ->update()
+    ->build();
+echo $admin->statement . PHP_EOL;
+echo var_export($admin->parameters, true) . PHP_EOL;
+```
+
+结果是：
+```php
+UPDATE
+    zp_admin AS a
+SET
+    age = age - 1
+WHERE
+    (valid = 1)
+```

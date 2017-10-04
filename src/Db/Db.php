@@ -219,7 +219,7 @@ abstract class Db
 
 
     /**
-     * Creates a Statement object and sets the master table.
+     * Creates an SQL Statement object and sets the master table.
      *
      * @param string $table
      * @param string $alias

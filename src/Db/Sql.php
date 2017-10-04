@@ -93,7 +93,7 @@ class Sql
         }
 
         if ($this->builder === null) {
-            $this->builder = new Builder();
+            $this->builder = new SqlBuilder();
         }
 
         $result = $this->builder->build($this->tasklist);
@@ -329,17 +329,33 @@ class Sql
 
 
     /**
+     * Increases $column by $value
+     *
      * @param string $column
      * @param mixed $value
      */
     public function inc($column, $value = 1)
     {
-        if ($value < 0) {
-            $value = abs($value);
-            $this->setExpr($column, "$column - $value");
-        } else {
-            $this->setExpr($column, "$column + $value");
-        }
+        $this->tasklist['verb'] = 'UPDATE';
+
+        $this->setExpr($column, "$column + $value");
+
+        $this->built = false;
+        return $this;
+    }
+
+
+    /**
+     * Decreases $column by $value
+     *
+     * @param string $column
+     * @param mixed $value
+     */
+    public function dec($column, $value = 1)
+    {
+        $this->tasklist['verb'] = 'UPDATE';
+
+        $this->setExpr($column, "$column - $value");
 
         $this->built = false;
         return $this;

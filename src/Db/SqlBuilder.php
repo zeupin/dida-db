@@ -9,7 +9,7 @@ namespace Dida\Db;
 /**
  * Builds an SQL statement accoding from the given $storeage[] demands.
  */
-class Builder
+class SqlBuilder
 {
     protected $tasklist = [];
 
