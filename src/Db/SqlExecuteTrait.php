@@ -34,4 +34,52 @@ trait SqlExecuteTrait
             return false;
         }
     }
+
+
+    /**
+     * PDOStatement fetch()
+     *
+     * @return array|false
+     */
+    public function fetch($fetch_style = null)
+    {
+        if ($this->pdoStatement === null) {
+            if ($this->execute() === false) {
+                return false;
+            }
+        }
+
+        if (is_int($fetch_style)) {
+            return $this->pdoStatement->fetch($fetch_style);
+        } else {
+            return $this->pdoStatement->fetch();
+        }
+    }
+
+
+    /**
+     * PDOStatement fetchAll()
+     *
+     * @return array(array)|false
+     */
+    public function fetchAll($fetch_style = null)
+    {
+        if ($this->pdoStatement === null) {
+            if ($this->execute() === false) {
+                return false;
+            }
+        }
+
+        if (is_int($fetch_style)) {
+            return $this->pdoStatement->fetchAll($fetch_style);
+        } else {
+            return $this->pdoStatement->fetchAll();
+        }
+    }
+
+
+    public function rowCount()
+    {
+        return $this->pdoStatement->rowCount();
+    }
 }

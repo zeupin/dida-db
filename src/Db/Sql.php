@@ -65,11 +65,9 @@ class Sql
     protected $todolist = [];
 
     /**
-     * SQL Query Actions
-     * SQL Execution Actions
+     * Executes SQL statement and get the result.
      */
-    use SqlQueryTrait,
-        SqlExecuteTrait;
+    use SqlExecuteTrait;
 
 
     public function __construct(&$db, array $options)
@@ -435,7 +433,7 @@ class Sql
     /**
      * ORDER BY clause.
      *
-     * @param type $columns
+     * @param array|string $columns
      * @return $this
      */
     public function orderBy($columns)
