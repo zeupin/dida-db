@@ -11,6 +11,8 @@ namespace Dida\Db;
  */
 class Sql
 {
+
+    use SqlQueryTrait;
     /**
      * @var \Dida\Db\Db
      */
@@ -81,6 +83,34 @@ class Sql
     }
 
 
+    public function sql($statement, $parameters = [])
+    {
+        $this->resetAll();
+
+        $this->statement = $statement;
+        $this->parameters = $parameters;
+
+        $this->built = true;
+        return $this;
+    }
+
+
+    public function table($name, $alias = null, $prefix = null)
+    {
+        $this->resetAll();
+
+        $this->todolist['table'] = [
+            'name'   => $name,
+            'alias'  => $alias,
+            'prefix' => $prefix,
+        ];
+        $this->todolist['table_built'] = false;
+
+        $this->built = false;
+        return $this;
+    }
+
+
     /**
      * Builds the statement.
      *
@@ -109,34 +139,6 @@ class Sql
         //var_dump($this->todolist);
 
         $this->built = true;
-        return $this;
-    }
-
-
-    public function sql($statement, $parameters = [])
-    {
-        $this->resetAll();
-
-        $this->statement = $statement;
-        $this->parameters = $parameters;
-
-        $this->built = true;
-        return $this;
-    }
-
-
-    public function table($name, $alias = null, $prefix = null)
-    {
-        $this->resetAll();
-
-        $this->todolist['table'] = [
-            'name'   => $name,
-            'alias'  => $alias,
-            'prefix' => $prefix,
-        ];
-        $this->todolist['table_built'] = false;
-
-        $this->built = false;
         return $this;
     }
 

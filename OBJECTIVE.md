@@ -606,3 +606,65 @@ SET
 WHERE
     (valid = 1)
 ```
+
+## 40. 执行查询query()动作
+
+先build，然后执行SQL语句，返回查询结果。如果出错，返回false。如果正常，返回一个PDOStatement。
+
+## 41. 执行fetch()动作
+
+先执行query，然后返回下一条记录。
+
+```php
+$admin = $db->table('admin', 'a')
+    ->fetch();
+echo Debug::varExport($admin);
+```
+
+结果是：
+```php
+[
+    'id'        => '2',
+    'name'      => '李四',
+    'mobile'    => '135044444444',
+    'email'     => '444@444.com',
+    'id_wechat' => null,
+    'pwd_salt'  => null,
+    'pwd_hash'  => null,
+]
+```
+
+## 42. 执行fetchAll()动作
+
+执行query，然后返回全部记录。
+
+```php
+$admin = $db->table('admin', 'a')
+    ->fetchAll();
+echo Debug::varExport($admin);
+```
+
+结果是：
+```php
+[
+    0 => [
+             'id'        => '2',
+             'name'      => '李四',
+             'mobile'    => '135044444444',
+             'email'     => '444@444.com',
+             'id_wechat' => null,
+             'pwd_salt'  => null,
+             'pwd_hash'  => null,
+         ],
+    1 => [
+             'id'        => '3',
+             'name'      => '王五',
+             'mobile'    => '135055555555',
+             'email'     => '555@555.com',
+             'id_wechat' => null,
+             'pwd_salt'  => null,
+             'pwd_hash'  => null,
+         ],
+]
+```
+
