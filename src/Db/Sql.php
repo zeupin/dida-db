@@ -69,17 +69,28 @@ class Sql
     }
 
 
+    public function changed()
+    {
+        $this->statement = null;
+        $this->parameters = null;
+        $this->built = false;
+        return $this;
+    }
+
+
     public function resetAll()
     {
         $this->todolist = $this->base;
-        return $this;
+
+        return $this->changed();
     }
 
 
     public function resetCount()
     {
         unset($this->todolist['count'], $this->todolist['count_built']);
-        return $this;
+
+        return $this->changed();
     }
 
 
@@ -90,7 +101,7 @@ class Sql
         $this->statement = $statement;
         $this->parameters = $parameters;
 
-        $this->built = true;
+        $this->built = true; // notice here
         return $this;
     }
 
@@ -106,8 +117,7 @@ class Sql
         ];
         $this->todolist['table_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -136,8 +146,6 @@ class Sql
             $this->parameters = $result['parameters'];
         }
 
-        //var_dump($this->todolist);
-
         $this->built = true;
         return $this;
     }
@@ -155,8 +163,7 @@ class Sql
         $this->todolist['where'][] = $condition;
         $this->todolist['where_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -171,8 +178,7 @@ class Sql
         $this->todolist['where'][] = $cond;
         $this->todolist['where_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -187,8 +193,7 @@ class Sql
         $this->todolist['where_logic'] = $logic;
         $this->todolist['where_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -200,8 +205,7 @@ class Sql
         }
         $this->whereMany($conditions, $logic);
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -212,8 +216,7 @@ class Sql
         $this->todolist['select_column_list'] = $columnAsAliasArray;
         $this->todolist['select_column_list_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -221,8 +224,7 @@ class Sql
     {
         $this->todolist['verb'] = 'DELETE';
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -232,8 +234,7 @@ class Sql
 
         $this->todolist['record'] = $record;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -241,8 +242,7 @@ class Sql
     {
         $this->todolist['verb'] = 'UPDATE';
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -254,8 +254,7 @@ class Sql
             'value'  => $value,
         ];
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -268,8 +267,7 @@ class Sql
             'parameters' => $parameters,
         ];
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -285,8 +283,7 @@ class Sql
             'checkExistsInWhere' => $checkExistsInWhere,
         ];
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -295,8 +292,7 @@ class Sql
         $this->todolist['join'][] = ['JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -305,8 +301,7 @@ class Sql
         $this->todolist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -315,8 +310,7 @@ class Sql
         $this->todolist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -325,8 +319,7 @@ class Sql
         $this->todolist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -342,8 +335,7 @@ class Sql
 
         $this->setExpr($column, "$column + $value");
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -359,8 +351,7 @@ class Sql
 
         $this->setExpr($column, "$column - $value");
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -369,8 +360,7 @@ class Sql
         $this->todolist['groupby'] = $columns;
         $this->todolist['groupby_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -386,8 +376,7 @@ class Sql
         $this->todolist['having'][] = $condition;
         $this->todolist['having_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -402,8 +391,7 @@ class Sql
         $this->todolist['having'][] = $cond;
         $this->todolist['having_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -418,8 +406,7 @@ class Sql
         $this->todolist['having_logic'] = $logic;
         $this->todolist['having_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -428,8 +415,7 @@ class Sql
         $this->todolist['distinct'] = $distinct;
         $this->todolist['distinct_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -448,8 +434,7 @@ class Sql
         $this->todolist['orderby'][] = $columns;
         $this->todolist['orderby_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -460,8 +445,7 @@ class Sql
         $this->todolist['count'] = [$columns, $alias];
         $this->todolist['count_built'] = false;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 
 
@@ -475,7 +459,6 @@ class Sql
     {
         $this->todolist['limit'] = $limit;
 
-        $this->built = false;
-        return $this;
+        return $this->changed();
     }
 }
