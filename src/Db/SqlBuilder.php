@@ -1062,6 +1062,7 @@ class SqlBuilder
      */
     protected function splitNameAlias($string)
     {
+        // Finds the first ' AS ' string, then split it.
         $result = preg_split('/\s+(AS)\s+/i', $string, 2);
         $name = $result[0];
         $alias = (isset($result[1])) ? $result[1] : null;
