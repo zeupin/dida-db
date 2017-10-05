@@ -228,22 +228,22 @@ $db->table('user', 'u')->whereMany([
 ], 'AND')->...
 ```
 
-## 20. find(数组)
+## 20. whereMatch(数组)
 
 一个常见的使用场景是根据一个数组为条件，直接搜索出符合的记录，为此，设计了这个函数。
 
 ```php
-->find([
+->whereMatch([
     'color' => 'red',
     'brand' => 'Zeupin'
 ])->...                    // (`color`='red') AND (`brand`='Zeupin')
 ```
 
-## 21. find(数据， 逻辑)
+## 21. whereMatch(数据， 逻辑)
 
 ```php
 $admin = $db->table('admin')
-    ->find([
+    ->whereMatch([
         'id'      => [1, 2, 3],
         'company' => 'zeupin',
     ], 'OR')
@@ -298,7 +298,7 @@ array()
 
 ```php
 $admin = $db->table('admin')
-    ->find([
+    ->whereMatch([
         'id'      => [1, 2, 3],
         'company' => 'zeupin',
     ])
@@ -356,7 +356,7 @@ $admin = $db->table('admin')
     ->setValue('name', 'Me')
     ->setExpr('age', 'age + ?', [1])
     ->setFromTable('fullname', '###_admin_info', 'fullname', 'id', 'id', true)
-    ->find([
+    ->whereMatch([
         'id'      => [1, 2, 3],
         'company' => 'zeupin',
     ])
@@ -415,7 +415,7 @@ $admin = $db->table('admin', 'a')
     ->setFromTable('fullname', '###_admin_info', 'fullname', 'id', 'id', false)
     ->join('###_admin_info AS b', 'a.id > b.id+?', [99])
     ->leftJoin('###_admin_info AS c', 'a.id=c.id')
-    ->find([
+    ->whereMatch([
         'id'      => [1, 2, 3],
         'company' => 'zeupin',
     ])

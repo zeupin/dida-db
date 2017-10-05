@@ -36,7 +36,7 @@ class Sql
     public $built = false;
 
     /**
-     * @var \Dida\Db\Builder
+     * @var \Dida\Db\SqlBuilder
      */
     protected $builder = null;
 
@@ -51,11 +51,11 @@ class Sql
     ];
 
     /**
-     * Task list.
+     * Todo list.
      *
      * @var array
      */
-    protected $tasklist = [];
+    protected $todolist = [];
 
 
     public function __construct(&$db, array $options)
@@ -69,14 +69,14 @@ class Sql
 
     public function resetAll()
     {
-        $this->tasklist = $this->base;
+        $this->todolist = $this->base;
         return $this;
     }
 
 
     public function resetCount()
     {
-        unset($this->tasklist['count'], $this->tasklist['count_built']);
+        unset($this->todolist['count'], $this->todolist['count_built']);
         return $this;
     }
 
@@ -96,7 +96,7 @@ class Sql
             $this->builder = new SqlBuilder();
         }
 
-        $result = $this->builder->build($this->tasklist);
+        $result = $this->builder->build($this->todolist);
 
         if ($result === false) {
             $this->statement = null;
@@ -106,7 +106,7 @@ class Sql
             $this->parameters = $result['parameters'];
         }
 
-        //var_dump($this->tasklist);
+        //var_dump($this->todolist);
 
         $this->built = true;
         return $this;
@@ -129,12 +129,12 @@ class Sql
     {
         $this->resetAll();
 
-        $this->tasklist['table'] = [
+        $this->todolist['table'] = [
             'name'   => $name,
             'alias'  => $alias,
             'prefix' => $prefix,
         ];
-        $this->tasklist['table_built'] = false;
+        $this->todolist['table_built'] = false;
 
         $this->built = false;
         return $this;
@@ -150,8 +150,8 @@ class Sql
             $condition = [$condition, 'RAW', $data];
         }
 
-        $this->tasklist['where'][] = $condition;
-        $this->tasklist['where_built'] = false;
+        $this->todolist['where'][] = $condition;
+        $this->todolist['where_built'] = false;
 
         $this->built = false;
         return $this;
@@ -166,8 +166,8 @@ class Sql
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->tasklist['where'][] = $cond;
-        $this->tasklist['where_built'] = false;
+        $this->todolist['where'][] = $cond;
+        $this->todolist['where_built'] = false;
 
         $this->built = false;
         return $this;
@@ -178,19 +178,19 @@ class Sql
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->tasklist['where_logic']) {
+        if ($logic === $this->todolist['where_logic']) {
             return $this;
         }
 
-        $this->tasklist['where_logic'] = $logic;
-        $this->tasklist['where_built'] = false;
+        $this->todolist['where_logic'] = $logic;
+        $this->todolist['where_built'] = false;
 
         $this->built = false;
         return $this;
     }
 
 
-    public function find(array $array, $logic = 'AND')
+    public function whereMatch(array $array, $logic = 'AND')
     {
         $conditions = [];
         foreach ($array as $key => $value) {
@@ -205,10 +205,10 @@ class Sql
 
     public function select(array $columnAsAliasArray = [])
     {
-        $this->tasklist['verb'] = 'SELECT';
+        $this->todolist['verb'] = 'SELECT';
 
-        $this->tasklist['select_column_list'] = $columnAsAliasArray;
-        $this->tasklist['select_column_list_built'] = false;
+        $this->todolist['select_column_list'] = $columnAsAliasArray;
+        $this->todolist['select_column_list_built'] = false;
 
         $this->built = false;
         return $this;
@@ -217,7 +217,7 @@ class Sql
 
     public function delete()
     {
-        $this->tasklist['verb'] = 'DELETE';
+        $this->todolist['verb'] = 'DELETE';
 
         $this->built = false;
         return $this;
@@ -226,9 +226,9 @@ class Sql
 
     public function insert(array $record)
     {
-        $this->tasklist['verb'] = 'INSERT';
+        $this->todolist['verb'] = 'INSERT';
 
-        $this->tasklist['record'] = $record;
+        $this->todolist['record'] = $record;
 
         $this->built = false;
         return $this;
@@ -237,7 +237,7 @@ class Sql
 
     public function update()
     {
-        $this->tasklist['verb'] = 'UPDATE';
+        $this->todolist['verb'] = 'UPDATE';
 
         $this->built = false;
         return $this;
@@ -246,7 +246,7 @@ class Sql
 
     public function setValue($column, $value)
     {
-        $this->tasklist['set'][$column] = [
+        $this->todolist['set'][$column] = [
             'type'   => 'value',
             'column' => $column,
             'value'  => $value,
@@ -259,7 +259,7 @@ class Sql
 
     public function setExpr($column, $expr, $parameters = [])
     {
-        $this->tasklist['set'][$column] = [
+        $this->todolist['set'][$column] = [
             'type'       => 'expr',
             'column'     => $column,
             'expr'       => $expr,
@@ -273,7 +273,7 @@ class Sql
 
     public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
-        $this->tasklist['set'][$column] = [
+        $this->todolist['set'][$column] = [
             'type'               => 'from_table',
             'column'             => $column,
             'tableB'             => $tableB,
@@ -290,8 +290,8 @@ class Sql
 
     public function join($tableB, $on, $parameters = [])
     {
-        $this->tasklist['join'][] = ['JOIN', $tableB, $on, $parameters];
-        $this->tasklist['join_built'] = false;
+        $this->todolist['join'][] = ['JOIN', $tableB, $on, $parameters];
+        $this->todolist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -300,8 +300,8 @@ class Sql
 
     public function innerJoin($tableB, $on, $parameters = [])
     {
-        $this->tasklist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
-        $this->tasklist['join_built'] = false;
+        $this->todolist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
+        $this->todolist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -310,8 +310,8 @@ class Sql
 
     public function leftJoin($tableB, $on, $parameters = [])
     {
-        $this->tasklist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
-        $this->tasklist['join_built'] = false;
+        $this->todolist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
+        $this->todolist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -320,8 +320,8 @@ class Sql
 
     public function rightJoin($tableB, $on, $parameters = [])
     {
-        $this->tasklist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
-        $this->tasklist['join_built'] = false;
+        $this->todolist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
+        $this->todolist['join_built'] = false;
 
         $this->built = false;
         return $this;
@@ -336,7 +336,7 @@ class Sql
      */
     public function inc($column, $value = 1)
     {
-        $this->tasklist['verb'] = 'UPDATE';
+        $this->todolist['verb'] = 'UPDATE';
 
         $this->setExpr($column, "$column + $value");
 
@@ -353,7 +353,7 @@ class Sql
      */
     public function dec($column, $value = 1)
     {
-        $this->tasklist['verb'] = 'UPDATE';
+        $this->todolist['verb'] = 'UPDATE';
 
         $this->setExpr($column, "$column - $value");
 
@@ -364,25 +364,25 @@ class Sql
 
     public function groupBy(array $columns)
     {
-        $this->tasklist['groupby'] = $columns;
-        $this->tasklist['groupby_built'] = false;
+        $this->todolist['groupby'] = $columns;
+        $this->todolist['groupby_built'] = false;
 
         $this->built = false;
         return $this;
     }
 
 
-    public function having($condition, $data = [])
+    public function having($condition, $parameters = [])
     {
         if (is_string($condition)) {
             if (substr($condition, 0, 1) !== '(') {
                 $condition = "($condition)";
             }
-            $condition = [$condition, 'RAW', $data];
+            $condition = [$condition, 'RAW', $parameters];
         }
 
-        $this->tasklist['having'][] = $condition;
-        $this->tasklist['having_built'] = false;
+        $this->todolist['having'][] = $condition;
+        $this->todolist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -397,8 +397,8 @@ class Sql
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->tasklist['having'][] = $cond;
-        $this->tasklist['having_built'] = false;
+        $this->todolist['having'][] = $cond;
+        $this->todolist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -409,12 +409,12 @@ class Sql
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->tasklist['having_logic']) {
+        if ($logic === $this->todolist['having_logic']) {
             return $this;
         }
 
-        $this->tasklist['having_logic'] = $logic;
-        $this->tasklist['having_built'] = false;
+        $this->todolist['having_logic'] = $logic;
+        $this->todolist['having_built'] = false;
 
         $this->built = false;
         return $this;
@@ -423,8 +423,8 @@ class Sql
 
     public function distinct($distinct = true)
     {
-        $this->tasklist['distinct'] = $distinct;
-        $this->tasklist['distinct_built'] = false;
+        $this->todolist['distinct'] = $distinct;
+        $this->todolist['distinct_built'] = false;
 
         $this->built = false;
         return $this;
@@ -439,12 +439,12 @@ class Sql
      */
     public function orderBy($columns)
     {
-        if (!isset($this->tasklist['orderby'])) {
-            $this->tasklist['orderby'] = [];
+        if (!isset($this->todolist['orderby'])) {
+            $this->todolist['orderby'] = [];
         }
 
-        $this->tasklist['orderby'][] = $columns;
-        $this->tasklist['orderby_built'] = false;
+        $this->todolist['orderby'][] = $columns;
+        $this->todolist['orderby_built'] = false;
 
         $this->built = false;
         return $this;
@@ -453,10 +453,10 @@ class Sql
 
     public function count(array $columns = null, $alias = null)
     {
-        $this->tasklist['verb'] = 'SELECT';
+        $this->todolist['verb'] = 'SELECT';
 
-        $this->tasklist['count'] = [$columns, $alias];
-        $this->tasklist['count_built'] = false;
+        $this->todolist['count'] = [$columns, $alias];
+        $this->todolist['count_built'] = false;
 
         $this->built = false;
         return $this;
@@ -471,7 +471,7 @@ class Sql
      */
     public function limit($limit)
     {
-        $this->tasklist['limit'] = $limit;
+        $this->todolist['limit'] = $limit;
 
         $this->built = false;
         return $this;

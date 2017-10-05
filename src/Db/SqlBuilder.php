@@ -11,7 +11,7 @@ namespace Dida\Db;
  */
 class SqlBuilder
 {
-    protected $tasklist = [];
+    protected $todolist = [];
 
     /**
      * Stores some temporary variables.
@@ -84,24 +84,19 @@ class SqlBuilder
         'NOT NULL'    => 'ISNOTNULL',
     ];
 
-    /**
-     * Leading spacing
-     */
-    const LEADING_SPACING = "\n    ";
-
 
     /**
-     * Builds the final SQL statement from $tasklist array.
+     * Builds the final SQL statement from $todolist array.
      *
-     * @param array $tasklist
+     * @param array $todolist
      */
-    public function build(&$tasklist)
+    public function build(&$todolist)
     {
         $this->done = null;
 
-        $this->tasklist = &$tasklist;
+        $this->todolist = &$todolist;
 
-        switch ($this->tasklist['verb']) {
+        switch ($this->todolist['verb']) {
             case 'SELECT':
                 return $this->build_SELECT();
             case 'DELETE':
@@ -111,7 +106,7 @@ class SqlBuilder
             case 'UPDATE':
                 return $this->build_UPDATE();
             default :
-                throw new Exception("Invalid build verb: {$this->tasklist['verb']}");
+                throw new Exception("Invalid build verb: {$this->todolist['verb']}");
         }
     }
 
@@ -292,7 +287,7 @@ class SqlBuilder
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
 
-        $record = &$this->tasklist['record'];
+        $record = &$this->todolist['record'];
         $record = $this->pickItemsWithKey($record);
         $columns = array_keys($record);
         $values = array_values($record);
@@ -363,12 +358,12 @@ class SqlBuilder
 
     protected function dict_SELECT_COLUMN_LIST()
     {
-        if (!isset($this->tasklist['columnlist'])) {
+        if (!isset($this->todolist['columnlist'])) {
             $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
             return;
         }
 
-        $columns = $this->tasklist['columnlist'];
+        $columns = $this->todolist['columnlist'];
         $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
     }
 
@@ -393,10 +388,10 @@ class SqlBuilder
     protected function clause_TABLE()
     {
         // built, name, alias, prefix
-        extract($this->tasklist['table']);
+        extract($this->todolist['table']);
 
         if (!is_string($prefix)) {
-            $prefix = $this->tasklist['prefix'];
+            $prefix = $this->todolist['prefix'];
         }
 
         $name = $prefix . $name;
@@ -414,7 +409,7 @@ class SqlBuilder
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
         /* ST */
-        switch ($this->tasklist['verb']) {
+        switch ($this->todolist['verb']) {
             case 'SELECT':
                 $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
@@ -422,7 +417,7 @@ class SqlBuilder
                 $this->ST['table'] = $this->dict['table']['name'];
         }
 
-        $this->tasklist['table_built'] = true;
+        $this->todolist['table_built'] = true;
         return;
     }
 
@@ -448,8 +443,8 @@ class SqlBuilder
      */
     protected function vsql($vsql)
     {
-        $prefix = $this->tasklist['prefix'];
-        $vprefix = $this->tasklist['vprefix'];
+        $prefix = $this->todolist['prefix'];
+        $vprefix = $this->todolist['vprefix'];
         if ($vprefix) {
             return str_replace($vprefix, $prefix, $vsql);
         } else {
@@ -712,14 +707,14 @@ class SqlBuilder
         if (!$this->has('where')) {
             $this->ST['where'] = '';
             $this->PA['where'] = [];
-            $this->tasklist['where_built'] = true;
+            $this->todolist['where_built'] = true;
             return;
         }
 
-        $conditions = $this->tasklist['where'];
+        $conditions = $this->todolist['where'];
 
         if ($this->has('where_logic')) {
-            $logic = $this->tasklist['where_logic'];
+            $logic = $this->todolist['where_logic'];
         } else {
             $logic = 'AND';
         }
@@ -737,7 +732,7 @@ class SqlBuilder
             $this->PA['where'] = $parameters;
         }
 
-        $this->tasklist['where_built'] = true;
+        $this->todolist['where_built'] = true;
         return;
     }
 
@@ -768,7 +763,7 @@ class SqlBuilder
             return;
         }
 
-        $set = $this->tasklist['set'];
+        $set = $this->todolist['set'];
 
         $parts = [];
         foreach ($set as $item) {
@@ -830,7 +825,7 @@ class SqlBuilder
         $statement = "$column = $target";
 
         if ($checkExistsInWhere) {
-            $this->tasklist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+            $this->todolist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
         }
 
         return [
@@ -849,14 +844,14 @@ class SqlBuilder
         if (!$this->has('join')) {
             $this->ST['join'] = '';
             $this->PA['join'] = [];
-            $this->tasklist['join_built'] = true;
+            $this->todolist['join_built'] = true;
             return;
         }
 
         $stmts = [];
         $params = [];
 
-        $joins = $this->tasklist['join'];
+        $joins = $this->todolist['join'];
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
@@ -868,7 +863,7 @@ class SqlBuilder
         }
         $this->ST["join"] = implode("", $stmts);
         $this->PA['join'] = $this->combineParameterArray($params);
-        $this->tasklist['join_built'] = true;
+        $this->todolist['join_built'] = true;
     }
 
 
@@ -880,11 +875,11 @@ class SqlBuilder
 
         if (!$this->has('groupby')) {
             $this->ST['groupby'] = '';
-            $this->tasklist['groupby_built'] = true;
+            $this->todolist['groupby_built'] = true;
             return;
         }
 
-        $columns = $this->tasklist['groupby'];
+        $columns = $this->todolist['groupby'];
         $columnlist = $this->process_SelectColumnList($columns);
 
         if ($columnlist) {
@@ -893,21 +888,21 @@ class SqlBuilder
             $this->ST['groupby'] = '';
         }
 
-        $this->tasklist['groupby_built'] = true;
+        $this->todolist['groupby_built'] = true;
         return;
     }
 
 
     protected function has($key)
     {
-        return array_key_exists($key, $this->tasklist);
+        return array_key_exists($key, $this->todolist);
     }
 
 
     protected function isBuilt($key)
     {
         $built = $key . '_built';
-        return ($this->has($built) && $this->tasklist[$built] === true);
+        return ($this->has($built) && $this->todolist[$built] === true);
     }
 
 
@@ -923,14 +918,14 @@ class SqlBuilder
         if (!$this->has('having')) {
             $this->ST['having'] = '';
             $this->PA['having'] = [];
-            $this->tasklist['having_built'] = true;
+            $this->todolist['having_built'] = true;
             return;
         }
 
-        $conditions = $this->tasklist['having'];
+        $conditions = $this->todolist['having'];
 
         if ($this->has('having_logic')) {
-            $logic = $this->tasklist['having_logic'];
+            $logic = $this->todolist['having_logic'];
         } else {
             $logic = 'AND';
         }
@@ -948,7 +943,7 @@ class SqlBuilder
             $this->PA['having'] = $parameters;
         }
 
-        $this->tasklist['having_built'] = true;
+        $this->todolist['having_built'] = true;
         return;
     }
 
@@ -960,7 +955,7 @@ class SqlBuilder
             return;
         }
 
-        $flag = $this->tasklist['distinct'];
+        $flag = $this->todolist['distinct'];
         if ($flag) {
             $this->dict['distinct'] = "DISTINCT ";
         } else {
@@ -979,12 +974,12 @@ class SqlBuilder
 
         if (!$this->has('orderby')) {
             $this->ST['orderby'] = '';
-            $this->tasklist['orderby_built'] = true;
+            $this->todolist['orderby_built'] = true;
             return;
         }
 
         $array = [];
-        $orders = $this->tasklist['orderby'];
+        $orders = $this->todolist['orderby'];
         foreach ($orders as $order) {
             if (is_string($order)) {
                 $array[] = $this->process_OrderBy($order);
@@ -1010,7 +1005,7 @@ class SqlBuilder
         } else {
             $this->ST['orderby'] = '';
         }
-        $this->tasklist['orderby_built'] = true;
+        $this->todolist['orderby_built'] = true;
     }
 
 
@@ -1042,7 +1037,7 @@ class SqlBuilder
 
     protected function clause_COUNT()
     {
-        list($columns, $alias) = $this->tasklist['count'];
+        list($columns, $alias) = $this->todolist['count'];
 
         if (is_string($alias) && $alias) {
             $asAlias = " AS $alias";
@@ -1086,13 +1081,13 @@ class SqlBuilder
 
         if (!$this->has('limit')) {
             $this->ST['limit'] = '';
-            $this->tasklist['limit_built'] = true;
+            $this->todolist['limit_built'] = true;
             return;
         }
 
-        $limit = $this->tasklist['limit'];
+        $limit = $this->todolist['limit'];
         $this->ST['limit'] = "\nLIMIT\n    $limit";
 
-        $this->tasklist['limit_built'] = true;
+        $this->todolist['limit_built'] = true;
     }
 }
