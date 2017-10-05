@@ -64,6 +64,10 @@ class Sql
      */
     protected $todolist = [];
 
+    /**
+     * SQL Query Actions
+     * SQL Execution Actions
+     */
     use SqlQueryTrait,
         SqlExecuteTrait;
 
