@@ -16,7 +16,7 @@ trait SqlQueryTrait
     /**
      * Executes an SQL statement that does not affect the data.
      *
-     * @return \PDOStatement|false Returns a result set as a PDOStatement object or FALSE on failure.
+     * @return boolean
      */
     public function query()
     {
@@ -30,12 +30,8 @@ trait SqlQueryTrait
         }
 
         try {
-            $stmt = $this->db->pdo->prepare($this->statement);
-            if ($stmt->execute($this->parameters)) {
-                return $stmt;
-            } else {
-                return false;
-            }
+            $this->pdoStatement = $this->db->pdo->prepare($this->statement);
+            return $this->pdoStatement->execute($this->parameters);
         } catch (Exception $ex) {
             return false;
         }
@@ -49,16 +45,16 @@ trait SqlQueryTrait
      */
     public function fetch($fetch_style = null)
     {
-        $result = $this->query();
-
-        if ($result === false) {
-            return false;
+        if ($this->pdoStatement === null) {
+            if ($this->query() === false) {
+                return false;
+            }
         }
 
         if (is_int($fetch_style)) {
-            return $result->fetch($fetch_style);
+            return $this->pdoStatement->fetch($fetch_style);
         } else {
-            return $result->fetch();
+            return $this->pdoStatement->fetch();
         }
     }
 
@@ -70,16 +66,16 @@ trait SqlQueryTrait
      */
     public function fetchAll($fetch_style = null)
     {
-        $result = $this->query();
-
-        if ($result === false) {
-            return false;
+        if ($this->pdoStatement === null) {
+            if ($this->query() === false) {
+                return false;
+            }
         }
 
         if (is_int($fetch_style)) {
-            return $result->fetchAll($fetch_style);
+            return $this->pdoStatement->fetchAll($fetch_style);
         } else {
-            return $result->fetchAll();
+            return $this->pdoStatement->fetchAll();
         }
     }
 }

@@ -11,8 +11,6 @@ namespace Dida\Db;
  */
 class Sql
 {
-
-    use SqlQueryTrait;
     /**
      * @var \Dida\Db\Db
      */
@@ -31,6 +29,13 @@ class Sql
      * @var array
      */
     public $parameters = null;
+
+    /**
+     * PDOStatement instance.
+     *
+     * @var \PDOStatement
+     */
+    public $pdoStatement = null;
 
     /**
      * @var boolean
@@ -59,6 +64,9 @@ class Sql
      */
     protected $todolist = [];
 
+    use SqlQueryTrait,
+        SqlExecuteTrait;
+
 
     public function __construct(&$db, array $options)
     {
@@ -73,6 +81,7 @@ class Sql
     {
         $this->statement = null;
         $this->parameters = null;
+        $this->pdoStatement = null;
         $this->built = false;
         return $this;
     }
