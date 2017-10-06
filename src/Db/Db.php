@@ -174,16 +174,20 @@ abstract class Db
      * @param string $sql
      * @param array $sql_parameters
      *
-     * @return mixed
+     * @return Result
      */
     public function execute($statement, $parameters = [])
     {
         $this->connect();
+
         try {
             $stmt = $this->pdo->prepare($statement);
-            return $stmt->execute($parameters);
+            $success = $stmt->execute($parameters);
+            if ($result) {
+                return new Result($this, $stmt, $success);
+            }
         } catch (Exception $ex) {
-            return false;
+            return new Result($this, $stmt, false);
         }
     }
 
@@ -201,27 +205,6 @@ abstract class Db
         ]);
         return $sql;
     }
-
-
-    /**
-     * Creates a Statement object and sets statement and parameters directly.
-     *
-     * @param string $statement
-     * @param array $parameters
-     *
-     * @return \Dida\Db\Sql
-     */
-    public function sql($statement, $parameters = [])
-    {
-        $sql = $this->newSql();
-
-        $sql->statement = $statement;
-        $sql->parameters = $parameters;
-        $sql->built = true;
-
-        return $sql;
-    }
-
 
     /**
      * Creates an SQL Statement object and sets the master table.
