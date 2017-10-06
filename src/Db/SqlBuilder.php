@@ -444,9 +444,9 @@ class SqlBuilder
     protected function vsql($vsql)
     {
         $prefix = $this->todolist['prefix'];
-        $vprefix = $this->todolist['vprefix'];
-        if ($vprefix) {
-            return str_replace($vprefix, $prefix, $vsql);
+        $swap_prefix = $this->todolist['swap_prefix'];
+        if ($swap_prefix) {
+            return str_replace($swap_prefix, $prefix, $vsql);
         } else {
             return $vsql;
         }

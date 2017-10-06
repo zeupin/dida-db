@@ -53,7 +53,7 @@ class Sql
     protected $base = [
         'verb'        => 'SELECT',
         'prefix'      => '',
-        'vprefix'     => '###_',
+        'swap_prefix' => '###_',
         'where_logic' => 'AND',
     ];
 
@@ -63,6 +63,7 @@ class Sql
      * @var array
      */
     protected $todolist = [];
+
 
     /**
      * Executes SQL statement and get the result.

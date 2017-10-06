@@ -41,7 +41,7 @@ abstract class Db
         'charset'     => 'utf8', // set the default connection charset.
         'persistence' => false, // set if a persistence connection is persistence.
         'prefix'      => '', // default table prefix
-        'vprefix'     => '###_', // default table prefix string.
+        'swap_prefix' => '###_', // default table prefix string.
     ];
 
     /**
@@ -196,8 +196,8 @@ abstract class Db
     protected function newSql()
     {
         $sql = new Sql($this, [
-            'prefix'  => $this->cfg['prefix'],
-            'vprefix' => $this->cfg['vprefix'],
+            'prefix'      => $this->cfg['prefix'],
+            'swap_prefix' => $this->cfg['swap_prefix'],
         ]);
         return $sql;
     }
