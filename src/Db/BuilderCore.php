@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * Builds an SQL statement accoding from the given $storeage[] demands.
+ * Build an SQL statement accoding from the given $storeage[] demands.
  */
-class SqlBuilder
+class BuilderCore
 {
     protected $todolist = [];
 

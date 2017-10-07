@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * SQL Statement
+ * SQL Statement Builder
  */
-class Sql
+class Builder
 {
     /**
      * @var \Dida\Db\Db
@@ -43,9 +43,9 @@ class Sql
     public $built = false;
 
     /**
-     * @var \Dida\Db\SqlBuilder
+     * @var \Dida\Db\BuilderCore
      */
-    protected $builder = null;
+    protected $core = null;
 
     /**
      * @var array
@@ -63,12 +63,6 @@ class Sql
      * @var array
      */
     protected $todolist = [];
-
-
-    /**
-     * Executes SQL statement and get the result.
-     */
-    //use SqlExecuteTrait;
 
 
     public function __construct(&$db, array $options)
@@ -489,11 +483,11 @@ class Sql
             return $this;
         }
 
-        if ($this->builder === null) {
-            $this->builder = new SqlBuilder();
+        if ($this->core === null) {
+            $this->core = new BuilderCore();
         }
 
-        $result = $this->builder->build($this->todolist);
+        $result = $this->core->build($this->todolist);
 
         if ($result === false) {
             $this->statement = null;

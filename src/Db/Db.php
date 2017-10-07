@@ -195,14 +195,15 @@ abstract class Db
      *
      * @return Statement
      */
-    protected function newSql()
+    protected function newBuilder()
     {
-        $sql = new Sql($this, [
+        $sql = new Builder($this, [
             'prefix'      => $this->cfg['prefix'],
             'swap_prefix' => $this->cfg['swap_prefix'],
         ]);
         return $sql;
     }
+
 
     /**
      * Creates an SQL Statement object and sets the master table.
@@ -211,11 +212,11 @@ abstract class Db
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Sql
+     * @return \Dida\Db\Builder
      */
     public function table($table, $alias = null, $prefix = null)
     {
-        $sql = $this->newSql();
+        $sql = $this->newBuilder();
 
         $sql->table($table, $alias, $prefix);
 
