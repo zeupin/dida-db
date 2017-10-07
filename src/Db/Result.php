@@ -55,9 +55,7 @@ class Result
      */
     public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
     {
-        $this->db = $db;
-        $this->pdoStatement = $pdoStatement;
-        $this->success = $success;
+        $this->set($db, $pdoStatement, $success);
     }
 
 
@@ -71,13 +69,56 @@ class Result
 
 
     /**
-     * Set $pdoStatement.
+     * Set $db, $pdoStatement, $success.
      *
      * @param \PDOStatement $pdoStatement
      */
-    public function setStatement(\PDOStatement $pdoStatement, $success = true)
+    public function set(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
+    {
+        $this->db = $db;
+        $this->pdoStatement = $pdoStatement;
+        $this->success = $success;
+
+        return $this;
+    }
+
+
+    /**
+     * Set $db.
+     *
+     * @param \Dida\Db\Db $db
+     * @return $this
+     */
+    public function setDb(\Dida\Db\Db &$db)
+    {
+        $this->db = $db;
+
+        return $this;
+    }
+
+
+    /**
+     * Set $pdoStatement.
+     *
+     * @param \PDOStatement $pdoStatement
+     * @return $this
+     */
+    public function setPDOStatement(\PDOStatement $pdoStatement)
     {
         $this->pdoStatement = $pdoStatement;
+
+        return $this;
+    }
+
+
+    /**
+     * Set $success.
+     *
+     * @param boolean $success
+     * @return $this
+     */
+    public function setSuccess($success)
+    {
         $this->success = $success;
 
         return $this;
@@ -96,16 +137,15 @@ class Result
      * @param int|string|object $arg1
      * @param array $arg2
      */
-    public function setFetchMode($mode, $arg1 = null, array $arg2 = null)
+    public function setFetchMode()
     {
-        if (!is_null($arg2)) {
-            return call_user_func_array([$this->pdoStatement, 'setFetchMode'], [$mode, $arg1, $arg2]);
+        switch (func_num_args()) {
+            case 1:
+            case 2:
+            case 3:
+                return call_user_func_array([$this->pdoStatement, 'setFetchMode'], func_get_args());
+            default :
+                throw new Exception('Invalid arguments number. See PDOStatement::setFetchMode()');
         }
-
-        if (!is_null($arg1)) {
-            return call_user_func_array([$this->pdoStatement, 'setFetchMode'], [$mode, $arg1]);
-        }
-
-        return call_user_func_array([$this->pdoStatement, 'setFetchMode'], [$mode]);
     }
 }
