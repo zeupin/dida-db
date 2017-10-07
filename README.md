@@ -1,13 +1,12 @@
 # dida-db
 
-Dida\Db is a wrapper for PDO and PDOStatement. It's a part of Dida Framework.
+Dida\Db is a tiny database management package that contains most of the common features. It's a part of Dida Framework.
 
-It extends PDO and PDOStatement classes and adds some advanced features such as SQL query builder, chain-like function call and so on.
+It extends PDO and PDOStatement classes and adds some advanced features such as SQL query builder, fluent-styled  function call and so on.
 
-* Supports various SQL database, including MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite and more.
 * Friendly MIT License.
+* Supports various SQL database, including MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite and more.
 * Lazy database connection. Connects to the database only on method calls that require a connection. You can create an instance and not incur the cost of a connection if you never make a query.
-
 
 ## Requires
 
@@ -19,13 +18,13 @@ It extends PDO and PDOStatement classes and adds some advanced features such as 
 
 ### Composer require
 
-```
+```bash
 composer require dida/db
 ```
 
 ### Update
 
-```
+```bash
 composer update
 ```
 
