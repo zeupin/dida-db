@@ -771,3 +771,28 @@ $user = $db->table('user', 'u')
 $result = $user->execute();
 echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 1872
 ```
+## 49. 执行execute，带where条件
+
+```php
+$user = $db->table('user', 'u')
+    ->whereMatch(['mobile' => 13501671189])
+    ->delete();
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 1
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 0
+```
+
+## 50. 执行delete，不带条件
+
+**警告！** 这个操作将删除表的所有数据。
+
+```php
+$user = $db->table('user', 'u')
+    ->delete();
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 1839
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 0
+```
+
