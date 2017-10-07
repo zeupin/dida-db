@@ -1,6 +1,6 @@
 {
   "name": "dida/db",
-  "description": "A database management package.",
+  "description": "A tiny database management package that contains most of the common features.",
   "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/zeupin/dida-db",
@@ -17,7 +17,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Dida\\": "src/"
+      "Dida\\Db\\": "src/Db"
     }
   }
 }

@@ -18,7 +18,7 @@ interface SchemaInterface
 
 
     /**
-     * Get all meta information about the <schema.table>.
+     * Get all metadata about the <schema.table>.
      */
     public function getTableInfo($schema, $table);
 

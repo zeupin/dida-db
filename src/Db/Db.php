@@ -16,6 +16,11 @@ use \Exception;
 abstract class Db
 {
     /**
+     * Version
+     */
+    const VERSION = '1.0.0';
+
+    /**
      * Default configurations.
      *
      * @var array
@@ -29,13 +34,14 @@ abstract class Db
 
         /* required parameters */
         'workdir' => null, // Set the work directory.
+        'dbtype'  => null, // Set the DB type to use, 'Mysql',
 
         /* optional parameters */
         'dbname'      => null, // the database name
         'charset'     => 'utf8', // set the default connection charset.
         'persistence' => false, // set if a persistence connection is persistence.
         'prefix'      => '', // default table prefix
-        'vprefix'     => '###_', // default table prefix string.
+        'swap_prefix' => '###_', // default table prefix string.
     ];
 
     /**
@@ -52,6 +58,13 @@ abstract class Db
      */
     public $workdir = null;
 
+    /**
+     * Specifies the DB type
+     *
+     * @var string
+     */
+    public $dbtype = null;
+
 
     /**
      * Constructs this class.
@@ -63,9 +76,20 @@ abstract class Db
         // Checks if the work directory is valid.
         $workdir = $this->cfg['workdir'];
         if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception('$cfg["workdir"] "' . $workdir . '" does not exists or cannot be written');
+            throw new Exception('Invalid $cfg["workdir"]! "' . $workdir . '" does not exists or cannot be written');
         }
         $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
+
+        // Checks the db type is valid.
+        $dbtype = strtolower($this->cfg['dbtype']);
+        switch ($dbtype) {
+            case 'mysql':
+                $this->cfg['dbtype'] = 'Mysql';
+                break;
+            default:
+                throw new Exception('Invalid $cfg["dbtype"]!');
+        }
+        $this->dbtype = $this->cfg['dbtype'];
     }
 
 
@@ -79,7 +103,7 @@ abstract class Db
 
 
     /**
-     * Connects the specified database driver.
+     * Connects the database driver.
      *
      * @return boolean -- Returns TRUE on success or FALSE on failure.
      */
@@ -95,7 +119,6 @@ abstract class Db
             $this->pdo = new PDO($this->cfg['dsn'], $this->cfg['username'], $this->cfg['password'], $this->cfg['options']);
             return true;
         } catch (PDOException $e) {
-            $this->pdoexception = $e;
             return false;
         }
     }
@@ -142,7 +165,6 @@ abstract class Db
     public function disconnect()
     {
         $this->pdo = null;
-        $this->pdoexception = null;
     }
 
 
@@ -152,14 +174,16 @@ abstract class Db
      * @param string $sql
      * @param array $sql_parameters
      *
-     * @return mixed
+     * @return Result
      */
-    public function execute($sql, $sql_parameters = [])
+    public function execute($statement, $parameters = [])
     {
         $this->connect();
+
         try {
-            $stmt = $this->pdo->prepare($sql);
-            return $stmt->execute($sql_parameters);
+            $stmt = $this->pdo->prepare($statement);
+            $success = $stmt->execute($parameters);
+            return new Result($this, $stmt, $success);
         } catch (Exception $ex) {
             return false;
         }
@@ -167,36 +191,35 @@ abstract class Db
 
 
     /**
-     * Creates a Statement object and sets statement and parameters directly.
+     * Returns a new SQL class instance with necessary parameters.
      *
-     * @param string $sql
-     * @param array $sql_parameters
-     *
-     * @return \Dida\Db\Statement
+     * @return Statement
      */
-    public function sql($sql, $sql_parameters = [])
+    protected function newBuilder()
     {
-        $stmt = new Statement($this);
-        $stmt->sql = $sql;
-        $stmt->sql_parameters = $sql_parameters;
-
-        return $stmt;
+        $sql = new Builder($this, [
+            'prefix'      => $this->cfg['prefix'],
+            'swap_prefix' => $this->cfg['swap_prefix'],
+        ]);
+        return $sql;
     }
 
 
     /**
-     * Creates a Statement object and sets the master table.
+     * Creates an SQL Statement object and sets the master table.
      *
      * @param string $table
      * @param string $alias
+     * @param string $prefix
      *
-     * @return \Dida\Db\Statement
+     * @return \Dida\Db\Builder
      */
-    public function table($table, $alias = null)
+    public function table($table, $alias = null, $prefix = null)
     {
-        $stmt = new Statement($this);
-        $stmt->table($table, $alias);
+        $sql = $this->newBuilder();
 
-        return $stmt;
+        $sql->table($table, $alias, $prefix);
+
+        return $sql;
     }
 }
