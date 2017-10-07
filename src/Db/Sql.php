@@ -17,11 +17,6 @@ class Sql
     protected $db = null;
 
     /**
-     * @var string
-     */
-    protected $verb = 'SELECT';
-
-    /**
      * SQL statement
      *
      * @var string
@@ -73,7 +68,7 @@ class Sql
     /**
      * Executes SQL statement and get the result.
      */
-    use SqlExecuteTrait;
+    //use SqlExecuteTrait;
 
 
     public function __construct(&$db, array $options)
@@ -135,36 +130,6 @@ class Sql
         $this->todolist['table_built'] = false;
 
         return $this->changed();
-    }
-
-
-    /**
-     * Builds the statement.
-     *
-     * @return SQL|false
-     */
-    public function build()
-    {
-        if ($this->built) {
-            return $this;
-        }
-
-        if ($this->builder === null) {
-            $this->builder = new SqlBuilder();
-        }
-
-        $result = $this->builder->build($this->todolist);
-
-        if ($result === false) {
-            $this->statement = null;
-            $this->parameters = null;
-        } else {
-            $this->statement = $result['statement'];
-            $this->parameters = $result['parameters'];
-        }
-
-        $this->built = true;
-        return $this;
     }
 
 
@@ -481,6 +446,36 @@ class Sql
 
 
     /**
+     * Builds the statement.
+     *
+     * @return SQL|false
+     */
+    public function build()
+    {
+        if ($this->built) {
+            return $this;
+        }
+
+        if ($this->builder === null) {
+            $this->builder = new SqlBuilder();
+        }
+
+        $result = $this->builder->build($this->todolist);
+
+        if ($result === false) {
+            $this->statement = null;
+            $this->parameters = null;
+        } else {
+            $this->statement = $result['statement'];
+            $this->parameters = $result['parameters'];
+        }
+
+        $this->built = true;
+        return $this;
+    }
+
+
+    /**
      * Executes an SQL statement directly.
      *
      * @param string $sql
@@ -490,16 +485,21 @@ class Sql
      */
     public function execute()
     {
-        $this->connect();
+        if (!$this->built) {
+            $this->build();
+        }
+
+        // Makes a DB connection.
+        if ($this->db->connect() === false) {
+            throw new Exception('Fail to connect the database.');
+        }
 
         try {
-            $stmt = $this->pdo->prepare($statement);
-            $success = $stmt->execute($parameters);
-            if ($result) {
-                return new Result($this, $stmt, $success);
-            }
+            $pdoStatement = $this->db->pdo->prepare($this->statement);
+            $success = $pdoStatement->execute($this->parameters);
+            return new Result($this->db, $pdoStatement, $success);
         } catch (Exception $ex) {
-            return new Result($this, $stmt, false);
+            return false;
         }
     }
 }

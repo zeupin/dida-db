@@ -473,6 +473,8 @@ WHERE
     (valid = 1)
 ```
 
+注：自减一个值参见 #39.
+
 ## 32. 优化update、insert、delete时的表名子句，不加AS。
 
 ## 33. `GROUP BY`
@@ -583,7 +585,7 @@ LIMIT
     5
 ```
 
-## 39. dec($column, $value)
+## 39. dec(\$column, $value)
 
 把指定的列自减一个值。
 
@@ -607,16 +609,19 @@ WHERE
     (valid = 1)
 ```
 
-## 40. 执行查询query()动作
+注：自加一个值参见 #31.
+
+## 40. 执行execute()
 
 先build，然后执行SQL语句，返回查询结果。如果出错，返回false。如果正常，返回一个PDOStatement。
 
 ## 41. 执行fetch()动作
 
-先执行query，然后返回下一条记录。
+先执行，然后返回下一条记录。
 
 ```php
 $admin = $db->table('admin', 'a')
+    ->execute()
     ->fetch();
 echo Debug::varExport($admin);
 ```
@@ -640,6 +645,7 @@ echo Debug::varExport($admin);
 
 ```php
 $admin = $db->table('admin', 'a')
+    ->execute()
     ->fetchAll();
 echo Debug::varExport($admin);
 ```
@@ -668,3 +674,38 @@ echo Debug::varExport($admin);
 ]
 ```
 
+## 43. 设置FetchMode
+
+完成execute()后，还可以设置setFetchMode()，使得fetch()或者fetchAll()输出指定格式的数据。
+
+```php
+$admin = $db->table('admin', 'a')
+    ->execute()
+    ->setFetchMode(\PDO::FETCH_NUM)
+    ->fetchAll();
+echo Debug::varExport($admin);
+```
+
+结果是：
+```php
+[
+    0 => [
+             0 => '2',
+             1 => '李四',
+             2 => '135044444444',
+             3 => '444@444.com',
+             4 => null,
+             5 => null,
+             6 => null,
+         ],
+    1 => [
+             0 => '3',
+             1 => '王五',
+             2 => '135055555555',
+             3 => '555@555.com',
+             4 => null,
+             5 => null,
+             6 => null,
+         ],
+]
+```

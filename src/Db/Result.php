@@ -19,13 +19,6 @@ class Result
     public $db = null;
 
     /**
-     * SQL statement verb.
-     *
-     * @var string
-     */
-    public $verb = null;
-
-    /**
      * PDOStatement instance.
      *
      * @var \PDOStatement
@@ -54,6 +47,12 @@ class Result
     public $parameters = [];
 
 
+    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
+    {
+        $this->set($db, $pdoStatement, $success);
+    }
+
+
     /**
      * Set $db, $pdoStatement, $success.
      *
@@ -64,10 +63,9 @@ class Result
      *
      * @return $this
      */
-    public function set(\Dida\Db\Db &$db, $verb, \PDOStatement $pdoStatement = null, $success = true)
+    public function set(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
     {
         $this->db = $db;
-        $this->verb = $verb;
         $this->pdoStatement = $pdoStatement;
         $this->success = $success;
 
@@ -93,7 +91,8 @@ class Result
             case 1:
             case 2:
             case 3:
-                return call_user_func_array([$this->pdoStatement, 'setFetchMode'], func_get_args());
+                call_user_func_array([&$this->pdoStatement, 'setFetchMode'], func_get_args());
+                return $this;
             default :
                 throw new Exception('Invalid argument number. See PDOStatement::setFetchMode()');
         }
@@ -107,7 +106,11 @@ class Result
      */
     public function fetch()
     {
-        return $this->pdoStatement->fetch();
+        if ($this->success) {
+            return $this->pdoStatement->fetch();
+        } else {
+            return false;
+        }
     }
 
 
@@ -118,6 +121,10 @@ class Result
      */
     public function fetchAll()
     {
-        return $this->pdoStatement->fetchAll();
+        if ($this->success) {
+            return $this->pdoStatement->fetchAll();
+        } else {
+            return false;
+        }
     }
 }
