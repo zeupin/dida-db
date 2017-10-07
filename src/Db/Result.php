@@ -12,24 +12,32 @@ namespace Dida\Db;
 class Result
 {
     /**
+     * Reference of a \Dida\Db\Db instance.
      *
      * @var \Dida\Db\Db
      */
-    protected $db = null;
+    public $db = null;
+
+    /**
+     * SQL statement verb.
+     *
+     * @var string
+     */
+    public $verb = null;
 
     /**
      * PDOStatement instance.
      *
      * @var \PDOStatement
      */
-    protected $pdoStatement = null;
+    public $pdoStatement = null;
 
     /**
      * Statement execution result.
      *
      * @var boolean
      */
-    protected $success = false;
+    public $success = false;
 
     /**
      * Statement String.
@@ -47,78 +55,20 @@ class Result
 
 
     /**
-     * Class construct
-     *
-     * @param \Dida\Db\Db $db
-     * @param \PDOStatement $pdoStatement
-     * @param boolean $success
-     */
-    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
-    {
-        $this->set($db, $pdoStatement, $success);
-    }
-
-
-    /**
-     * Class destruct
-     */
-    public function __destruct()
-    {
-        $this->pdoStatement = null;
-    }
-
-
-    /**
      * Set $db, $pdoStatement, $success.
      *
-     * @param \PDOStatement $pdoStatement
-     */
-    public function set(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
-    {
-        $this->db = $db;
-        $this->pdoStatement = $pdoStatement;
-        $this->success = $success;
-
-        return $this;
-    }
-
-
-    /**
-     * Set $db.
-     *
      * @param \Dida\Db\Db $db
+     * @param string $verb
+     * @param \PDOStatement $pdoStatement
+     * @param boolean $success
+     *
      * @return $this
      */
-    public function setDb(\Dida\Db\Db &$db)
+    public function set(\Dida\Db\Db &$db, $verb, \PDOStatement $pdoStatement = null, $success = true)
     {
         $this->db = $db;
-
-        return $this;
-    }
-
-
-    /**
-     * Set $pdoStatement.
-     *
-     * @param \PDOStatement $pdoStatement
-     * @return $this
-     */
-    public function setPDOStatement(\PDOStatement $pdoStatement)
-    {
+        $this->verb = $verb;
         $this->pdoStatement = $pdoStatement;
-
-        return $this;
-    }
-
-
-    /**
-     * Set $success.
-     *
-     * @param boolean $success
-     * @return $this
-     */
-    public function setSuccess($success)
-    {
         $this->success = $success;
 
         return $this;
@@ -145,7 +95,29 @@ class Result
             case 3:
                 return call_user_func_array([$this->pdoStatement, 'setFetchMode'], func_get_args());
             default :
-                throw new Exception('Invalid arguments number. See PDOStatement::setFetchMode()');
+                throw new Exception('Invalid argument number. See PDOStatement::setFetchMode()');
         }
+    }
+
+
+    /**
+     * Fetches the next row from a result set.
+     *
+     * @return mixed|false
+     */
+    public function fetch()
+    {
+        return $this->pdoStatement->fetch();
+    }
+
+
+    /**
+     * Returns an array containing all of the result set rows.
+     *
+     * @return array|false
+     */
+    public function fetchAll()
+    {
+        return $this->pdoStatement->fetchAll();
     }
 }

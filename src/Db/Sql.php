@@ -17,6 +17,11 @@ class Sql
     protected $db = null;
 
     /**
+     * @var string
+     */
+    protected $verb = 'SELECT';
+
+    /**
      * SQL statement
      *
      * @var string
@@ -472,5 +477,29 @@ class Sql
         $this->todolist['limit'] = $limit;
 
         return $this->changed();
+    }
+
+
+    /**
+     * Executes an SQL statement directly.
+     *
+     * @param string $sql
+     * @param array $sql_parameters
+     *
+     * @return Result
+     */
+    public function execute()
+    {
+        $this->connect();
+
+        try {
+            $stmt = $this->pdo->prepare($statement);
+            $success = $stmt->execute($parameters);
+            if ($result) {
+                return new Result($this, $stmt, $success);
+            }
+        } catch (Exception $ex) {
+            return new Result($this, $stmt, false);
+        }
     }
 }
