@@ -106,18 +106,6 @@ class Sql
     }
 
 
-    public function sql($statement, $parameters = [])
-    {
-        $this->resetAll();
-
-        $this->statement = $statement;
-        $this->parameters = $parameters;
-
-        $this->built = true; // notice here
-        return $this;
-    }
-
-
     public function table($name, $alias = null, $prefix = null)
     {
         $this->resetAll();
@@ -228,20 +216,51 @@ class Sql
     }
 
 
-    public function setValue($column, $value)
+    /**
+     * Set column expression.
+     *
+     * @param string|array $column
+     * @param mixed|null $value
+     */
+    public function setValue($column, $value = null)
     {
-        $this->todolist['set'][$column] = [
-            'type'   => 'value',
-            'column' => $column,
-            'value'  => $value,
-        ];
+        $this->todolist['verb'] = 'UPDATE';
+
+        if (is_string($column)) {
+            $this->todolist['set'][$column] = [
+                'type'   => 'value',
+                'column' => $column,
+                'value'  => $value,
+            ];
+        } elseif (is_array($column)) {
+            foreach ($column as $key => $value) {
+                $this->todolist['set'][$key] = [
+                    'type'   => 'value',
+                    'column' => $key,
+                    'value'  => $value,
+                ];
+            }
+        } else {
+            throw new Exception('Invalid argument type for $column');
+        }
 
         return $this->changed();
     }
 
 
-    public function setExpr($column, $expr, $parameters = [])
+    /**
+     * Set column expression.
+     *
+     * @param string $column
+     * @param mixed $expr
+     * @param array $parameters
+     *
+     * @return $this
+     */
+    public function setExpr($column, $expr, array $parameters = [])
     {
+        $this->todolist['verb'] = 'UPDATE';
+
         $this->todolist['set'][$column] = [
             'type'       => 'expr',
             'column'     => $column,
@@ -253,8 +272,22 @@ class Sql
     }
 
 
+    /**
+     * Set column value using tableB.columnB where table.colA=tableB.colB.
+     *
+     * @param string $column
+     * @param string $tableB
+     * @param string $columnB
+     * @param string $colA
+     * @param string $colB
+     * @param boolean $checkExistsInWhere
+     *
+     * @return $this
+     */
     public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
+        $this->todolist['verb'] = 'UPDATE';
+
         $this->todolist['set'][$column] = [
             'type'               => 'from_table',
             'column'             => $column,

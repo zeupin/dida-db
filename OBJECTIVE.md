@@ -709,3 +709,65 @@ echo Debug::varExport($admin);
          ],
 ]
 ```
+
+## 44. 执行insert
+
+```php
+$admin = $db->table('user', 'u')
+    ->insert([
+    'name'   => '乔峰',
+    'mobile' => rand(13501670001, 13501679999), // 随机生成一个手机号
+    ]); // $admin是一个Builder类
+
+$result = $admin->execute(); // $result是一个Result类
+
+echo Debug::varExport($result->lastInsertId());
+```
+
+## 45. insert数据的性能
+
+在笔记本上，XAMPP环境，用上式插入1000条Mysql随机数据，耗时约2.7秒。
+
+## 46. 执行update，带where条件
+
+```php
+$user = $db->table('user', 'u')
+    ->whereMatch(['mobile' => 13501674439])
+    ->setValue('name', '无名')
+    ->update();
+$result = $user->execute();
+echo Debug::varDump($result) . PHP_EOL;
+```
+
+## 47. 执行update，不带where条件
+
+这个要慎用，将会修改某一列的所有数据。
+
+```php
+$user = $db->table('user', 'u')
+    ->setValue('name', '无名')
+    ->update();
+$result = $user->execute();
+echo Debug::varDump($result) . PHP_EOL;
+```
+
+## 48. 查询影响的行数rowCount()
+
+修改了一条数据：
+
+```php
+$user = $db->table('user', 'u')
+    ->whereMatch(['mobile' => 13501674439])
+    ->setValue('name', '没人');
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 1
+```
+
+修改了很多数据：
+
+```php
+$user = $db->table('user', 'u')
+    ->setValue('name', '没人');
+$result = $user->execute();
+echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 1872
+```

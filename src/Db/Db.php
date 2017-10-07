@@ -183,11 +183,9 @@ abstract class Db
         try {
             $stmt = $this->pdo->prepare($statement);
             $success = $stmt->execute($parameters);
-            if ($result) {
-                return new Result($this, $stmt, $success);
-            }
+            return new Result($this, $stmt, $success);
         } catch (Exception $ex) {
-            return new Result($this, $stmt, false);
+            return false;
         }
     }
 

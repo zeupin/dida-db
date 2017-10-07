@@ -16,7 +16,7 @@ class Result
      *
      * @var \Dida\Db\Db
      */
-    public $db = null;
+    protected $db = null;
 
     /**
      * PDOStatement instance.
@@ -47,29 +47,18 @@ class Result
     public $parameters = [];
 
 
-    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
-    {
-        $this->set($db, $pdoStatement, $success);
-    }
-
-
     /**
-     * Set $db, $pdoStatement, $success.
+     * Class construct.
      *
      * @param \Dida\Db\Db $db
-     * @param string $verb
      * @param \PDOStatement $pdoStatement
      * @param boolean $success
-     *
-     * @return $this
      */
-    public function set(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
+    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
     {
         $this->db = $db;
         $this->pdoStatement = $pdoStatement;
         $this->success = $success;
-
-        return $this;
     }
 
 
@@ -126,5 +115,56 @@ class Result
         } else {
             return false;
         }
+    }
+
+
+    /**
+     * Represents PDOStatement::errorCode()
+     *
+     * @return string
+     */
+    public function errorCode()
+    {
+        return $this->pdoStatement->errorCode();
+    }
+
+
+    /**
+     * Represents PDOStatement::errorInfo()
+     *
+     * @return array
+     */
+    public function errorInfo()
+    {
+        return $this->pdoStatement->errorInfo();
+    }
+
+
+    /**
+     * Represents PDO::lastInsertId()
+     *
+     * @param string $name
+     */
+    public function lastInsertId($name = null)
+    {
+        return $this->db->pdo->lastInsertId($name);
+    }
+
+
+    /**
+     * Represents PDOStatement::rowCount()
+     */
+    public function rowCount()
+    {
+        return $this->pdoStatement->rowCount();
+    }
+
+
+    /**
+     * Represents PDOStatement::debugDumpParams()
+     */
+    public function debugDumpParams()
+    {
+        return $this->pdoStatement->debugDumpParams();
     }
 }
