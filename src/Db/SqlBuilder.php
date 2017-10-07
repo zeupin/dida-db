@@ -439,16 +439,16 @@ class SqlBuilder
 
 
     /**
-     * Converts a vitrual SQL to a normal SQL.
+     * Replaces a swapped SQL to a normal SQL.
      */
-    protected function vsql($vsql)
+    protected function replaceSwapPrefix($swapsql)
     {
         $prefix = $this->todolist['prefix'];
         $swap_prefix = $this->todolist['swap_prefix'];
         if ($swap_prefix) {
-            return str_replace($swap_prefix, $prefix, $vsql);
+            return str_replace($swap_prefix, $prefix, $swapsql);
         } else {
-            return $vsql;
+            return $swapsql;
         }
     }
 
@@ -537,7 +537,7 @@ class SqlBuilder
 
     protected function cond_COMPARISON($column, $op, $data)
     {
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $part = [
             'statement'  => "($column $op ?)",
             'parameters' => [$data],
@@ -596,7 +596,7 @@ class SqlBuilder
             throw new Exception('An empty array not allowed use in a IN statement');
         }
 
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $marks = implode(', ', array_fill(0, count($data), '?'));
         $part = [
             'statement'  => "($column $op ($marks))",
@@ -617,7 +617,7 @@ class SqlBuilder
 
     protected function cond_LIKE($column, $op, $data)
     {
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $part = [
             'statement'  => "$column $op ?",
             'parameters' => $data,
@@ -634,7 +634,7 @@ class SqlBuilder
 
     protected function cond_BETWEEN($column, $op, $data)
     {
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $part = [
             'statement'  => "($column $op ? AND ?)",
             'parameters' => $data,
@@ -651,7 +651,7 @@ class SqlBuilder
 
     protected function cond_ISNULL($column, $op, $data = null)
     {
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $part = [
             'statement'  => "$column IS NULL",
             'parameters' => [],
@@ -662,7 +662,7 @@ class SqlBuilder
 
     protected function cond_ISNOTNULL($column, $op, $data = null)
     {
-        $column = $this->vsql($column);
+        $column = $this->replaceSwapPrefix($column);
         $part = [
             'statement'  => "$column IS NOT NULL",
             'parameters' => [],
@@ -817,7 +817,7 @@ class SqlBuilder
     protected function setFromTable($item)
     {
         extract($item);
-        $tableB = $this->vsql($tableB);
+        $tableB = $this->replaceSwapPrefix($tableB);
 
         $tableRef = $this->dict['table']['ref'];
 
@@ -855,8 +855,8 @@ class SqlBuilder
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
-            $table = $this->vsql($table);
-            $on = $this->vsql($on);
+            $table = $this->replaceSwapPrefix($table);
+            $on = $this->replaceSwapPrefix($on);
 
             $stmts[] = "\n$jointype {$table}\n    ON $on";
             $params[] = $parameters;
@@ -988,7 +988,7 @@ class SqlBuilder
                     if (is_int($key)) {
                         $array[] = $this->process_OrderBy($value);
                     } else {
-                        $key = $this->vsql($key);
+                        $key = $this->replaceSwapPrefix($key);
                         $value = strtoupper(trim($value));
                         if ($value === 'ASC' || $value === 'DESC') {
                             $array[] = "$key $value";
@@ -1021,7 +1021,7 @@ class SqlBuilder
         ];
 
         $return = [];
-        $string = $this->vsql($string);
+        $string = $this->replaceSwapPrefix($string);
         $array = explode(',', $string);
         foreach ($array as $item) {
             $item = trim($item);
