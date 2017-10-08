@@ -11,7 +11,7 @@ use \Exception;
 /**
  * SQL Statement Demand
  */
-class Demand implements DemandInterface, DQLInterface, DULInterface
+class Demand implements DemandInterface, DQCInterface, DUCInterface
 {
     /**
      * @var \Dida\Db\Db
