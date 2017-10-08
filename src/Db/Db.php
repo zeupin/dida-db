@@ -52,7 +52,7 @@ abstract class Db
     public $pdo = null;
 
     /**
-     * Specifies a work directory.
+     * Specifies a work directory. Workdir must exist and be writable.
      *
      * @var string
      */
@@ -67,7 +67,7 @@ abstract class Db
 
 
     /**
-     * Constructs this class.
+     * Class construct.
      */
     public function __construct(array $cfg = [])
     {
@@ -79,17 +79,6 @@ abstract class Db
             throw new Exception('Invalid $cfg["workdir"]! "' . $workdir . '" does not exists or cannot be written');
         }
         $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
-
-        // Checks the db type is valid.
-        $dbtype = strtolower($this->cfg['dbtype']);
-        switch ($dbtype) {
-            case 'mysql':
-                $this->cfg['dbtype'] = 'Mysql';
-                break;
-            default:
-                throw new Exception('Invalid $cfg["dbtype"]!');
-        }
-        $this->dbtype = $this->cfg['dbtype'];
     }
 
 
@@ -206,7 +195,7 @@ abstract class Db
 
 
     /**
-     * Creates an SQL Statement object and sets the master table.
+     * Creates an SQL Statement <Builder> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
