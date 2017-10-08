@@ -6,10 +6,13 @@
 
 namespace Dida\Db;
 
+use \PDO,
+    \PDOStatement;
+
 /**
- * Statement
+ * Result
  */
-class Result
+class Result implements ResultInterface
 {
     /**
      * Reference of a \Dida\Db\Db instance.
@@ -54,7 +57,7 @@ class Result
      * @param \PDOStatement $pdoStatement
      * @param boolean $success
      */
-    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
+    public function __construct(&$db, \PDOStatement $pdoStatement = null, $success = true)
     {
         $this->db = $db;
         $this->pdoStatement = $pdoStatement;
@@ -82,7 +85,7 @@ class Result
             case 3:
                 call_user_func_array([&$this->pdoStatement, 'setFetchMode'], func_get_args());
                 return $this;
-            default :
+            default:
                 throw new Exception('Invalid argument number. See PDOStatement::setFetchMode()');
         }
     }

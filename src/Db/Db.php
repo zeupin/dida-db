@@ -13,12 +13,12 @@ use \Exception;
 /**
  * Db
  */
-abstract class Db
+abstract class Db implements DbInterface
 {
     /**
      * Version
      */
-    const VERSION = '1.0.0';
+    const VERSION = '0.1.1';
 
     /**
      * Default configurations.
@@ -107,7 +107,7 @@ abstract class Db
         try {
             $this->pdo = new PDO($this->cfg['dsn'], $this->cfg['username'], $this->cfg['password'], $this->cfg['options']);
             return true;
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -142,7 +142,7 @@ abstract class Db
             } else {
                 return true;
             }
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -160,12 +160,12 @@ abstract class Db
     /**
      * Executes an SQL statement directly.
      *
-     * @param string $sql
-     * @param array $sql_parameters
+     * @param string $statement
+     * @param array $parameters
      *
      * @return Result
      */
-    public function execute($statement, $parameters = [])
+    public function execute($statement, array $parameters = [])
     {
         $this->connect();
 
@@ -184,28 +184,29 @@ abstract class Db
      *
      * @return Statement
      */
-    protected function newBuilder()
+    protected function newDemand()
     {
-        $sql = new Builder($this, [
+        $builder = new Builder();
+        $sql = new Demand([
             'prefix'      => $this->cfg['prefix'],
             'swap_prefix' => $this->cfg['swap_prefix'],
-        ]);
+            ], $this, $builder);
         return $sql;
     }
 
 
     /**
-     * Creates an SQL Statement <Builder> object and sets it as the master table.
+     * Creates an SQL Statement <Demand> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Builder
+     * @return \Dida\Db\Demand
      */
     public function table($table, $alias = null, $prefix = null)
     {
-        $sql = $this->newBuilder();
+        $sql = $this->newDemand();
 
         $sql->table($table, $alias, $prefix);
 
