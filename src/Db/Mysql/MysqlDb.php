@@ -11,5 +11,16 @@ namespace Dida\Db\Mysql;
  */
 class MysqlDb extends \Dida\Db\Db
 {
-    
+    /**
+     * Class construct.
+     *
+     * @param array $cfg
+     */
+    public function __construct(array $cfg = array())
+    {
+        parent::__construct($cfg);
+
+        // Set the dbtype
+        $this->dbtype = 'Mysql';
+    }
 }
