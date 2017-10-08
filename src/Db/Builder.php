@@ -31,13 +31,6 @@ class Builder
     public $parameters = null;
 
     /**
-     * PDOStatement instance.
-     *
-     * @var \PDOStatement
-     */
-    public $pdoStatement = null;
-
-    /**
      * @var boolean
      */
     public $built = false;
@@ -78,8 +71,8 @@ class Builder
     {
         $this->statement = null;
         $this->parameters = null;
-        $this->pdoStatement = null;
         $this->built = false;
+
         return $this;
     }
 
