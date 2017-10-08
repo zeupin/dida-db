@@ -796,3 +796,12 @@ $result = $user->execute();
 echo Debug::varExport($result->rowCount()) . PHP_EOL;  // 返回 0
 ```
 
+## 51. TRUNCATE
+
+```php
+$user = $db->table('user', 'u')
+    ->truncate()
+    ->build();
+echo Debug::varExport($user->statement) . PHP_EOL;
+$result = $user->execute();
+```

@@ -238,63 +238,6 @@ class Builder
 
 
     /**
-     * SELECT
-     *
-     * @return $this
-     */
-    public function select(array $arrayColumnAsAlias = [])
-    {
-        $this->todolist['verb'] = 'SELECT';
-
-        $this->todolist['select_column_list'] = $arrayColumnAsAlias;
-        $this->todolist['select_column_list_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * DELETE
-     *
-     * @return $this
-     */
-    public function delete()
-    {
-        $this->todolist['verb'] = 'DELETE';
-
-        return $this->changed();
-    }
-
-
-    /**
-     * INSERT
-     *
-     * @return $this
-     */
-    public function insert(array $record)
-    {
-        $this->todolist['verb'] = 'INSERT';
-
-        $this->todolist['record'] = $record;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * UPDATE
-     *
-     * @return $this
-     */
-    public function update()
-    {
-        $this->todolist['verb'] = 'UPDATE';
-
-        return $this->changed();
-    }
-
-
-    /**
      * Set column expression.
      *
      * @param string|array $column
@@ -634,6 +577,76 @@ class Builder
     public function limit($limit)
     {
         $this->todolist['limit'] = $limit;
+
+        return $this->changed();
+    }
+
+
+    /**
+     * SELECT
+     *
+     * @return $this
+     */
+    public function select(array $arrayColumnAsAlias = [])
+    {
+        $this->todolist['verb'] = 'SELECT';
+
+        $this->todolist['select_column_list'] = $arrayColumnAsAlias;
+        $this->todolist['select_column_list_built'] = false;
+
+        return $this->changed();
+    }
+
+
+    /**
+     * DELETE
+     *
+     * @return $this
+     */
+    public function delete()
+    {
+        $this->todolist['verb'] = 'DELETE';
+
+        return $this->changed();
+    }
+
+
+    /**
+     * INSERT
+     *
+     * @return $this
+     */
+    public function insert(array $record)
+    {
+        $this->todolist['verb'] = 'INSERT';
+
+        $this->todolist['record'] = $record;
+
+        return $this->changed();
+    }
+
+
+    /**
+     * UPDATE
+     *
+     * @return $this
+     */
+    public function update()
+    {
+        $this->todolist['verb'] = 'UPDATE';
+
+        return $this->changed();
+    }
+
+
+    /**
+     * TRUNCATE
+     *
+     * @return $this
+     */
+    public function truncate()
+    {
+        $this->todolist['verb'] = 'TRUNCATE';
 
         return $this->changed();
     }
