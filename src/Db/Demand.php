@@ -14,6 +14,11 @@ use \Exception;
 class Demand implements DemandInterface, DQCInterface, DUCInterface
 {
     /**
+     * Version
+     */
+    const VERSION = '0.1.3';
+
+    /**
      * @var \Dida\Db\Db
      */
     protected $db = null;

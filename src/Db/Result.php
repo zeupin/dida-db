@@ -15,6 +15,11 @@ use \PDOStatement;
 class Result implements ResultInterface
 {
     /**
+     * Version
+     */
+    const VERSION = '0.1.3';
+
+    /**
      * Reference of a \Dida\Db\Db instance.
      *
      * @var \Dida\Db\Db
