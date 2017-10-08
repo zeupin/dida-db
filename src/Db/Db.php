@@ -186,10 +186,11 @@ abstract class Db implements DbInterface
      */
     protected function newDemand()
     {
-        $sql = new Demand($this, [
+        $builder = new Builder();
+        $sql = new Demand([
             'prefix'      => $this->cfg['prefix'],
             'swap_prefix' => $this->cfg['swap_prefix'],
-        ]);
+            ], $this, $builder);
         return $sql;
     }
 

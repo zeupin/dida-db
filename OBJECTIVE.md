@@ -74,7 +74,7 @@ $cfg = [
 ## 7. 类的调用层次。
 
 ```
-Db -> Statement -> Builder -> ResultSet
+Db -> Demand -> Builder -> Result
 ```
 
 ## 8. 执行时，统一使用预处理模式（Prepare）。
@@ -98,7 +98,7 @@ Db -> Statement -> Builder -> ResultSet
 
 ## 11. 从Db类生成SQL类
 
-通过 `Db` 类的如下方法，生成 `Statement` 类实例
+通过 `Db` 类的如下方法，生成 `Demand` 类实例
 
 * $db->sql($statement, $parameters=[])
 * $db->table(表名, 别名=null, prefix=null)
@@ -123,7 +123,7 @@ $db->table('user', 'u');
 
 因为不同数据库的转义处理不一样，仅仅为了转义的要求，而将Db拆分成MysqlDb，SqliteDb，SqlsrvDb等等，增加了复杂度不说，生成的SQL代码看上去也很紊乱，完全脱离了框架初衷，有过度编程的感觉。
 
-Dida框架的主要目标是**快**，适度编码，加快运行速度，绝对是考虑的要点。
+Dida框架的主要目标之一是**快**，不要适度编码，加快运行速度，是考虑解决方案的要点。
 
 ## 16. WHERE条件
 

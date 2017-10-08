@@ -12,12 +12,29 @@ namespace Dida\Db;
 interface DemandInterface
 {
     /**
-     * Class construct.
+     * Constructor.
      *
-     * @param \Dida\Db\Db $db
      * @param array $options
+     * @param \Dida\Db\Db $db
+     * @param \Dida\Db\Builder $builder
      */
-    public function __construct(&$db, array $options);
+    public function __construct(array $options, &$db, &$builder);
+
+
+    /**
+     * Set $db for this object.
+     *
+     * @param \Dida\Db\Db $Db
+     */
+    public function setDb(&$db);
+
+
+    /**
+     * Set $builder for this object.
+     *
+     * @param \Dida\Db\Db $Db
+     */
+    public function setBuilder(&$builder);
 
 
     /**

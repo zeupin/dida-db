@@ -19,6 +19,23 @@ class Demand implements DemandInterface
     protected $db = null;
 
     /**
+     * @var \Dida\Db\Builder
+     */
+    protected $builder = null;
+
+    /**
+     * @var boolean
+     */
+    public $built = false;
+
+    /**
+     * The result of $this->build()
+     *
+     * @var boolean
+     */
+    public $build_ok = false;
+
+    /**
      * SQL statement
      *
      * @var string
@@ -33,30 +50,14 @@ class Demand implements DemandInterface
     public $parameters = null;
 
     /**
-     * @var boolean
-     */
-    public $built = false;
-
-    /**
-     * @var \Dida\Db\Builder
-     */
-    protected $builder = null;
-
-    /**
-     * The result of $this->build()
-     *
-     * @var boolean
-     */
-    public $build_ok = false;
-
-    /**
      * @var array
      */
     protected $base = [
-        'verb'        => 'SELECT',
-        'prefix'      => '',
-        'swap_prefix' => '###_',
-        'where_logic' => 'AND',
+        'verb'         => 'SELECT',
+        'prefix'       => '',
+        'swap_prefix'  => '###_',
+        'where_logic'  => 'AND',
+        'having_logic' => 'AND',
     ];
 
     /**
@@ -70,15 +71,47 @@ class Demand implements DemandInterface
     /**
      * Class construct.
      *
-     * @param \Dida\Db\Db $db
      * @param array $options
+     * @param \Dida\Db\Db $db
+     * @param \Dida\Db\Builder $builder
      */
-    public function __construct(&$db, array $options)
+    public function __construct(array $options, &$db, &$builder)
     {
         $this->db = $db;
+        $this->builder = $builder;
 
         $this->base = array_merge($this->base, $options);
         $this->resetAll();
+    }
+
+
+    /**
+     * Set $db for this object.
+     *
+     * @param \Dida\Db\Db $Db
+     *
+     * @return $this
+     */
+    public function setDb(&$db)
+    {
+        $this->db = $db;
+
+        return $this->changed();
+    }
+
+
+    /**
+     * Set $builder for this object.
+     *
+     * @param \Dida\Db\Db $Db
+     *
+     * @return $this
+     */
+    public function setBuilder(&$builder)
+    {
+        $this->builder = $builder;
+
+        return $this->changed();
     }
 
 
@@ -666,7 +699,7 @@ class Demand implements DemandInterface
         $this->build_ok = false;
 
         if ($this->builder === null) {
-            $this->builder = new Builder();
+            throw new Exception('Not specified a Builder object.');
         }
 
         $result = $this->builder->build($this->todolist);

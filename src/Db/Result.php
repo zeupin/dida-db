@@ -10,7 +10,7 @@ use \PDO,
     \PDOStatement;
 
 /**
- * Statement
+ * Result
  */
 class Result implements ResultInterface
 {
