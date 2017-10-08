@@ -54,8 +54,8 @@ interface DbInterface
     /**
      * Executes an SQL statement directly.
      *
-     * @param string $sql
-     * @param array $sql_parameters
+     * @param string $statement
+     * @param array $parameters
      *
      * @return Result
      */
@@ -63,13 +63,13 @@ interface DbInterface
 
 
     /**
-     * Creates an SQL Statement <Builder> object and sets it as the master table.
+     * Creates an SQL Statement <Demand> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Builder
+     * @return \Dida\Db\Demand
      */
     public function table($table, $alias = null, $prefix = null);
 }

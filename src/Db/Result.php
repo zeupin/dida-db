@@ -6,10 +6,13 @@
 
 namespace Dida\Db;
 
+use \PDO,
+    \PDOStatement;
+
 /**
  * Statement
  */
-class Result
+class Result implements ResultInterface
 {
     /**
      * Reference of a \Dida\Db\Db instance.
@@ -54,7 +57,7 @@ class Result
      * @param \PDOStatement $pdoStatement
      * @param boolean $success
      */
-    public function __construct(\Dida\Db\Db &$db, \PDOStatement $pdoStatement = null, $success = true)
+    public function __construct(&$db, \PDOStatement $pdoStatement = null, $success = true)
     {
         $this->db = $db;
         $this->pdoStatement = $pdoStatement;

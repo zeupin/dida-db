@@ -6,712 +6,1113 @@
 
 namespace Dida\Db;
 
-use \Exception;
-
 /**
- * SQL Statement Builder
+ * SQL statement Builder
  */
-class Builder
+class Builder implements BuilderInterface
 {
-    /**
-     * @var \Dida\Db\Db
-     */
-    protected $db = null;
+    protected $todolist = [];
 
     /**
-     * SQL statement
-     *
-     * @var string
-     */
-    public $statement = null;
-
-    /**
-     * SQL parameters
+     * Stores some temporary variables.
      *
      * @var array
      */
-    public $parameters = null;
-
-    /**
-     * @var boolean
-     */
-    public $built = false;
-
-    /**
-     * @var \Dida\Db\BuilderCore
-     */
-    protected $core = null;
-
-    /**
-     * The result of $this->build()
-     *
-     * @var boolean
-     */
-    public $build_ok = false;
-
-    /**
-     * @var array
-     */
-    protected $base = [
-        'verb'        => 'SELECT',
-        'prefix'      => '',
-        'swap_prefix' => '###_',
-        'where_logic' => 'AND',
+    protected $dict = [
+        'table' => '',
     ];
 
     /**
-     * Todo list.
+     * Final statement clause.
      *
      * @var array
      */
-    protected $todolist = [];
+    protected $ST = [];
+
+    /**
+     * Final parameters.
+     *
+     * @var array
+     */
+    protected $PA = [];
+
+    /*
+     * All supported operater set.
+     */
+    protected static $opertor_set = [
+        /* Raw SQL */
+        'RAW'         => 'RAW',
+        /* equal */
+        'EQ'          => 'EQ',
+        '='           => 'EQ',
+        '=='          => 'EQ',
+        /* not equal */
+        'NEQ'         => 'NEQ',
+        '<>'          => 'NEQ',
+        '!='          => 'NEQ',
+        /* <,>,<=,>= */
+        'GT'          => 'GT',
+        '>'           => 'GT',
+        'EGT'         => 'EGT',
+        '>='          => 'EGT',
+        'LT'          => 'LT',
+        '<'           => 'LT',
+        'ELT'         => 'ELT',
+        '<='          => 'ELT',
+        /* LIKE */
+        'LIKE'        => 'LIKE',
+        'NOT LIKE'    => 'NOTLIKE',
+        'NOTLIKE'     => 'NOTLIKE',
+        /* IN */
+        'IN'          => 'IN',
+        'NOT IN'      => 'NOTIN',
+        'NOTIN'       => 'NOTIN',
+        /* BETWEEN */
+        'BETWEEN'     => 'BETWEEN',
+        'NOT BETWEEN' => 'NOTBETWEEN',
+        'NOTBETWEEN'  => 'NOTBETWEEN',
+        /* EXISTS */
+        'EXISTS'      => 'EXISTS',
+        'NOT EXISTS'  => 'NOTEXISTS',
+        'NOTEXISTS'   => 'NOTEXISTS',
+        /* ISNULL */
+        'ISNULL'      => 'ISNULL',
+        'NULL'        => 'ISNULL',
+        'ISNOTNULL'   => 'ISNOTNULL',
+        'IS NOT NULL' => 'ISNOTNULL',
+        'NOTNULL'     => 'ISNOTNULL',
+        'NOT NULL'    => 'ISNOTNULL',
+    ];
 
 
     /**
-     * Class construct.
+     * Builds the final SQL statement from $todolist array.
      *
-     * @param \Dida\Db\Db $db
-     * @param array $options
+     * @param array $todolist
      */
-    public function __construct(&$db, array $options)
+    public function build(&$todolist)
     {
-        $this->db = $db;
+        $this->done = null;
 
-        $this->base = array_merge($this->base, $options);
-        $this->resetAll();
+        $this->todolist = &$todolist;
+
+        switch ($this->todolist['verb']) {
+            case 'SELECT':
+                return $this->build_SELECT();
+            case 'DELETE':
+                return $this->build_DELETE();
+            case 'INSERT':
+                return $this->build_INSERT();
+            case 'UPDATE':
+                return $this->build_UPDATE();
+            case 'TRUNCATE':
+                return $this->build_TRUNCATE();
+            default:
+                throw new Exception("Invalid build verb: {$this->todolist['verb']}");
+        }
     }
 
 
-    /**
-     * Clears the $built flag, and prepares to build() again.
-     *
-     * @return $this
-     */
-    public function changed()
+    protected function build_SELECT()
     {
-        $this->statement = null;
-        $this->parameters = null;
-        $this->built = false;
+        $this->prepare_SELECT();
 
-        return $this;
-    }
-
-
-    /**
-     * Resets all todolist data.
-     *
-     * @return $this
-     */
-    public function resetAll()
-    {
-        $this->todolist = $this->base;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Resets the COUNT(...) relative data.
-     * See count()
-     *
-     * @return $this
-     */
-    public function resetCount()
-    {
-        unset($this->todolist['count'], $this->todolist['count_built']);
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Changes the master table.
-     *
-     * @param string $name
-     * @param string $alias
-     * @param string $prefix
-     *
-     * @return $this
-     */
-    public function table($name, $alias = null, $prefix = null)
-    {
-        $this->resetAll();
-
-        $this->todolist['table'] = [
-            'name'   => $name,
-            'alias'  => $alias,
-            'prefix' => $prefix,
+        $TPL = [
+            "SELECT\n    ",
+            'columnlist' => &$this->ST['columnlist'],
+            "\nFROM\n    ",
+            'table'      => &$this->ST['table'],
+            'join'       => &$this->ST['join'],
+            'where'      => &$this->ST['where'],
+            'groupby'    => &$this->ST['groupby'],
+            'having'     => &$this->ST['having'],
+            'orderby'    => &$this->ST['orderby'],
+            'limit'      => &$this->ST['limit'],
         ];
-        $this->todolist['table_built'] = false;
+        $PARAMS = [
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
+        ];
 
-        return $this->changed();
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
     }
 
 
-    /**
-     * Adds a WHERE condition.
-     *
-     * @param mixed $condition
-     * @param array $data
-     *
-     * @return $this
-     */
-    public function where($condition, array $data = [])
+    protected function build_INSERT()
     {
-        if (is_string($condition)) {
-            if (substr($condition, 0, 1) !== '(') {
-                $condition = "($condition)";
-            }
-            $condition = [$condition, 'RAW', $data];
-        }
+        $this->prepare_INSERT();
 
-        $this->todolist['where'][] = $condition;
-        $this->todolist['where_built'] = false;
+        /* INSERT statement template */
+        $TPL = [
+            'INSERT INTO ',
+            'table'   => &$this->ST['table'],
+            'columns' => &$this->ST['insert_column_list'],
+            ' VALUES ',
+            'values'  => &$this->ST['insert_values'],
+        ];
+        $PARAMS = [
+            'values' => &$this->PA['insert_values'],
+        ];
 
-        return $this->changed();
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
     }
 
 
-    /**
-     * Adds many WHERE conditions.
-     *
-     * @param array $conditions
-     * @param string $logic
-     *
-     * @return $this
-     */
-    public function whereMany(array $conditions, $logic = 'AND')
+    protected function build_UPDATE()
     {
-        $logic = strtoupper(trim($logic));
+        $this->prepare_UPDATE();
 
-        $cond = new \stdClass();
-        $cond->logic = $logic;
-        $cond->items = $conditions;
+        $TPL = [
+            "UPDATE\n    ",
+            'table'   => &$this->ST['table'],
+            "\nSET\n    ",
+            'set'     => &$this->ST['set'],
+            'join'    => &$this->ST['join'],
+            'where'   => &$this->ST['where'],
+            'groupby' => &$this->ST['groupby'],
+            'having'  => &$this->ST['having'],
+            'orderby' => &$this->ST['orderby'],
+        ];
+        $PARAMS = [
+            'set'    => &$this->PA['set'],
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
+        ];
 
-        $this->todolist['where'][] = $cond;
-        $this->todolist['where_built'] = false;
-
-        return $this->changed();
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
     }
 
 
-    /**
-     * How to join the WHERE condition parts.
-     *
-     * @param string $logic AND/OR/...
-     *
-     * @return $this
-     */
-    public function whereLogic($logic)
+    protected function build_DELETE()
     {
-        $logic = strtoupper(trim($logic));
+        $this->prepare_DELETE();
 
-        if ($logic === $this->todolist['where_logic']) {
-            return $this;
-        }
+        $TPL = [
+            'DELETE FROM ',
+            'table'   => &$this->ST['table'],
+            'join'    => &$this->ST['join'],
+            'where'   => &$this->ST['where'],
+            'groupby' => &$this->ST['groupby'],
+            'having'  => &$this->ST['having'],
+            'orderby' => &$this->ST['orderby'],
+        ];
+        $PARAMS = [
+            'join'   => &$this->PA['join'],
+            'where'  => &$this->PA['where'],
+            'having' => &$this->PA['having'],
+        ];
 
-        $this->todolist['where_logic'] = $logic;
-        $this->todolist['where_built'] = false;
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => $this->combineParameterArray($PARAMS),
+        ];
+    }
 
-        return $this->changed();
+
+    protected function build_TRUNCATE()
+    {
+        $this->prepare_TRUNCATE();
+
+        $TPL = [
+            'TRUNCATE TABLE ',
+            'table' => &$this->ST['table'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => [],
+        ];
     }
 
 
     /**
-     * Build a WHERE condition to match the given array.
+     * Picks all items with a string key.
      *
      * @param array $array
-     * @param string $logic
-     *
-     * @return $this
      */
-    public function whereMatch(array $array, $logic = 'AND')
+    protected function pickItemsWithKey(array $array)
     {
-        $conditions = [];
+        $return = [];
         foreach ($array as $key => $value) {
-            $conditions[] = [$key, '=', $value];
-        }
-        $this->whereMany($conditions, $logic);
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Set column expression.
-     *
-     * @param string|array $column
-     * @param mixed|null $value
-     */
-    public function setValue($column, $value = null)
-    {
-        $this->todolist['verb'] = 'UPDATE';
-
-        if (is_string($column)) {
-            $this->todolist['set'][$column] = [
-                'type'   => 'value',
-                'column' => $column,
-                'value'  => $value,
-            ];
-        } elseif (is_array($column)) {
-            foreach ($column as $key => $value) {
-                $this->todolist['set'][$key] = [
-                    'type'   => 'value',
-                    'column' => $key,
-                    'value'  => $value,
-                ];
+            if (is_string($key)) {
+                $return[$key] = $value;
             }
+        }
+        return $return;
+    }
+
+
+    /**
+     * Makes a question mark list with includes $count '?'.
+     *
+     * @param int|array $count
+     * @param boolean $braket
+     *
+     * @return string
+     */
+    protected function makeQuestionMarkList($count, $braket = false)
+    {
+        if (is_array($count)) {
+            $count = count($count);
+        }
+        $list = implode(', ', array_fill(0, $count, '?'));
+        if ($braket) {
+            return ($braket) ? "($list)" : $list;
+        }
+    }
+
+
+    protected function prepare_SELECT()
+    {
+        $this->clause_TABLE();
+
+        /* Prepares the column list expression. */
+        $this->dict_SELECT_COLUMN_LIST();
+        $this->dict_DISTINCT();
+
+        /* If count() */
+        if ($this->has('count')) {
+            $this->clause_COUNT();
         } else {
-            throw new Exception('Invalid argument type for $column');
+            $this->ST['columnlist'] = $this->dict['distinct'] . $this->dict['select_column_list'];
         }
 
-        return $this->changed();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
+        $this->clause_ORDER_BY();
+        $this->clause_LIMIT();
+    }
+
+
+    protected function prepare_INSERT()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
+
+        $record = &$this->todolist['record'];
+        $record = $this->pickItemsWithKey($record);
+        $columns = array_keys($record);
+        $values = array_values($record);
+
+        $this->ST['insert_column_list'] = '(' . implode(', ', $columns) . ')';
+        $this->ST['insert_values'] = $this->makeQuestionMarkList($columns, true);
+        $this->PA['insert_values'] = $values;
+    }
+
+
+    protected function prepare_UPDATE()
+    {
+        $this->clause_TABLE();
+        $this->clause_SET();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
+        $this->clause_ORDER_BY();
+    }
+
+
+    protected function prepare_DELETE()
+    {
+        $this->clause_TABLE();
+        $this->clause_JOIN();
+        $this->clause_WHERE();
+        $this->clause_GROUP_BY();
+        $this->clause_HAVING();
+        $this->clause_ORDER_BY();
+    }
+
+
+    protected function prepare_TRUNCATE()
+    {
+        $this->clause_TABLE();
     }
 
 
     /**
-     * Set column expression.
+     * Returns a SELECT columnlist clause.
      *
-     * @param string $column
-     * @param mixed $expr
-     * @param array $parameters
+     * If $columns = null/[]/'', equivalent to return '*' (with all column names of the table)
+     * If $columns is a string, returns it directly.
+     * If $columns is an array, returns the imploded expression.
      *
-     * @return $this
+     * @param strig|array $columns
+     * @return string
      */
-    public function setExpr($column, $expr, array $parameters = [])
+    protected function process_SelectColumnList($columns)
     {
-        $this->todolist['verb'] = 'UPDATE';
+        // if $columns = ''/null/[]
+        if (!$columns) {
+            return $this->getAllColumnNames($this->dict['table']['name']);
+        }
 
-        $this->todolist['set'][$column] = [
-            'type'       => 'expr',
-            'column'     => $column,
-            'expr'       => $expr,
-            'parameters' => $parameters,
+        if (is_string($columns)) {
+            return $columns;
+        }
+
+        if (is_array($columns)) {
+            $array = [];
+            foreach ($columns as $alias => $column) {
+                if (is_string($alias)) {
+                    $array[] = "$column AS $alias";
+                } else {
+                    $array[] = $column;
+                }
+            }
+            return implode(', ', $array);
+        }
+    }
+
+
+    protected function dict_SELECT_COLUMN_LIST()
+    {
+        if (!isset($this->todolist['columnlist'])) {
+            $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
+            return;
+        }
+
+        $columns = $this->todolist['columnlist'];
+        $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
+    }
+
+
+    /**
+     * @param array $columns ['alias'=>'column',]
+     */
+    protected function combineColumnList(array $columns, $table = null)
+    {
+        if (is_string($table) && $table) {
+            $table = $table . '.';
+        }
+    }
+
+
+    protected function getAllColumnNames($table)
+    {
+        return '*';
+    }
+
+
+    protected function clause_TABLE()
+    {
+        // built, name, alias, prefix
+        extract($this->todolist['table']);
+
+        if (!is_string($prefix)) {
+            $prefix = $this->todolist['prefix'];
+        }
+
+        $name = $prefix . $name;
+
+        if (!is_string($alias)) {
+            $alias = null;
+        }
+
+        /* dict */
+        $this->dict['table'] = [
+            'name'  => $name,
+            'alias' => $alias,
         ];
+        $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
+        $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
-        return $this->changed();
+        /* ST */
+        switch ($this->todolist['verb']) {
+            case 'SELECT':
+                $this->ST['table'] = $this->dict['table']['name_as_alias'];
+                break;
+            default:
+                $this->ST['table'] = $this->dict['table']['name'];
+        }
+
+        $this->todolist['table_built'] = true;
+        return;
     }
 
 
-    /**
-     * Set column value using tableB.columnB where table.colA=tableB.colB.
-     *
-     * @param string $column
-     * @param string $tableB
-     * @param string $columnB
-     * @param string $colA
-     * @param string $colB
-     * @param boolean $checkExistsInWhere
-     *
-     * @return $this
-     */
-    public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
+    protected function tableRef($name, $alias)
     {
-        $this->todolist['verb'] = 'UPDATE';
-
-        $this->todolist['set'][$column] = [
-            'type'               => 'from_table',
-            'column'             => $column,
-            'tableB'             => $tableB,
-            'columnB'            => $columnB,
-            'colA'               => $colA,
-            'colB'               => $colB,
-            'checkExistsInWhere' => $checkExistsInWhere,
-        ];
-
-        return $this->changed();
+        return ($alias) ? $alias : $name;
     }
 
 
-    /**
-     * JOIN clause
-     *
-     * @param string $tableB
-     * @param string $on
-     * @param array $parameters
-     *
-     * @return $this
-     */
-    public function join($tableB, $on, array $parameters = [])
+    protected function tableNameAsAlias($name, $alias)
     {
-        $this->todolist['join'][] = ['JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
-
-        return $this->changed();
+        if ($alias) {
+            return $name . ' AS ' . $alias;
+        } else {
+            return $name;
+        }
     }
 
 
     /**
-     * INNER JOIN clause
-     *
-     * @param string $tableB
-     * @param string $on
-     * @param array $parameters
-     *
-     * @return $this
+     * Replaces a swapped SQL to a normal SQL.
      */
-    public function innerJoin($tableB, $on, array $parameters = [])
+    protected function replaceSwapPrefix($swapsql)
     {
-        $this->todolist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
-
-        return $this->changed();
+        $prefix = $this->todolist['prefix'];
+        $swap_prefix = $this->todolist['swap_prefix'];
+        if ($swap_prefix) {
+            return str_replace($swap_prefix, $prefix, $swapsql);
+        } else {
+            return $swapsql;
+        }
     }
 
 
-    /**
-     * LEFT JOIN clause
-     *
-     * @param string $tableB
-     * @param string $on
-     * @param array $parameters
-     *
-     * @return $this
-     */
-    public function leftJoin($tableB, $on, array $parameters = [])
-    {
-        $this->todolist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * RIGHT JOIN clause
-     *
-     * @param string $tableB
-     * @param string $on
-     * @param array $parameters
-     *
-     * @return $this
-     */
-    public function rightJoin($tableB, $on, array $parameters = [])
-    {
-        $this->todolist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Increases $column by $value
-     *
-     * @param string $column
-     * @param mixed $value
-     */
-    public function increase($column, $value = 1)
-    {
-        $this->todolist['verb'] = 'UPDATE';
-
-        $this->setExpr($column, "$column + $value");
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Decreases $column by $value
-     *
-     * @param string $column
-     * @param mixed $value
-     */
-    public function decrease($column, $value = 1)
-    {
-        $this->todolist['verb'] = 'UPDATE';
-
-        $this->setExpr($column, "$column - $value");
-
-        return $this->changed();
-    }
-
-
-    /**
-     * GROUP BY clause.
-     *
-     * @param array $columns
-     *
-     * @return $this
-     */
-    public function groupBy(array $columns)
-    {
-        $this->todolist['groupby'] = $columns;
-        $this->todolist['groupby_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Adds a having condition.
-     *
-     * @param type $condition
-     * @param type $parameters
-     *
-     * @return $this
-     */
-    public function having($condition, $parameters = [])
+    protected function cond($condition, $parameters = [])
     {
         if (is_string($condition)) {
-            if (substr($condition, 0, 1) !== '(') {
-                $condition = "($condition)";
-            }
-            $condition = [$condition, 'RAW', $parameters];
+            $part = [
+                'statement'  => $condition,
+                'parameters' => $parameters,
+            ];
+            return $part;
         }
 
-        $this->todolist['having'][] = $condition;
-        $this->todolist['having_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Adds many having conditions.
-     *
-     * @param array $conditions
-     * @param type $logic
-     *
-     * @return $this
-     */
-    public function havingMany(array $conditions, $logic = 'AND')
-    {
-        $logic = strtoupper(trim($logic));
-
-        $cond = new \stdClass();
-        $cond->logic = $logic;
-        $cond->items = $conditions;
-
-        $this->todolist['having'][] = $cond;
-        $this->todolist['having_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * How to join having clause parts.
-     *
-     * @param string $logic AND/OR/XOR/...
-     *
-     * @return $this
-     */
-    public function havingLogic($logic)
-    {
-        $logic = strtoupper(trim($logic));
-
-        if ($logic === $this->todolist['having_logic']) {
-            return $this;
+        if (is_array($condition)) {
+            return $this->condAsArray($condition);
         }
 
-        $this->todolist['having_logic'] = $logic;
-        $this->todolist['having_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * DISTINCT clause.
-     *
-     * @param boolean $distinct
-     *
-     * @return $this
-     */
-    public function distinct($distinct = true)
-    {
-        $this->todolist['distinct'] = $distinct;
-        $this->todolist['distinct_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * ORDER BY clause.
-     *
-     * @param array|string $columns
-     *
-     * @return $this
-     */
-    public function orderBy($columns)
-    {
-        if (!isset($this->todolist['orderby'])) {
-            $this->todolist['orderby'] = [];
+        if (is_object($condition)) {
+            return $this->condAsObject($condition->logic, $condition->items);
         }
 
-        $this->todolist['orderby'][] = $columns;
-        $this->todolist['orderby_built'] = false;
-
-        return $this->changed();
+        throw new Exception("Invalid condition format");
     }
 
 
-    /**
-     * SELECT COUNT(...)
-     *
-     * @param array $columns
-     * @param string $alias
-     *
-     * @return $this
-     */
-    public function count(array $columns = null, $alias = null)
+    protected function condAsArray($condition)
     {
-        $this->todolist['verb'] = 'SELECT';
-
-        $this->todolist['count'] = [$columns, $alias];
-        $this->todolist['count_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * LIMIT clause.
-     *
-     * @param int|string $limit
-     *
-     * @return $this
-     */
-    public function limit($limit)
-    {
-        $this->todolist['limit'] = $limit;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * SELECT
-     *
-     * @return $this
-     */
-    public function select(array $arrayColumnAsAlias = [])
-    {
-        $this->todolist['verb'] = 'SELECT';
-
-        $this->todolist['select_column_list'] = $arrayColumnAsAlias;
-        $this->todolist['select_column_list_built'] = false;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * DELETE
-     *
-     * @return $this
-     */
-    public function delete()
-    {
-        $this->todolist['verb'] = 'DELETE';
-
-        return $this->changed();
-    }
-
-
-    /**
-     * INSERT
-     *
-     * @return $this
-     */
-    public function insert(array $record)
-    {
-        $this->todolist['verb'] = 'INSERT';
-
-        $this->todolist['record'] = $record;
-
-        return $this->changed();
-    }
-
-
-    /**
-     * UPDATE
-     *
-     * @return $this
-     */
-    public function update()
-    {
-        $this->todolist['verb'] = 'UPDATE';
-
-        return $this->changed();
-    }
-
-
-    /**
-     * TRUNCATE
-     *
-     * @return $this
-     */
-    public function truncate()
-    {
-        $this->todolist['verb'] = 'TRUNCATE';
-
-        return $this->changed();
-    }
-
-
-    /**
-     * Builds the statement.
-     *
-     * @return $this
-     */
-    public function build()
-    {
-        if ($this->built) {
-            return $this;
-        }
-
-        $this->build_ok = false;
-
-        if ($this->core === null) {
-            $this->core = new BuilderCore();
-        }
-
-        $result = $this->core->build($this->todolist);
-
-        if ($result === false) {
-            $this->statement = null;
-            $this->parameters = null;
-            $this->build_ok = false;
+        // check condition is valid
+        $cnt = count($condition);
+        if ($cnt === 3) {
+            list($column, $op, $data) = $condition;
+        } elseif ($cnt === 2) {
+            // isnull, isnotnull
+            list($column, $op) = $condition;
+            $data = null;
+        } elseif ($cnt === 4) {
+            // between
+            list($column, $op, $data1, $data2) = $condition;
+            $data = [$data1, $data2];
         } else {
-            $this->statement = $result['statement'];
-            $this->parameters = $result['parameters'];
-            $this->build_ok = true;
+            throw new Exception("Invalid condition as " . var_export($condition, true));
         }
 
-        $this->built = true;
+        // Checks whether $op is valid.
+        $op = strtoupper($op);
+        if (!array_key_exists($op, self::$opertor_set)) {
+            throw new Exception("Invalid operator \"$op\" in condition " . var_export($condition, true));
+        }
 
-        return $this;
+        // calls the 'cond_*' function
+        $method_name = 'cond_' . self::$opertor_set[$op];
+        return $this->$method_name($column, $op, $data);
+    }
+
+
+    protected function condAsObject($logic, $conditions)
+    {
+        $parts = [];
+        foreach ($conditions as $condition) {
+            $part = $this->cond($condition);
+            $parts[] = $part;
+        }
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, " $logic ", $statement, $parameters);
+        if (count($conditions) > 1) {
+            $statement = "($statement)";
+        }
+
+        return [
+            'statement'  => "$statement",
+            'parameters' => $parameters,
+        ];
+    }
+
+
+    protected function cond_RAW($column, $op, $data)
+    {
+        return [
+            'statement'  => $column,
+            'parameters' => $data,
+        ];
+    }
+
+
+    protected function cond_COMPARISON($column, $op, $data)
+    {
+        $column = $this->replaceSwapPrefix($column);
+        $part = [
+            'statement'  => "($column $op ?)",
+            'parameters' => [$data],
+        ];
+        return $part;
+    }
+
+
+    protected function cond_EQ($column, $op, $data)
+    {
+        if (is_array($data)) {
+            return $this->cond_IN($column, 'IN', $data);
+        }
+
+        return $this->cond_COMPARISON($column, '=', $data);
+    }
+
+
+    protected function cond_GT($column, $op, $data)
+    {
+        return $this->cond_COMPARISON($column, '>', $data);
+    }
+
+
+    protected function cond_LT($column, $op, $data)
+    {
+        return $this->cond_COMPARISON($column, '<', $data);
+    }
+
+
+    protected function cond_EGT($column, $op, $data)
+    {
+        return $this->cond_COMPARISON($column, '>=', $data);
+    }
+
+
+    protected function cond_ELT($column, $op, $data)
+    {
+        return $this->cond_COMPARISON($column, '<=', $data);
+    }
+
+
+    protected function cond_NEQ($column, $op, $data)
+    {
+        if (is_array($data)) {
+            return $this->cond_NOTIN($column, $op, $data);
+        }
+
+        return $this->cond_COMPARISON($column, '<>', $data);
+    }
+
+
+    protected function cond_IN($column, $op, $data)
+    {
+        if (empty($data)) {
+            throw new Exception('An empty array not allowed use in a IN statement');
+        }
+
+        $column = $this->replaceSwapPrefix($column);
+        $marks = implode(', ', array_fill(0, count($data), '?'));
+        $part = [
+            'statement'  => "($column $op ($marks))",
+            'parameters' => array_values($data),
+        ];
+        return $part;
     }
 
 
     /**
-     * Executes the SQL statement built and returns a Result object.
-     *
-     * @param string $sql
-     * @param array $sql_parameters
-     *
-     * @return Result
+     * Do not use this operator, which will greatly affect performance!
      */
-    public function execute()
+    protected function cond_NOTIN($column, $op, $data)
     {
-        if (!$this->built) {
-            $this->build();
+        return $this->cond_IN($column, 'NOT IN', $data);
+    }
+
+
+    protected function cond_LIKE($column, $op, $data)
+    {
+        $column = $this->replaceSwapPrefix($column);
+        $part = [
+            'statement'  => "$column $op ?",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTLIKE($column, $op, $data)
+    {
+        return $this->cond_LIKE($column, 'NOT LIKE', $data);
+    }
+
+
+    protected function cond_BETWEEN($column, $op, $data)
+    {
+        $column = $this->replaceSwapPrefix($column);
+        $part = [
+            'statement'  => "($column $op ? AND ?)",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTBETWEEN($column, $op, $data)
+    {
+        return $this->cond_BETWEEN($column, 'NOT BETWEEN', $data);
+    }
+
+
+    protected function cond_ISNULL($column, $op, $data = null)
+    {
+        $column = $this->replaceSwapPrefix($column);
+        $part = [
+            'statement'  => "$column IS NULL",
+            'parameters' => [],
+        ];
+        return $part;
+    }
+
+
+    protected function cond_ISNOTNULL($column, $op, $data = null)
+    {
+        $column = $this->replaceSwapPrefix($column);
+        $part = [
+            'statement'  => "$column IS NOT NULL",
+            'parameters' => [],
+        ];
+        return $part;
+    }
+
+
+    protected function cond_EXISTS($column, $op, $data)
+    {
+        $sql = $this->fsql($column);
+
+        $part = [
+            'statement'  => "EXISTS ($sql)",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
+    protected function cond_NOTEXISTS($column, $op, $data)
+    {
+        $sql = $this->fsql($column);
+
+        $part = [
+            'statement'  => "NOT EXISTS ($sql)",
+            'parameters' => $data,
+        ];
+        return $part;
+    }
+
+
+    /**
+     * Builds the WHERE statement.
+     */
+    protected function clause_WHERE()
+    {
+        if ($this->isBuilt('where')) {
+            return;
         }
 
-        // Makes a DB connection.
-        if ($this->db->connect() === false) {
-            throw new Exception('Fail to connect the database.');
+        if (!$this->has('where')) {
+            $this->ST['where'] = '';
+            $this->PA['where'] = [];
+            $this->todolist['where_built'] = true;
+            return;
         }
 
-        try {
-            $pdoStatement = $this->db->pdo->prepare($this->statement);
-            $success = $pdoStatement->execute($this->parameters);
-            return new Result($this->db, $pdoStatement, $success);
-        } catch (Exception $ex) {
-            return false;
+        $conditions = $this->todolist['where'];
+
+        if ($this->has('where_logic')) {
+            $logic = $this->todolist['where_logic'];
+        } else {
+            $logic = 'AND';
         }
+
+        $parts = [];
+        foreach ($conditions as $condition) {
+            $parts[] = $this->cond($condition);
+        }
+
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
+        if ($statement) {
+            $this->ST['where'] = "\nWHERE\n    $statement";
+            $this->PA['where'] = $parameters;
+        }
+
+        $this->todolist['where_built'] = true;
+        return;
+    }
+
+
+    protected function combineParts($parts, $glue, &$statement, &$parameters)
+    {
+        $statement_array = array_column($parts, 'statement');
+        $statement = implode($glue, $statement_array);
+
+        $parameters_array = array_column($parts, 'parameters');
+        $parameters = $this->combineParameterArray($parameters_array);
+    }
+
+
+    protected function combineParameterArray(array $parameters)
+    {
+        $ret = [];
+        foreach ($parameters as $array) {
+            $ret = array_merge($ret, array_values($array));
+        }
+        return $ret;
+    }
+
+
+    protected function clause_SET()
+    {
+        if ($this->isBuilt('set')) {
+            return;
+        }
+
+        $set = $this->todolist['set'];
+
+        $parts = [];
+        foreach ($set as $item) {
+            switch ($item['type']) {
+                case 'value':
+                    $parts[] = $this->setValue($item);
+                    break;
+                case 'expr':
+                    $parts[] = $this->setExpr($item);
+                    break;
+                case 'from_table':
+                    $parts[] = $this->setFromTable($item);
+                    break;
+            }
+        }
+
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, ",\n    ", $statement, $parameters);
+
+        $this->ST['set'] = $statement;
+        $this->PA['set'] = $parameters;
+    }
+
+
+    protected function setValue($item)
+    {
+        extract($item);
+
+        return [
+            'statement'  => "$column = ?",
+            'parameters' => [$value],
+        ];
+    }
+
+
+    protected function setExpr($item)
+    {
+        extract($item);
+
+        return [
+            'statement'  => "$column = $expr",
+            'parameters' => $parameters,
+        ];
+    }
+
+
+    /**
+     * Set column from other table.
+     */
+    protected function setFromTable($item)
+    {
+        extract($item);
+        $tableB = $this->replaceSwapPrefix($tableB);
+
+        $tableRef = $this->dict['table']['ref'];
+
+        $target = "(SELECT $tableB.$columnB FROM $tableB WHERE $tableRef.$colA = $tableB.$colB)";
+        $statement = "$column = $target";
+
+        if ($checkExistsInWhere) {
+            $this->todolist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+        }
+
+        return [
+            'statement'  => $statement,
+            'parameters' => [],
+        ];
+    }
+
+
+    protected function clause_JOIN()
+    {
+        if ($this->isBuilt('join')) {
+            return;
+        }
+
+        if (!$this->has('join')) {
+            $this->ST['join'] = '';
+            $this->PA['join'] = [];
+            $this->todolist['join_built'] = true;
+            return;
+        }
+
+        $stmts = [];
+        $params = [];
+
+        $joins = $this->todolist['join'];
+        foreach ($joins as $join) {
+            list($jointype, $table, $on, $parameters) = $join;
+
+            $table = $this->replaceSwapPrefix($table);
+            $on = $this->replaceSwapPrefix($on);
+
+            $stmts[] = "\n$jointype {$table}\n    ON $on";
+            $params[] = $parameters;
+        }
+        $this->ST["join"] = implode("", $stmts);
+        $this->PA['join'] = $this->combineParameterArray($params);
+        $this->todolist['join_built'] = true;
+    }
+
+
+    protected function clause_GROUP_BY()
+    {
+        if ($this->isBuilt('groupby')) {
+            return;
+        }
+
+        if (!$this->has('groupby')) {
+            $this->ST['groupby'] = '';
+            $this->todolist['groupby_built'] = true;
+            return;
+        }
+
+        $columns = $this->todolist['groupby'];
+        $columnlist = $this->process_SelectColumnList($columns);
+
+        if ($columnlist) {
+            $this->ST['groupby'] = "\nGROUP BY\n    $columnlist";
+        } else {
+            $this->ST['groupby'] = '';
+        }
+
+        $this->todolist['groupby_built'] = true;
+        return;
+    }
+
+
+    protected function has($key)
+    {
+        return array_key_exists($key, $this->todolist);
+    }
+
+
+    protected function isBuilt($key)
+    {
+        $built = $key . '_built';
+        return ($this->has($built) && $this->todolist[$built] === true);
+    }
+
+
+    /**
+     * Builds the HAVING clause.
+     */
+    protected function clause_HAVING()
+    {
+        if ($this->isBuilt('having')) {
+            return;
+        }
+
+        if (!$this->has('having')) {
+            $this->ST['having'] = '';
+            $this->PA['having'] = [];
+            $this->todolist['having_built'] = true;
+            return;
+        }
+
+        $conditions = $this->todolist['having'];
+
+        if ($this->has('having_logic')) {
+            $logic = $this->todolist['having_logic'];
+        } else {
+            $logic = 'AND';
+        }
+
+        $parts = [];
+        foreach ($conditions as $condition) {
+            $parts[] = $this->cond($condition);
+        }
+
+        $statement = '';
+        $parameters = [];
+        $this->combineParts($parts, "\n    $logic ", $statement, $parameters);
+        if ($statement) {
+            $this->ST['having'] = "\nHAVING\n    $statement";
+            $this->PA['having'] = $parameters;
+        }
+
+        $this->todolist['having_built'] = true;
+        return;
+    }
+
+
+    protected function dict_DISTINCT()
+    {
+        if (!$this->has('distinct')) {
+            $this->dict['distinct'] = '';
+            return;
+        }
+
+        $flag = $this->todolist['distinct'];
+        if ($flag) {
+            $this->dict['distinct'] = "DISTINCT ";
+        } else {
+            $this->dict['distinct'] = '';
+        }
+
+        return;
+    }
+
+
+    protected function clause_ORDER_BY()
+    {
+        if ($this->isBuilt('orderby')) {
+            return;
+        }
+
+        if (!$this->has('orderby')) {
+            $this->ST['orderby'] = '';
+            $this->todolist['orderby_built'] = true;
+            return;
+        }
+
+        $array = [];
+        $orders = $this->todolist['orderby'];
+        foreach ($orders as $order) {
+            if (is_string($order)) {
+                $array[] = $this->process_OrderBy($order);
+            } elseif (is_array($order)) {
+                foreach ($order as $key => $value) {
+                    if (is_int($key)) {
+                        $array[] = $this->process_OrderBy($value);
+                    } else {
+                        $key = $this->replaceSwapPrefix($key);
+                        $value = strtoupper(trim($value));
+                        if ($value === 'ASC' || $value === 'DESC') {
+                            $array[] = "$key $value";
+                        } else {
+                            $array[] = $key;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (count($array)) {
+            $this->ST['orderby'] = "\nORDER BY\n    " . implode(', ', $array);
+        } else {
+            $this->ST['orderby'] = '';
+        }
+        $this->todolist['orderby_built'] = true;
+    }
+
+
+    protected function process_OrderBy($string)
+    {
+        $search = [
+            '/\s{1,}asc$/i',
+            '/\s{1,}desc$/i'
+        ];
+        $replace = [
+            ' ASC',
+            ' DESC'
+        ];
+
+        $return = [];
+        $string = $this->replaceSwapPrefix($string);
+        $array = explode(',', $string);
+        foreach ($array as $item) {
+            $item = trim($item);
+            if ($item) {
+                $item = preg_replace($search, $replace, $item);
+                $return[] = $item;
+            }
+        }
+
+        return implode(', ', $return);
+    }
+
+
+    protected function clause_COUNT()
+    {
+        list($columns, $alias) = $this->todolist['count'];
+
+        if (is_string($alias) && $alias) {
+            $asAlias = " AS $alias";
+        } else {
+            $asAlias = '';
+        }
+
+        if (!$columns) {
+            $columnlist = $this->dict['distinct'] . $this->dict['select_column_list'];
+        } elseif (is_array($columns)) {
+            $columnlist = $this->process_SelectColumnList($columns);
+        }
+
+        $this->ST['columnlist'] = "COUNT({$columnlist}){$asAlias}";
+    }
+
+
+    /**
+     * Converts a table/column name string to an array of a fixed format.
+     *
+     * @param string $string Format:"NAME" or "name AS alias"
+     */
+    protected function splitNameAlias($string)
+    {
+        // Finds the first ' AS ' string, then split it.
+        $result = preg_split('/\s+(AS)\s+/i', $string, 2);
+        $name = $result[0];
+        $alias = (isset($result[1])) ? $result[1] : null;
+
+        return [
+            'name'  => $name,
+            'alias' => $alias,
+        ];
+    }
+
+
+    protected function clause_LIMIT()
+    {
+        if ($this->isBuilt('limit')) {
+            return;
+        }
+
+        if (!$this->has('limit')) {
+            $this->ST['limit'] = '';
+            $this->todolist['limit_built'] = true;
+            return;
+        }
+
+        $limit = $this->todolist['limit'];
+        $this->ST['limit'] = "\nLIMIT\n    $limit";
+
+        $this->todolist['limit_built'] = true;
     }
 }
