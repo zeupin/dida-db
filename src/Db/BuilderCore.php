@@ -107,7 +107,7 @@ class BuilderCore
                 return $this->build_UPDATE();
             case 'TRUNCATE':
                 return $this->build_TRUNCATE();
-            default :
+            default:
                 throw new Exception("Invalid build verb: {$this->todolist['verb']}");
         }
     }
@@ -437,7 +437,7 @@ class BuilderCore
             case 'SELECT':
                 $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
-            default :
+            default:
                 $this->ST['table'] = $this->dict['table']['name'];
         }
 

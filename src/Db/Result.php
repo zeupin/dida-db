@@ -82,7 +82,7 @@ class Result
             case 3:
                 call_user_func_array([&$this->pdoStatement, 'setFetchMode'], func_get_args());
                 return $this;
-            default :
+            default:
                 throw new Exception('Invalid argument number. See PDOStatement::setFetchMode()');
         }
     }
