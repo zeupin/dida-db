@@ -11,7 +11,7 @@ use \Exception;
 /**
  * SQL Statement Demand
  */
-class Demand implements DemandInterface
+class Demand implements DemandInterface, DQLInterface, DULInterface
 {
     /**
      * @var \Dida\Db\Db
@@ -271,7 +271,7 @@ class Demand implements DemandInterface
 
 
     /**
-     * Set column expression.
+     * Set column value.
      *
      * @param string|array $column
      * @param mixed|null $value
@@ -327,7 +327,7 @@ class Demand implements DemandInterface
 
 
     /**
-     * Set column value using tableB.columnB where table.colA=tableB.colB.
+     * Set column value using a SELECT subquery.
      *
      * @param string $column
      * @param string $tableB
