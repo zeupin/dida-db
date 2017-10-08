@@ -18,7 +18,7 @@ abstract class Db
     /**
      * Version
      */
-    const VERSION = '1.0.0';
+    const VERSION = '0.1.1';
 
     /**
      * Default configurations.
@@ -165,7 +165,7 @@ abstract class Db
      *
      * @return Result
      */
-    public function execute($statement, $parameters = [])
+    public function execute($statement, array $parameters = [])
     {
         $this->connect();
 
