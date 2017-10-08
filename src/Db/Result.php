@@ -6,8 +6,8 @@
 
 namespace Dida\Db;
 
-use \PDO,
-    \PDOStatement;
+use \PDO;
+use \PDOStatement;
 
 /**
  * Result
