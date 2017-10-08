@@ -105,6 +105,8 @@ class BuilderCore
                 return $this->build_INSERT();
             case 'UPDATE':
                 return $this->build_UPDATE();
+            case 'TRUNCATE':
+                return $this->build_TRUNCATE();
             default :
                 throw new Exception("Invalid build verb: {$this->todolist['verb']}");
         }
@@ -218,6 +220,22 @@ class BuilderCore
     }
 
 
+    protected function build_TRUNCATE()
+    {
+        $this->prepare_TRUNCATE();
+
+        $TPL = [
+            'TRUNCATE TABLE ',
+            'table' => &$this->ST['table'],
+        ];
+
+        return [
+            'statement'  => implode('', $TPL),
+            'parameters' => [],
+        ];
+    }
+
+
     /**
      * Picks all items with a string key.
      *
@@ -318,6 +336,12 @@ class BuilderCore
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
         $this->clause_ORDER_BY();
+    }
+
+
+    protected function prepare_TRUNCATE()
+    {
+        $this->clause_TABLE();
     }
 
 
