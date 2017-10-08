@@ -6,6 +6,8 @@
 
 namespace Dida\Db;
 
+use \Exception;
+
 /**
  * SQL Statement Builder
  */
@@ -41,6 +43,13 @@ class Builder
     protected $core = null;
 
     /**
+     * The result of $this->build()
+     *
+     * @var boolean
+     */
+    public $build_ok = false;
+
+    /**
      * @var array
      */
     protected $base = [
@@ -58,6 +67,12 @@ class Builder
     protected $todolist = [];
 
 
+    /**
+     * Class construct.
+     *
+     * @param \Dida\Db\Db $db
+     * @param array $options
+     */
     public function __construct(&$db, array $options)
     {
         $this->db = $db;
@@ -67,6 +82,11 @@ class Builder
     }
 
 
+    /**
+     * Clears the $built flag, and prepares to build() again.
+     *
+     * @return $this
+     */
     public function changed()
     {
         $this->statement = null;
@@ -77,6 +97,11 @@ class Builder
     }
 
 
+    /**
+     * Resets all todolist data.
+     *
+     * @return $this
+     */
     public function resetAll()
     {
         $this->todolist = $this->base;
@@ -85,6 +110,12 @@ class Builder
     }
 
 
+    /**
+     * Resets the COUNT(...) relative data.
+     * See count()
+     *
+     * @return $this
+     */
     public function resetCount()
     {
         unset($this->todolist['count'], $this->todolist['count_built']);
@@ -93,6 +124,15 @@ class Builder
     }
 
 
+    /**
+     * Changes the master table.
+     *
+     * @param string $name
+     * @param string $alias
+     * @param string $prefix
+     *
+     * @return $this
+     */
     public function table($name, $alias = null, $prefix = null)
     {
         $this->resetAll();
@@ -108,7 +148,15 @@ class Builder
     }
 
 
-    public function where($condition, $data = [])
+    /**
+     * Adds a WHERE condition.
+     *
+     * @param mixed $condition
+     * @param array $data
+     *
+     * @return $this
+     */
+    public function where($condition, array $data = [])
     {
         if (is_string($condition)) {
             if (substr($condition, 0, 1) !== '(') {
@@ -124,6 +172,14 @@ class Builder
     }
 
 
+    /**
+     * Adds many WHERE conditions.
+     *
+     * @param array $conditions
+     * @param string $logic
+     *
+     * @return $this
+     */
     public function whereMany(array $conditions, $logic = 'AND')
     {
         $logic = strtoupper(trim($logic));
@@ -139,6 +195,13 @@ class Builder
     }
 
 
+    /**
+     * How to join the WHERE condition parts.
+     *
+     * @param string $logic AND/OR/...
+     *
+     * @return $this
+     */
     public function whereLogic($logic)
     {
         $logic = strtoupper(trim($logic));
@@ -154,6 +217,14 @@ class Builder
     }
 
 
+    /**
+     * Build a WHERE condition to match the given array.
+     *
+     * @param array $array
+     * @param string $logic
+     *
+     * @return $this
+     */
     public function whereMatch(array $array, $logic = 'AND')
     {
         $conditions = [];
@@ -166,17 +237,27 @@ class Builder
     }
 
 
-    public function select(array $columnAsAliasArray = [])
+    /**
+     * SELECT
+     *
+     * @return $this
+     */
+    public function select(array $arrayColumnAsAlias = [])
     {
         $this->todolist['verb'] = 'SELECT';
 
-        $this->todolist['select_column_list'] = $columnAsAliasArray;
+        $this->todolist['select_column_list'] = $arrayColumnAsAlias;
         $this->todolist['select_column_list_built'] = false;
 
         return $this->changed();
     }
 
 
+    /**
+     * DELETE
+     *
+     * @return $this
+     */
     public function delete()
     {
         $this->todolist['verb'] = 'DELETE';
@@ -185,6 +266,11 @@ class Builder
     }
 
 
+    /**
+     * INSERT
+     *
+     * @return $this
+     */
     public function insert(array $record)
     {
         $this->todolist['verb'] = 'INSERT';
@@ -195,6 +281,11 @@ class Builder
     }
 
 
+    /**
+     * UPDATE
+     *
+     * @return $this
+     */
     public function update()
     {
         $this->todolist['verb'] = 'UPDATE';
@@ -289,7 +380,16 @@ class Builder
     }
 
 
-    public function join($tableB, $on, $parameters = [])
+    /**
+     * JOIN clause
+     *
+     * @param string $tableB
+     * @param string $on
+     * @param array $parameters
+     *
+     * @return $this
+     */
+    public function join($tableB, $on, array $parameters = [])
     {
         $this->todolist['join'][] = ['JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
@@ -298,7 +398,16 @@ class Builder
     }
 
 
-    public function innerJoin($tableB, $on, $parameters = [])
+    /**
+     * INNER JOIN clause
+     *
+     * @param string $tableB
+     * @param string $on
+     * @param array $parameters
+     *
+     * @return $this
+     */
+    public function innerJoin($tableB, $on, array $parameters = [])
     {
         $this->todolist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
@@ -307,7 +416,16 @@ class Builder
     }
 
 
-    public function leftJoin($tableB, $on, $parameters = [])
+    /**
+     * LEFT JOIN clause
+     *
+     * @param string $tableB
+     * @param string $on
+     * @param array $parameters
+     *
+     * @return $this
+     */
+    public function leftJoin($tableB, $on, array $parameters = [])
     {
         $this->todolist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
@@ -316,7 +434,16 @@ class Builder
     }
 
 
-    public function rightJoin($tableB, $on, $parameters = [])
+    /**
+     * RIGHT JOIN clause
+     *
+     * @param string $tableB
+     * @param string $on
+     * @param array $parameters
+     *
+     * @return $this
+     */
+    public function rightJoin($tableB, $on, array $parameters = [])
     {
         $this->todolist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
         $this->todolist['join_built'] = false;
@@ -331,7 +458,7 @@ class Builder
      * @param string $column
      * @param mixed $value
      */
-    public function inc($column, $value = 1)
+    public function increase($column, $value = 1)
     {
         $this->todolist['verb'] = 'UPDATE';
 
@@ -347,7 +474,7 @@ class Builder
      * @param string $column
      * @param mixed $value
      */
-    public function dec($column, $value = 1)
+    public function decrease($column, $value = 1)
     {
         $this->todolist['verb'] = 'UPDATE';
 
@@ -357,6 +484,13 @@ class Builder
     }
 
 
+    /**
+     * GROUP BY clause.
+     *
+     * @param array $columns
+     *
+     * @return $this
+     */
     public function groupBy(array $columns)
     {
         $this->todolist['groupby'] = $columns;
@@ -366,6 +500,14 @@ class Builder
     }
 
 
+    /**
+     * Adds a having condition.
+     *
+     * @param type $condition
+     * @param type $parameters
+     *
+     * @return $this
+     */
     public function having($condition, $parameters = [])
     {
         if (is_string($condition)) {
@@ -382,6 +524,14 @@ class Builder
     }
 
 
+    /**
+     * Adds many having conditions.
+     *
+     * @param array $conditions
+     * @param type $logic
+     *
+     * @return $this
+     */
     public function havingMany(array $conditions, $logic = 'AND')
     {
         $logic = strtoupper(trim($logic));
@@ -397,6 +547,13 @@ class Builder
     }
 
 
+    /**
+     * How to join having clause parts.
+     *
+     * @param string $logic AND/OR/XOR/...
+     *
+     * @return $this
+     */
     public function havingLogic($logic)
     {
         $logic = strtoupper(trim($logic));
@@ -412,6 +569,13 @@ class Builder
     }
 
 
+    /**
+     * DISTINCT clause.
+     *
+     * @param boolean $distinct
+     *
+     * @return $this
+     */
     public function distinct($distinct = true)
     {
         $this->todolist['distinct'] = $distinct;
@@ -425,6 +589,7 @@ class Builder
      * ORDER BY clause.
      *
      * @param array|string $columns
+     *
      * @return $this
      */
     public function orderBy($columns)
@@ -440,6 +605,14 @@ class Builder
     }
 
 
+    /**
+     * SELECT COUNT(...)
+     *
+     * @param array $columns
+     * @param string $alias
+     *
+     * @return $this
+     */
     public function count(array $columns = null, $alias = null)
     {
         $this->todolist['verb'] = 'SELECT';
@@ -455,6 +628,7 @@ class Builder
      * LIMIT clause.
      *
      * @param int|string $limit
+     *
      * @return $this
      */
     public function limit($limit)
@@ -468,13 +642,15 @@ class Builder
     /**
      * Builds the statement.
      *
-     * @return SQL|false
+     * @return $this
      */
     public function build()
     {
         if ($this->built) {
             return $this;
         }
+
+        $this->build_ok = false;
 
         if ($this->core === null) {
             $this->core = new BuilderCore();
@@ -485,18 +661,21 @@ class Builder
         if ($result === false) {
             $this->statement = null;
             $this->parameters = null;
+            $this->build_ok = false;
         } else {
             $this->statement = $result['statement'];
             $this->parameters = $result['parameters'];
+            $this->build_ok = true;
         }
 
         $this->built = true;
+
         return $this;
     }
 
 
     /**
-     * Executes an SQL statement directly.
+     * Executes the SQL statement built and returns a Result object.
      *
      * @param string $sql
      * @param array $sql_parameters
