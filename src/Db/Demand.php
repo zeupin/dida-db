@@ -11,8 +11,13 @@ use \Exception;
 /**
  * SQL Statement Demand
  */
-class Demand implements DemandInterface, DQLInterface, DULInterface
+class Demand implements DemandInterface, DQCInterface, DUCInterface
 {
+    /**
+     * Version
+     */
+    const VERSION = '0.1.3';
+
     /**
      * @var \Dida\Db\Db
      */

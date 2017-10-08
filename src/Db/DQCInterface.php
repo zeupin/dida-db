@@ -7,12 +7,10 @@
 namespace Dida\Db;
 
 /**
- * DQL Interface
+ * Data Query Clause Interface
  */
-interface DQLInterface
+interface DQCInterface
 {
-
-
     /**
      * Adds a WHERE condition.
      *
