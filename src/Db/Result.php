@@ -17,7 +17,7 @@ class Result implements ResultInterface
     /**
      * Version
      */
-    const VERSION = '0.1.4';
+    const VERSION = '0.1.5';
 
     /**
      * Reference of a \Dida\Db\Db instance.

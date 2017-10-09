@@ -18,7 +18,7 @@ abstract class Db implements DbInterface
     /**
      * Version
      */
-    const VERSION = '0.1.4';
+    const VERSION = '0.1.5';
 
     /**
      * Default configurations.
