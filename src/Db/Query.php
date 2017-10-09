@@ -41,6 +41,14 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
     public $build_ok = false;
 
     /**
+     * Enable/Disable pull-execution
+     *
+     * @see __call()
+     * @var boolean
+     */
+    protected $pullexec = true;
+
+    /**
      * SQL statement
      *
      * @var string
@@ -100,10 +108,12 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
      */
     public function __call($name, $arguments)
     {
-        // If
-        if (method_exists('\Dida\Db\Result', $name)) {
-            $result = $this->execute();
-            return call_user_func_array([$result, $name], $arguments);
+        // Pull-Execution feature
+        if ($this->pullexec) {
+            if (method_exists('\Dida\Db\Result', $name)) {
+                $result = $this->execute();
+                return call_user_func_array([$result, $name], $arguments);
+            }
         }
 
         throw new Exception(sprintf('Method %s::%s does not exist.', __CLASS__, $name));
@@ -137,6 +147,19 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
         $this->builder = $builder;
 
         return $this->changed();
+    }
+
+
+    /**
+     * Enable Pull-Execution feature.
+     *
+     * @return $this
+     */
+    public function setPullExec($flag = true)
+    {
+        $this->pullexec = $flag;
+
+        return $this;
     }
 
 

@@ -38,6 +38,14 @@ interface QueryInterface
 
 
     /**
+     * Enable Pull-Execution feature.
+     *
+     * @return $this
+     */
+    public function setPullExec($flag = true);
+
+
+    /**
      * Clears the $built flag, and prepares to build() again.
      *
      * @return $this
