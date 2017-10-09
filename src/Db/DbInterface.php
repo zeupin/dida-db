@@ -63,13 +63,13 @@ interface DbInterface
 
 
     /**
-     * Creates an SQL Statement <Demand> object and sets it as the master table.
+     * Creates an SQL Statement <Query> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Demand
+     * @return \Dida\Db\Query
      */
     public function table($table, $alias = null, $prefix = null);
 }
