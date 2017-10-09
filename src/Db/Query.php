@@ -9,9 +9,9 @@ namespace Dida\Db;
 use \Exception;
 
 /**
- * SQL Statement Demand
+ * SQL Statement Query
  */
-class Demand implements DemandInterface, DQCInterface, DUCInterface
+class Query implements QueryInterface, DQCInterface, DUCInterface
 {
     /**
      * Version

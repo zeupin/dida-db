@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * Demand Interface
+ * Query Interface
  */
-interface DemandInterface
+interface QueryInterface
 {
     /**
      * Constructor.

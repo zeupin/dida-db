@@ -184,10 +184,10 @@ abstract class Db implements DbInterface
      *
      * @return Statement
      */
-    protected function newDemand()
+    protected function newQuery()
     {
         $builder = new Builder();
-        $sql = new Demand([
+        $sql = new Query([
             'prefix'      => $this->cfg['prefix'],
             'swap_prefix' => $this->cfg['swap_prefix'],
             ], $this, $builder);
@@ -196,17 +196,17 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Creates an SQL Statement <Demand> object and sets it as the master table.
+     * Creates an SQL Statement <Query> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Demand
+     * @return \Dida\Db\Query
      */
     public function table($table, $alias = null, $prefix = null)
     {
-        $sql = $this->newDemand();
+        $sql = $this->newQuery();
 
         $sql->table($table, $alias, $prefix);
 

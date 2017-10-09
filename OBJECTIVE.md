@@ -74,7 +74,7 @@ $cfg = [
 ## 7. 类的调用层次。
 
 ```
-Db -> Demand -> Builder -> Result
+Db -> Query -> Builder -> Result
 ```
 
 ## 8. 执行时，统一使用预处理模式（Prepare）。
@@ -98,7 +98,7 @@ Db -> Demand -> Builder -> Result
 
 ## 11. 从Db类生成SQL类
 
-通过 `Db` 类的如下方法，生成 `Demand` 类实例
+通过 `Db` 类的如下方法，生成 `Query` 类实例
 
 * $db->sql($statement, $parameters=[])
 * $db->table(表名, 别名=null, prefix=null)
