@@ -170,6 +170,15 @@ class Result implements ResultInterface
 
 
     /**
+     * Represents PDOStatement::columnCount()
+     */
+    public function columnCount()
+    {
+        return $this->pdoStatement->columnCount();
+    }
+
+
+    /**
      * Represents PDOStatement::debugDumpParams()
      */
     public function debugDumpParams()
