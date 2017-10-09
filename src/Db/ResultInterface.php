@@ -83,6 +83,12 @@ interface ResultInterface
 
 
     /**
+     * Represents PDOStatement::columnCount()
+     */
+    public function columnCount();
+
+
+    /**
      * Represents PDOStatement::debugDumpParams()
      */
     public function debugDumpParams();

@@ -17,7 +17,7 @@ class Result implements ResultInterface
     /**
      * Version
      */
-    const VERSION = '0.1.4';
+    const VERSION = '0.1.5';
 
     /**
      * Reference of a \Dida\Db\Db instance.
@@ -166,6 +166,15 @@ class Result implements ResultInterface
     public function rowCount()
     {
         return $this->pdoStatement->rowCount();
+    }
+
+
+    /**
+     * Represents PDOStatement::columnCount()
+     */
+    public function columnCount()
+    {
+        return $this->pdoStatement->columnCount();
     }
 
 

@@ -16,7 +16,7 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
     /**
      * Version
      */
-    const VERSION = '0.1.4';
+    const VERSION = '0.1.5';
 
     /**
      * @var \Dida\Db\Db
@@ -87,6 +87,26 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
 
         $this->base = array_merge($this->base, $options);
         $this->resetAll();
+    }
+
+
+    /**
+     * Implicit calling the methods in the Result class.
+     *
+     * @param string $name
+     * @param array $arguments
+     * @return mixed
+     * @throws Exception
+     */
+    public function __call($name, $arguments)
+    {
+        // If
+        if (method_exists('\Dida\Db\Result', $name)) {
+            $result = $this->execute();
+            return call_user_func_array([$result, $name], $arguments);
+        }
+
+        throw new Exception(sprintf('Method %s::%s does not exist.', __CLASS__, $name));
     }
 
 
