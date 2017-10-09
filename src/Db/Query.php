@@ -91,6 +91,26 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
 
 
     /**
+     * Implicit calling the methods in the Result class.
+     *
+     * @param string $name
+     * @param array $arguments
+     * @return mixed
+     * @throws Exception
+     */
+    public function __call($name, $arguments)
+    {
+        // If
+        if (method_exists('\Dida\Db\Result', $name)) {
+            $result = $this->execute();
+            return call_user_func_array([$result, $name], $arguments);
+        }
+
+        throw new Exception(sprintf('Method %s::%s does not exist.', __CLASS__, $name));
+    }
+
+
+    /**
      * Set $db for this object.
      *
      * @param \Dida\Db\Db $Db

@@ -805,3 +805,13 @@ $user = $db->table('user', 'u')
 echo Debug::varExport($user->statement) . PHP_EOL;
 $result = $user->execute();
 ```
+
+## 52. 可以在Query类中直接调用Result类的方法（隐式调用）
+
+直接在Query类中调用Result类的方法，等效于：先执行Query->execute()得到Result，然后再对Result->方法()。如果其中有环节出错，则抛异常。
+
+```php
+$user = $db->table('admin', 'a')
+    ->fetchAll();
+echo Debug::varExport($user) . PHP_EOL;  // 返回所有数据
+```
