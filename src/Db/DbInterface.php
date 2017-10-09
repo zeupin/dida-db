@@ -63,7 +63,7 @@ interface DbInterface
 
 
     /**
-     * Creates an SQL Statement <Query> object and sets it as the master table.
+     * Creates a <Query> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias

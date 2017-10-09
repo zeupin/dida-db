@@ -16,7 +16,7 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
     /**
      * Version
      */
-    const VERSION = '0.1.3';
+    const VERSION = '0.1.4';
 
     /**
      * @var \Dida\Db\Db

@@ -17,7 +17,7 @@ class Result implements ResultInterface
     /**
      * Version
      */
-    const VERSION = '0.1.3';
+    const VERSION = '0.1.4';
 
     /**
      * Reference of a \Dida\Db\Db instance.
@@ -150,6 +150,7 @@ class Result implements ResultInterface
 
     /**
      * Represents PDO::lastInsertId()
+     * Notice! The type returned is a string!
      *
      * @param string $name
      */
