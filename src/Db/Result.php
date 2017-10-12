@@ -6,6 +6,7 @@
 
 namespace Dida\Db;
 
+use \PDO;
 use \PDOStatement;
 use \Exception;
 
@@ -103,11 +104,11 @@ class Result implements ResultInterface
      */
     public function fetch()
     {
-        if ($this->success) {
-            return $this->pdoStatement->fetch();
-        } else {
+        if (!$this->success) {
             return false;
         }
+
+        return $this->pdoStatement->fetch();
     }
 
 
@@ -118,11 +119,26 @@ class Result implements ResultInterface
      */
     public function fetchAll()
     {
-        if ($this->success) {
-            return $this->pdoStatement->fetchAll();
-        } else {
+        if (!$this->success) {
             return false;
         }
+
+        return $this->pdoStatement->fetchAll();
+    }
+
+
+    /**
+     * Returns the specified column value of the next row.
+     *
+     * @param int $column_number
+     */
+    public function fetchColumn($column_number = 0)
+    {
+        if (!$this->success) {
+            return false;
+        }
+
+        return $this->pdoStatement->fetchColumn($column_number);
     }
 
 
@@ -184,5 +200,51 @@ class Result implements ResultInterface
     public function debugDumpParams()
     {
         return $this->pdoStatement->debugDumpParams();
+    }
+
+
+    /**
+     * Alias of fetch()
+     *
+     * @return array
+     */
+    public function getRecord()
+    {
+        if (!$this->success) {
+            return false;
+        }
+
+        return $this->pdoStatement->fetch();
+    }
+
+
+    /**
+     * Alias of fetchAll()
+     *
+     * @return array(array)
+     */
+    public function getRecords()
+    {
+        if (!$this->success) {
+            return false;
+        }
+
+        return $this->pdoStatement->fetchAll();
+    }
+
+
+    /**
+     * Returns all rows of the specified field.
+     *
+     * @param int $column
+     * @return array
+     */
+    public function getFieldRows($column_number)
+    {
+        if (!$this->success) {
+            return false;
+        }
+
+        return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $column_number);
     }
 }
