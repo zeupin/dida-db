@@ -7,7 +7,6 @@
 namespace Dida\Db;
 
 use \PDO;
-use \PDOException;
 use \Exception;
 
 /**
@@ -182,11 +181,15 @@ abstract class Db implements DbInterface
     /**
      * Returns a new SQL class instance with necessary parameters.
      *
-     * @return Statement
+     * @return Query
+     *
+     * @todo This method should be overwritted.
      */
     protected function newQuery()
     {
+        // should be replace with MysqlBuilder() etc.
         $builder = new Builder();
+
         $sql = new Query([
             'prefix'      => $this->cfg['prefix'],
             'swap_prefix' => $this->cfg['swap_prefix'],

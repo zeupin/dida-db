@@ -6,6 +6,8 @@
 
 namespace Dida\Db;
 
+use \Exception;
+
 /**
  * SQL statement Builder
  */
@@ -352,7 +354,7 @@ class Builder implements BuilderInterface
      * If $columns is a string, returns it directly.
      * If $columns is an array, returns the imploded expression.
      *
-     * @param strig|array $columns
+     * @param string|array $columns
      * @return string
      */
     protected function process_SelectColumnList($columns)
