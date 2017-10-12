@@ -115,19 +115,19 @@ interface DQCInterface
     /**
      * Adds a having condition.
      *
-     * @param type $condition
-     * @param type $parameters
+     * @param string|array $condition
+     * @param array $parameters
      *
      * @return $this
      */
-    public function having($condition, $parameters = []);
+    public function having($condition, array $parameters = []);
 
 
     /**
      * Adds many having conditions.
      *
      * @param array $conditions
-     * @param type $logic
+     * @param string $logic
      *
      * @return $this
      */

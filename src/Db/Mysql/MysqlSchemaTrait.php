@@ -7,6 +7,7 @@
 namespace Dida\Db\Mysql;
 
 use \PDO;
+use \Exception;
 
 /**
  * Schema generation/reflection features for MySQL
