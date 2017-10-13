@@ -11,6 +11,9 @@ class DbTest extends TestCase
     public $db = null;
 
 
+    /**
+     * 初始化测试环境
+     */
     public function __construct($name = null, array $data = array(), $dataName = '')
     {
         parent::__construct($name, $data, $dataName);
@@ -55,5 +58,36 @@ FROM
 EOT;
         $this->assertEquals($expected, $admin->statement);
         $this->assertEquals([], $admin->parameters);
+    }
+
+
+    public function test_getColumn()
+    {
+        $admin = $this->db->table('admin');
+
+        $result1 = $admin->getColumn(2);
+        echo Debug::varDump($result1);
+
+        $result2 = $admin->getColumn('mobile');
+        echo Debug::varDump($result2);
+
+        // 期望$result1=$result2
+        $this->assertEquals($result1, $result2);
+    }
+
+
+    public function test_getColumn_1()
+    {
+        // user是个空表
+        $data = $this->db->table('user');
+
+        $result1 = $data->getColumn(2);
+        echo Debug::varDump($result1);
+
+        $result2 = $data->getColumn('mobile');
+        echo Debug::varDump($result2);
+
+        // 期望$result1=$result2
+        $this->assertEquals($result1, $result2);
     }
 }

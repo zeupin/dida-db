@@ -204,11 +204,11 @@ class DataSet implements DataSetInterface
 
 
     /**
-     * Alias of fetch()
+     * Gets the next row from the dataset.
      *
      * @return array
      */
-    public function getRecord()
+    public function getRow()
     {
         if (!$this->success) {
             return false;
@@ -219,11 +219,11 @@ class DataSet implements DataSetInterface
 
 
     /**
-     * Alias of fetchAll()
+     * Gets all rest row from the dataset.
      *
      * @return array(array)
      */
-    public function getRecords()
+    public function getRows()
     {
         if (!$this->success) {
             return false;
@@ -234,17 +234,42 @@ class DataSet implements DataSetInterface
 
 
     /**
-     * Returns all rows of the specified field.
+     * Returns all rows of the specified column.
+     * The first column number is 0.
      *
-     * @param int $column
+     * @param int|string $column
+     *      @@int    column number
+     *      @@string column name
      * @return array
      */
-    public function getFieldRows($column_number)
+    public function getColumn($column)
     {
         if (!$this->success) {
             return false;
         }
 
-        return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $column_number);
+        $column_count = $this->pdoStatement->columnCount();
+
+        /* if $column is string */
+        if (is_string($column)) {
+            for ($i=0; $i<$column_count; $i++) {
+                $column_meta = $this->pdoStatement->getColumnMeta($i);
+                if ($column_meta['name'] === $column) {
+                    return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $i);
+                }
+            }
+        }
+
+        /* if $column is int */
+        if (is_int($column)) {
+            if ($column_count > $column) {
+                return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $column);
+            } else {
+                return false;
+            }
+        }
+
+        /* invalid $column type */
+        return false;
     }
 }
