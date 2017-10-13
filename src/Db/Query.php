@@ -11,7 +11,7 @@ use \Exception;
 /**
  * SQL Statement Query
  */
-class Query implements QueryInterface, DQCInterface, DUCInterface
+class Query implements QueryInterface, QueryClauseCInterface, UpdateClauseInterface
 {
     /**
      * Version
