@@ -57,7 +57,7 @@ interface DbInterface
      * @param string $statement
      * @param array $parameters
      *
-     * @return Result
+     * @return DataSet
      */
     public function execute($statement, array $parameters = []);
 

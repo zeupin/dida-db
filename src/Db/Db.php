@@ -26,21 +26,20 @@ abstract class Db implements DbInterface
      */
     protected $cfg = [
         /* pdo parameters */
-        'dsn'      => null, // PDO DNS
-        'username' => null, // The database username
-        'password' => null, // The database password
-        'options'  => [], // PDO driver options
+        'db.dsn'      => null, // PDO DNS
+        'db.username' => null, // The database username
+        'db.password' => null, // The database password
+        'db.options'  => [], // PDO driver options
 
         /* required parameters */
-        'workdir' => null, // Set the work directory.
-        'dbtype'  => null, // Set the DB type to use, 'Mysql',
+        'db.driver_type' => null, // Set the DB type to use, 'Mysql',
 
         /* optional parameters */
-        'dbname'      => null, // the database name
-        'charset'     => 'utf8', // set the default connection charset.
-        'persistence' => false, // set if a persistence connection is persistence.
-        'prefix'      => '', // default table prefix
-        'swap_prefix' => '###_', // default table prefix string.
+        'db.name'        => null, // the database name
+        'db.charset'     => 'utf8', // set the default connection charset.
+        'db.persistence' => false, // set if a persistence connection is persistence.
+        'db.prefix'      => '', // default table prefix
+        'db.swap_prefix' => '###_', // default table prefix string.
     ];
 
     /**
@@ -49,13 +48,6 @@ abstract class Db implements DbInterface
      * @var \PDO
      */
     public $pdo = null;
-
-    /**
-     * Specifies a work directory. Workdir must exist and be writable.
-     *
-     * @var string
-     */
-    public $workdir = null;
 
     /**
      * Specifies the DB type
@@ -71,13 +63,6 @@ abstract class Db implements DbInterface
     public function __construct(array $cfg = [])
     {
         $this->cfg = array_merge($this->cfg, $cfg);
-
-        // Checks if the work directory is valid.
-        $workdir = $this->cfg['workdir'];
-        if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception('Invalid $cfg["workdir"]! "' . $workdir . '" does not exists or cannot be written');
-        }
-        $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
     }
 
 
@@ -104,7 +89,9 @@ abstract class Db implements DbInterface
 
         // Try to make a connection
         try {
-            $this->pdo = new PDO($this->cfg['dsn'], $this->cfg['username'], $this->cfg['password'], $this->cfg['options']);
+            $this->pdo = new PDO(
+                $this->cfg['db.dsn'], $this->cfg['db.username'], $this->cfg['db.password'], $this->cfg['db.options']
+            );
             return true;
         } catch (Exception $e) {
             return false;
@@ -162,7 +149,7 @@ abstract class Db implements DbInterface
      * @param string $statement
      * @param array $parameters
      *
-     * @return Result
+     * @return DataSet
      */
     public function execute($statement, array $parameters = [])
     {
@@ -171,10 +158,22 @@ abstract class Db implements DbInterface
         try {
             $stmt = $this->pdo->prepare($statement);
             $success = $stmt->execute($parameters);
-            return new Result($this, $stmt, $success);
+            return new DataSet($this, $stmt, $success);
         } catch (Exception $ex) {
             return false;
         }
+    }
+
+
+    /**
+     * Get a Builder instance.
+     *
+     * @param \Dida\Db\Builder $builder
+     * @return $this
+     */
+    public function getBuilder()
+    {
+        return new Builder();
     }
 
 
@@ -187,12 +186,11 @@ abstract class Db implements DbInterface
      */
     protected function newQuery()
     {
-        // should be replace with MysqlBuilder() etc.
-        $builder = new Builder();
-
+        $builder = $this->getBuilder();
+        
         $sql = new Query([
-            'prefix'      => $this->cfg['prefix'],
-            'swap_prefix' => $this->cfg['swap_prefix'],
+            'prefix'      => $this->cfg['db.prefix'],
+            'swap_prefix' => $this->cfg['db.swap_prefix'],
             ], $this, $builder);
         return $sql;
     }

@@ -9,7 +9,7 @@ namespace Dida\Db;
 /**
  * Data Update Clause Interface
  */
-interface DUCInterface
+interface UpdateClauseInterface
 {
     /**
      * Set column value.

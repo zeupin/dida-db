@@ -38,7 +38,7 @@ class Builder implements BuilderInterface
      */
     protected $PA = [];
 
-    /*
+    /**
      * All supported operater set.
      */
     protected static $opertor_set = [

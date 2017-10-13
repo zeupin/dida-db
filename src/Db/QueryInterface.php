@@ -142,12 +142,12 @@ interface QueryInterface
 
 
     /**
-     * Executes the SQL statement built and returns a Result object.
+     * Executes the SQL statement built and returns a DataSet object.
      *
      * @param string $sql
      * @param array $sql_parameters
      *
-     * @return Result
+     * @return DataSet
      */
     public function execute();
 }
