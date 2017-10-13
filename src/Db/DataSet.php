@@ -11,9 +11,9 @@ use \PDOStatement;
 use \Exception;
 
 /**
- * Result
+ * DataSet
  */
-class Result implements ResultInterface
+class DataSet implements DataSetInterface
 {
     /**
      * Version

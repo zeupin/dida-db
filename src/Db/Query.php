@@ -99,7 +99,7 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
 
 
     /**
-     * Implicit calling the methods in the Result class.
+     * Implicit calling the methods in the DataSet class.
      *
      * @param string $name
      * @param array $arguments
@@ -110,7 +110,7 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
     {
         // Pull-Execution feature
         if ($this->pullexec) {
-            if (method_exists('\Dida\Db\Result', $name)) {
+            if (method_exists('\Dida\Db\DataSet', $name)) {
                 $result = $this->execute();
                 return call_user_func_array([$result, $name], $arguments);
             }
@@ -769,12 +769,12 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
 
 
     /**
-     * Executes the SQL statement built and returns a Result object.
+     * Executes the SQL statement built and returns a DataSet object.
      *
      * @param string $sql
      * @param array $sql_parameters
      *
-     * @return Result
+     * @return DataSet
      */
     public function execute()
     {
@@ -790,7 +790,7 @@ class Query implements QueryInterface, DQCInterface, DUCInterface
         try {
             $pdoStatement = $this->db->pdo->prepare($this->statement);
             $success = $pdoStatement->execute($this->parameters);
-            return new Result($this->db, $pdoStatement, $success);
+            return new DataSet($this->db, $pdoStatement, $success);
         } catch (Exception $ex) {
             return false;
         }

@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * Result Interface
+ * DataSet Interface
  */
-interface ResultInterface
+interface DataSetInterface
 {
     /**
      * Class construct.

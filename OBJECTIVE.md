@@ -74,7 +74,7 @@ $cfg = [
 ## 7. 类的调用层次。
 
 ```
-Db -> Query -> Builder -> Result
+Db -> Query -> Builder -> DataSet
 ```
 
 ## 8. 执行时，统一使用预处理模式（Prepare）。
@@ -719,7 +719,7 @@ $admin = $db->table('user', 'u')
     'mobile' => rand(13501670001, 13501679999), // 随机生成一个手机号
     ]); // $admin是一个Builder类
 
-$result = $admin->execute(); // $result是一个Result类
+$result = $admin->execute(); // $result是一个DataSet类
 
 echo Debug::varExport($result->lastInsertId());
 ```
@@ -806,9 +806,9 @@ echo Debug::varExport($user->statement) . PHP_EOL;
 $result = $user->execute();
 ```
 
-## 52. 可以在Query类中直接调用Result类的方法（隐式调用）
+## 52. 可以在Query类中直接调用DataSet类的方法（隐式调用）
 
-直接在Query类中调用Result类的方法，等效于：先执行Query->execute()得到Result，然后再对Result->方法()。如果其中有环节出错，则抛异常。
+直接在Query类中调用DataSet类的方法，等效于：先执行Query->execute()得到DataSet，然后再对DataSet->方法()。如果其中有环节出错，则抛异常。
 
 ```php
 $user = $db->table('admin', 'a')
