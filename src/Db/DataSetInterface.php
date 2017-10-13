@@ -53,6 +53,14 @@ interface DataSetInterface
 
 
     /**
+     * Returns the specified column value of the next row.
+     *
+     * @param int $column_number
+     */
+    public function fetchColumn($column_number = 0);
+
+
+    /**
      * Represents PDOStatement::errorCode()
      *
      * @return string
@@ -92,4 +100,32 @@ interface DataSetInterface
      * Represents PDOStatement::debugDumpParams()
      */
     public function debugDumpParams();
+
+
+    /**
+     * Gets the next row from the dataset.
+     *
+     * @return array
+     */
+    public function getRow();
+
+
+    /**
+     * Gets all rest row from the dataset.
+     *
+     * @return array(array)
+     */
+    public function getRows();
+
+
+    /**
+     * Returns all rows of the specified column.
+     * The first column number is 0.
+     *
+     * @param int|string $column
+     *      @@int    column number
+     *      @@string column name
+     * @return array
+     */
+    public function getColumn($column);
 }
