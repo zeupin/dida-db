@@ -1,5 +1,5 @@
 <?php
-/**
+/**!
  * Dida Framework --Powered by Zeupin LLC
  * http://dida.zeupin.com
  */
@@ -32,9 +32,7 @@ abstract class Db implements DbInterface
         'db.options'  => [], // PDO driver options
 
         /* required parameters */
-        'db.schema_cache'  => null, // Set the work directory.
-        'db.dataset_cache' => null, // Set the work directory.
-        'db.driver_type'   => null, // Set the DB type to use, 'Mysql',
+        'db.driver_type' => null, // Set the DB type to use, 'Mysql',
 
         /* optional parameters */
         'db.name'        => null, // the database name
@@ -52,13 +50,6 @@ abstract class Db implements DbInterface
     public $pdo = null;
 
     /**
-     * Specifies a work directory. Workdir must exist and be writable.
-     *
-     * @var string
-     */
-    public $workdir = null;
-
-    /**
      * Specifies the DB type
      *
      * @var string
@@ -72,13 +63,6 @@ abstract class Db implements DbInterface
     public function __construct(array $cfg = [])
     {
         $this->cfg = array_merge($this->cfg, $cfg);
-
-        // Checks if the work directory is valid.
-        $workdir = $this->cfg['workdir'];
-        if (!is_string($workdir) || !file_exists($workdir) || !is_dir($workdir) || !is_writeable($workdir)) {
-            throw new Exception('Invalid $cfg["workdir"]! "' . $workdir . '" does not exists or cannot be written');
-        }
-        $this->workdir = $this->cfg['workdir'] = realpath($workdir) . DIRECTORY_SEPARATOR;
     }
 
 
@@ -105,7 +89,9 @@ abstract class Db implements DbInterface
 
         // Try to make a connection
         try {
-            $this->pdo = new PDO($this->cfg['dsn'], $this->cfg['username'], $this->cfg['password'], $this->cfg['options']);
+            $this->pdo = new PDO(
+                $this->cfg['db.dsn'], $this->cfg['db.username'], $this->cfg['db.password'], $this->cfg['db.options']
+            );
             return true;
         } catch (Exception $e) {
             return false;
@@ -200,10 +186,12 @@ abstract class Db implements DbInterface
      */
     protected function newQuery()
     {
+        $builder = $this->getBuilder();
+        
         $sql = new Query([
-            'prefix'      => $this->cfg['prefix'],
-            'swap_prefix' => $this->cfg['swap_prefix'],
-            ], $this, $this->getBuilder());
+            'prefix'      => $this->cfg['db.prefix'],
+            'swap_prefix' => $this->cfg['db.swap_prefix'],
+            ], $this, $builder);
         return $sql;
     }
 

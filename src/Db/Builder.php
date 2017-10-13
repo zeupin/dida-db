@@ -1,5 +1,5 @@
 <?php
-/**
+/**!
  * Dida Framework --Powered by Zeupin LLC
  * http://dida.zeupin.com
  */
@@ -38,7 +38,7 @@ class Builder implements BuilderInterface
      */
     protected $PA = [];
 
-    /*
+    /**
      * All supported operater set.
      */
     protected static $opertor_set = [
