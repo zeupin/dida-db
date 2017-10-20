@@ -1,6 +1,5 @@
 <?php
 
-
 /**
  * Dida Framework --Powered by Zeupin LLC
  * http://dida.zeupin.com
@@ -8,8 +7,7 @@
 class Autoloader
 {
     private static $_initialized = false;
-
-    private static $_queue = [ ];
+    private static $_queue = [];
 
 
     /**
@@ -21,11 +19,11 @@ class Autoloader
         if (self::$_initialized) {
             return;
         }
-        
+
         // register the autoload() callback
-        spl_autoload_register([ __CLASS__,'autoload'
+        spl_autoload_register([__CLASS__, 'autoload'
         ]);
-        
+
         // set the flag
         self::$_initialized = true;
     }
@@ -47,28 +45,28 @@ class Autoloader
                         return true;
                     }
                     break;
-                
+
                 case 'namespace':
                     $result = self::matchNamespace($FQCN, $item['namespace'], $item['basedir'], $item['len']);
                     if ($result) {
                         return true;
                     }
                     break;
-                
+
                 case 'psr4':
                     $result = self::matchPsr4($FQCN, $item['namespace'], $item['basedir'], $item['len']);
                     if ($result) {
                         return true;
                     }
                     break;
-                
+
                 case 'psr0':
                     $result = self::matchPsr0($FQCN, $item['namespace'], $item['basedir'], $item['len']);
                     if ($result) {
                         return true;
                     }
                     break;
-                
+
                 case 'alias':
                     $result = self::matchAlias($FQCN, $item['alias'], $item['real']);
                     if ($result) {
@@ -77,7 +75,7 @@ class Autoloader
                     break;
             }
         }
-        
+
         // Not matched anyone, return false
         return false;
     }
@@ -97,21 +95,21 @@ class Autoloader
     {
         // Initialize
         self::init();
-        
+
         // Checks $basedir
-        if (! file_exists($basedir) || ! is_dir($basedir)) {
+        if (!file_exists($basedir) || !is_dir($basedir)) {
             return false;
         } else {
             $basedir = realpath($basedir);
         }
-        
+
         // Preproccesses $namepsace
         $namespace = trim($namespace, " \\\t\n\r\0\x0B");
-        
+
         // Adds it to $_queue
-        self::$_queue[] = [ 'type' => 'psr4','namespace' => $namespace,'basedir' => $basedir,'len' => strlen($namespace)
+        self::$_queue[] = ['type'      => 'psr4', 'namespace' => $namespace, 'basedir'   => $basedir, 'len'       => strlen($namespace)
         ];
-        
+
         return true;
     }
 
@@ -125,10 +123,10 @@ class Autoloader
         if (strncmp($FQCN, $namespace . '\\', $len + 1) !== 0) {
             return false;
         }
-        
+
         // Strips the namespace
         $rest = substr($FQCN, $len + 1);
-        
+
         // Checks if the target php file exists.
         $target = "{$basedir}/{$rest}.php";
         if (file_exists($target) && is_file($target)) {
@@ -154,21 +152,21 @@ class Autoloader
     {
         // Initialize
         self::init();
-        
+
         // Checks $basedir
-        if (! file_exists($basedir) || ! is_dir($basedir)) {
+        if (!file_exists($basedir) || !is_dir($basedir)) {
             return false;
         } else {
             $basedir = realpath($basedir);
         }
-        
+
         // Preproccesses $namepsace
         $namespace = trim($namespace, " \\\t\n\r\0\x0B");
-        
+
         // Adds it to $_queue
-        self::$_queue[] = [ 'type' => 'psr0','namespace' => $namespace,'basedir' => $basedir,'len' => strlen($namespace)
+        self::$_queue[] = ['type'      => 'psr0', 'namespace' => $namespace, 'basedir'   => $basedir, 'len'       => strlen($namespace)
         ];
-        
+
         return true;
     }
 
@@ -182,20 +180,20 @@ class Autoloader
         if (strncmp($FQCN, $namespace . '\\', $len + 1) !== 0) {
             return false;
         }
-        
+
         // Strips the namespace
         $rest = substr($FQCN, $len + 1);
-        
+
         // deal with '_' in the rest
         $rest = str_replace('_', DIRECTORY_SEPARATOR, $rest);
-        
+
         // Checks if the target php file exists.
         if ($namespace === '') {
             $target = "{$basedir}/{$rest}.php";
         } else {
             $target = "{$basedir}/{$namespace}/{$rest}.php";
         }
-        
+
         if (file_exists($target) && is_file($target)) {
             require $target;
             return true;
@@ -224,21 +222,21 @@ class Autoloader
     {
         // Initialize
         self::init();
-        
+
         // Checks $basedir
-        if (! file_exists($basedir) || ! is_dir($basedir)) {
+        if (!file_exists($basedir) || !is_dir($basedir)) {
             return false;
         } else {
             $basedir = realpath($basedir);
         }
-        
+
         // Preproccesses $namepsace
         $namespace = trim($namespace, " \\\t\n\r\0\x0B");
-        
+
         // Adds it to $_queue
-        self::$_queue[] = [ 'type' => 'namespace','namespace' => $namespace,'basedir' => $basedir,'len' => strlen($namespace)
+        self::$_queue[] = ['type'      => 'namespace', 'namespace' => $namespace, 'basedir'   => $basedir, 'len'       => strlen($namespace)
         ];
-        
+
         return true;
     }
 
@@ -252,17 +250,17 @@ class Autoloader
         if (strncmp($FQCN, $namespace . '\\', $len + 1) !== 0) {
             return false;
         }
-        
+
         // Strips the namespace
         $rest = substr($FQCN, $len + 1);
-        
+
         // Checks if the target php file exists.
         $target = "$basedir/$rest.php";
         if (file_exists($target) && is_file($target)) {
             require $target;
             return true;
         }
-        
+
         // If $rest not contain '\'
         if (strpos($rest, '\\') === false) {
             $target = "{$basedir}/{$rest}/{$rest}.php";
@@ -273,7 +271,7 @@ class Autoloader
                 return false;
             }
         }
-        
+
         // If $rest contains '\', split $rest to $base + $name, then checks files exist.
         $array = explode('\\', $rest);
         $name = array_pop($array);
@@ -306,27 +304,27 @@ class Autoloader
     {
         // Initialize
         self::init();
-        
+
         // Checks $mapfile
-        if (! file_exists($mapfile) || ! is_file($mapfile)) {
+        if (!file_exists($mapfile) || !is_file($mapfile)) {
             return false;
         } else {
             $mapfile = realpath($mapfile);
         }
-        
+
         // Checks $basedir
         if (is_null($basedir)) {
             $basedir = dirname($mapfile);
-        } elseif (! is_string($basedir) || ! file_exists($basedir) || ! is_dir($basedir)) {
+        } elseif (!is_string($basedir) || !file_exists($basedir) || !is_dir($basedir)) {
             return false;
         } else {
             $basedir = realpath($basedir);
         }
-        
+
         // Adds it to $_queue
-        self::$_queue[] = [ 'type' => 'classmap','mapfile' => $mapfile,'basedir' => $basedir,'map' => null
+        self::$_queue[] = ['type'    => 'classmap', 'mapfile' => $mapfile, 'basedir' => $basedir, 'map'     => null
         ];
-        
+
         return true;
     }
 
@@ -339,24 +337,24 @@ class Autoloader
         // If first run, loads the mapfile content to $map.
         if (is_null($map)) {
             $map = require($mapfile);
-            
+
             // Checks $map, sets it to [] if invalid.
-            if (! is_array($map)) {
-                $map = [ ];
+            if (!is_array($map)) {
+                $map = [];
                 return false;
             }
         }
-        
+
         // Checks if $map is empty.
         if (empty($map)) {
             return false;
         }
-        
+
         // Checks if FQCN exists.
-        if (! array_key_exists($FQCN, $map)) {
+        if (!array_key_exists($FQCN, $map)) {
             return false;
         }
-        
+
         // Loads the target file.
         $target = $basedir . '/' . $map[$FQCN];
         if (file_exists($target) && is_file($target)) {
@@ -382,11 +380,11 @@ class Autoloader
     {
         // Initialize
         self::init();
-        
+
         // Adds it to $_queue
-        self::$_queue[] = [ 'type' => 'alias','alias' => $alias,'real' => $real
+        self::$_queue[] = ['type'  => 'alias', 'alias' => $alias, 'real'  => $real
         ];
-        
+
         return true;
     }
 
