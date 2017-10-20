@@ -482,7 +482,7 @@ class Query implements QueryInterface, QuerySelectInterface, QueryUpdateInterfac
      * @param string $column
      * @param mixed $value
      */
-    public function increase($column, $value = 1)
+    public function increment($column, $value = 1)
     {
         $this->todolist['verb'] = 'UPDATE';
 
@@ -498,7 +498,7 @@ class Query implements QueryInterface, QuerySelectInterface, QueryUpdateInterfac
      * @param string $column
      * @param mixed $value
      */
-    public function decrease($column, $value = 1)
+    public function decrement($column, $value = 1)
     {
         $this->todolist['verb'] = 'UPDATE';
 
