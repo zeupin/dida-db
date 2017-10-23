@@ -224,7 +224,8 @@ abstract class Db implements DbInterface
 
 
     /**
-     * 创建一个新的SqlQuery实例对象
+     * 创建一个新的SqlQuery实例对象。
+     * 对不同的数据库，建议重写对应的逻辑，覆盖掉本方法。
      *
      * @return SqlQuery
      */
