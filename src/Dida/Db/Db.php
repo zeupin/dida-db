@@ -107,6 +107,17 @@ abstract class Db implements DbInterface
 
 
     /**
+     * 返回实例的$cfg数组
+     *
+     * @return array
+     */
+    public function &getConfig()
+    {
+        return $this->cfg;
+    }
+
+
+    /**
      * Connects the database driver.
      *
      * @return boolean -- Returns TRUE on success or FALSE on failure.
@@ -203,10 +214,7 @@ abstract class Db implements DbInterface
      */
     protected function newQuery()
     {
-        $sql = new SqlQuery([
-            'prefix'      => $this->cfg['db.prefix'],
-            'swap_prefix' => $this->cfg['db.swap_prefix'],
-            ], $this);
+        $sql = new SqlQuery($this);
         return $sql;
     }
 

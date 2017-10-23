@@ -17,7 +17,7 @@ interface SqlQueryInterface
      * @param array $options
      * @param \Dida\Db\Db $db
      */
-    public function __construct(array $options, &$db);
+    public function __construct(&$db);
 
 
     /**

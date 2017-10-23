@@ -87,11 +87,16 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      * @param array $options
      * @param \Dida\Db\Db $db
      */
-    public function __construct(array $options, &$db)
+    public function __construct(&$db)
     {
         $this->db = $db;
 
-        $this->base = array_merge($this->base, $options);
+        $cfg = $db->getConfig();
+
+        $this->base = array_merge($this->base, [
+            'prefix'      => $cfg['db.prefix'],
+            'swap_prefix' => $cfg['db.swap_prefix'],
+        ]);
         $this->resetAll();
     }
 
@@ -131,9 +136,6 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
 
         return $this->changed();
     }
-
-
-
 
 
     /**
