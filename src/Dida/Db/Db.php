@@ -104,9 +104,7 @@ abstract class Db implements DbInterface
      */
     public function isConnected()
     {
-        if ($this->pdo === null) {
-            return false;
-        }
+        return ($this->pdo !== null);
     }
 
 
@@ -180,15 +178,15 @@ abstract class Db implements DbInterface
     /**
      * Returns a new SQL class instance with necessary parameters.
      *
-     * @return Query
+     * @return SqlQuery
      *
      * @todo This method should be overwritted.
      */
     protected function newQuery()
     {
         $builder = $this->getBuilder();
-        
-        $sql = new Query([
+
+        $sql = new SqlQuery([
             'prefix'      => $this->cfg['db.prefix'],
             'swap_prefix' => $this->cfg['db.swap_prefix'],
             ], $this, $builder);
@@ -197,13 +195,13 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Creates an SQL Statement <Query> object and sets it as the master table.
+     * Creates an SQL Statement <SqlQuery> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Query
+     * @return \Dida\Db\SqlQuery
      */
     public function table($table, $alias = null, $prefix = null)
     {

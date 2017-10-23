@@ -9,7 +9,7 @@ namespace Dida\Db;
 /**
  * Data Query Clause Interface
  */
-interface QuerySelectInterface
+interface SqlSelectInterface
 {
     /**
      * Adds a WHERE condition.

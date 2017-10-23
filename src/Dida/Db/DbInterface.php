@@ -63,13 +63,13 @@ interface DbInterface
 
 
     /**
-     * Creates a <Query> object and sets it as the master table.
+     * Creates a <SqlQuery> object and sets it as the master table.
      *
      * @param string $table
      * @param string $alias
      * @param string $prefix
      *
-     * @return \Dida\Db\Query
+     * @return \Dida\Db\SqlQuery
      */
     public function table($table, $alias = null, $prefix = null);
 }

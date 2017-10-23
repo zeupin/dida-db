@@ -46,6 +46,29 @@ class DbTest extends TestCase
     }
 
 
+    /**
+     * 测试数据库是否可以连接
+     */
+    public function testConnectDb()
+    {
+        $this->db->connect();
+        $this->assertEquals(true, $this->db->isConnected());
+    }
+
+
+    /**
+     * 测试数据库是否可以正常工作
+     */
+    public function testDbWorkWell()
+    {
+        $this->db->connect();
+        $this->assertEquals(true, $this->db->worksWell());
+    }
+
+
+    /**
+     * 测试能够正常build一个简单表达式
+     */
     public function test0Table()
     {
         $admin = $this->db->table('admin')

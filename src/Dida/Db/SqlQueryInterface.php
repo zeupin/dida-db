@@ -7,9 +7,9 @@
 namespace Dida\Db;
 
 /**
- * Query Interface
+ * SqlQuery Interface
  */
-interface QueryInterface
+interface SqlQueryInterface
 {
     /**
      * Constructor.
