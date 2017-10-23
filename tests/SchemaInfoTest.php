@@ -4,10 +4,13 @@ use \PHPUnit\Framework\TestCase;
 use \Dida\Debug\Debug;
 
 /**
- * DbTest
+ * SchemaInfo Test
  */
-class DbTest extends TestCase
+class SchemaInfoTest extends TestCase
 {
+    /**
+     * @var \Dida\Db\Mysql\MysqlDb
+     */
     public $db = null;
 
 
@@ -91,56 +94,8 @@ class DbTest extends TestCase
         $this->assertEquals(1, $result['id']);
     }
 
-
-    /**
-     * 测试能够正常build一个简单的数据表表达式
-     */
-    public function test0Table()
+    public function testCacheAllTableInfo()
     {
-        $admin = $this->db->table('test')
-            ->build();
-        $expected = <<<EOT
-SELECT
-    *
-FROM
-    zp_test
-EOT;
-        $this->assertEquals($expected, $admin->statement);
-        $this->assertEquals([], $admin->parameters);
-    }
-
-
-    /**
-     * 测试使用 getColumn() 方法时，用列号和列名是否能得到一致的结果
-     */
-    public function test_getColumn()
-    {
-        $this->resetMock(__DIR__ . '/zp_test.sql');
-
-        $t = $this->db->table('test');
-
-        $result1 = $t->getColumn(1);
-        $result2 = $t->getColumn('name');
-
-        // 期望$result1=$result2
-        $this->assertEquals($result1, $result2);
-    }
-
-
-    /**
-     * 测试使用 getColumn() 方法时，用列号和列名是否能得到一致的结果
-     */
-    public function test_getColumn_1()
-    {
-        $this->resetMock(__DIR__ . '/zp_test_truncate.sql');
-
-        // user是个空表
-        $t = $this->db->table('test');
-
-        $result1 = $t->getColumn(1);
-        $result2 = $t->getColumn('name');
-
-        // 期望$result1=$result2
-        $this->assertEquals($result1, $result2);
+        $this->db->getSchemaInfo()->cacheAllTableInfo('zeupin', 'zp_');
     }
 }

@@ -32,10 +32,11 @@ abstract class Db implements DbInterface
         'db.options'  => [], // pdo连接参数
 
         /* 必填参数 */
-        'db.driver_type' => null, // 数据库驱动类型,如“Mysql”
+        'db.name'           => null, // 数据库的名字
+        'db.driver_type'    => null, // 数据库驱动类型,如“Mysql”
+        'db.schemainfo_dir' => null, // SchemaInfo的缓存目录
 
         /* 可选参数 */
-        'db.name'        => null,
         'db.charset'     => 'utf8',
         'db.persistence' => false, // 是否用长连接
         'db.prefix'      => '', // 默认的表前缀
@@ -57,11 +58,18 @@ abstract class Db implements DbInterface
     public $dbtype = null;
 
     /**
-     * SqlBuilder实例
+     * 配置的SqlBuilder实例
      *
      * @var \Dida\Db\Builder
      */
     protected $builder = null;
+
+    /**
+     * 配置的SchemaInfo实例
+     *
+     * @var \Dida\Db\SchemaInfo
+     */
+    protected $schemaInfo = null;
 
 
     /**
@@ -94,6 +102,8 @@ abstract class Db implements DbInterface
                 $this->cfg[$key] = $cfg[$key];
             }
         }
+
+        return $this;
     }
 
 
@@ -105,6 +115,31 @@ abstract class Db implements DbInterface
     public function &getConfig()
     {
         return $this->cfg;
+    }
+
+
+    /**
+     * 配置的SchemaInfo实例
+     *
+     * @param \Dida\Db\SchemaInfo $schemaInfo
+     * @return $this
+     */
+    public function setSchemaInfo(&$schemaInfo)
+    {
+        $this->schemaInfo = $schemaInfo;
+
+        return $this;
+    }
+
+
+    /**
+     * 获取的SchemaInfo实例
+     *
+     * @return \Dida\Db\SchemaInfo
+     */
+    public function &getSchemaInfo()
+    {
+        return $this->schemaInfo;
     }
 
 
@@ -131,6 +166,19 @@ abstract class Db implements DbInterface
     public function &getBuilder()
     {
         return $this->builder;
+    }
+
+
+    /**
+     * 立即连接数据库，并返回PDO实例
+     */
+    public function getConnection()
+    {
+        if ($this->connect()) {
+            return $this->pdo;
+        } else {
+            return false;
+        }
     }
 
 

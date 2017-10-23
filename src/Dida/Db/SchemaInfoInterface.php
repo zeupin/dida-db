@@ -9,7 +9,7 @@ namespace Dida\Db;
 /**
  * Schema Interface
  */
-interface SchemaInterface
+interface SchemaInfoInterface
 {
     /**
      * List all table names of the <schema>.
@@ -26,5 +26,5 @@ interface SchemaInterface
     /**
      * Get all column information about the <schema.table>.
      */
-    public function getColumnsInfo($schema, $table);
+    public function getAllColumnInfo($schema, $table);
 }

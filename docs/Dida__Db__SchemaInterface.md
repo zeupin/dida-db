@@ -1,4 +1,4 @@
-# interface `Dida\Db\SchemaInterface`
+# interface `Dida\Db\SchemaInfoInterface`
 
 [TOC]
 
@@ -17,7 +17,7 @@
 > * `TABLE_NAME`
 > * `TABLE_TYPE`
 
-### `getColumnsInfo($schema, $table);`
+### `getAllColumnInfo($schema, $table);`
 > 获取`$schema`数据库的`$table`表的所有列的相关信息。`$table`为实际的数据表名。
 > 
 > 结果返回一个二维数组，格式如下，并至少包含列举出来的若干键名：

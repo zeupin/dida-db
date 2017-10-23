@@ -25,5 +25,8 @@ class MysqlDb extends \Dida\Db\Db
 
         // 配置Builder，使用标准的Builder
         $this->builder = new \Dida\Db\Builder($this);
+
+        // 配置SchemaInfo，使用MysqlSchemaInfo
+        $this->schemaInfo = new MysqlSchemaInfo($this);
     }
 }

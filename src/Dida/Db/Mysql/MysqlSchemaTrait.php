@@ -14,156 +14,11 @@ use \Exception;
  */
 trait MysqlSchemaTrait
 {
-    /**
-     * List all table names of the <schema>.
-     */
-    public function listTableNames($schema, $prefix = '')
-    {
-        $sql = <<<'EOT'
-SELECT
-    `TABLE_NAME`
-FROM
-    `information_schema`.`TABLES`
-WHERE
-    (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table)
-ORDER BY
-    `TABLE_SCHEMA`, `TABLE_NAME`
-EOT;
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':schema' => $schema,
-            ':table'  => $prefix . '%',
-        ]);
-        $result = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
-        return $result;
-    }
+  
 
 
     /**
-     * Get all meta information about the <schema.table>.
-     */
-    public function getTableInfo($schema, $table)
-    {
-        $sql = <<<'EOT'
-SELECT
-    `TABLE_SCHEMA`,
-    `TABLE_NAME`,
-    `TABLE_TYPE`,
-    `TABLE_CATALOG`,
-    `ENGINE`,
-    `TABLE_COLLATION`,
-    `TABLE_COMMENT`
-FROM
-    information_schema.TABLES
-WHERE
-    (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table)
-EOT;
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':schema' => $schema,
-            ':table'  => $table,
-        ]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result;
-    }
-
-
-    /**
-     * Get all column information about the <schema.table>.
-     */
-    public function getColumnsInfo($schema, $table)
-    {
-        $sql = <<<'EOT'
-SELECT
-    `COLUMN_NAME`,
-    `ORDINAL_POSITION`,
-    `COLUMN_DEFAULT`,
-    `IS_NULLABLE`,
-    `DATA_TYPE`,
-    `CHARACTER_MAXIMUM_LENGTH`,
-    `NUMERIC_PRECISION`,
-    `NUMERIC_SCALE`,
-    `DATETIME_PRECISION`,
-    `CHARACTER_SET_NAME`,
-    `COLLATION_NAME`,
-    `COLUMN_TYPE`,
-    `COLUMN_KEY`,
-    `EXTRA`,
-    `PRIVILEGES`,
-    `COLUMN_COMMENT`
-FROM
-    `information_schema`.`COLUMNS`
-WHERE
-    (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table)
-ORDER BY
-    `ORDINAL_POSITION`
-EOT;
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':schema' => $schema,
-            ':table'  => $table,
-        ]);
-        $result = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $row['BASE_TYPE'] = $this->getBaseType($row['DATA_TYPE']);
-            $result[$row['COLUMN_NAME']] = $row;
-        }
-        return $result;
-    }
-
-
-    /**
-     * Converts DATA_TYPE to BASE_TYPE.
-     */
-    public function getBaseType($datatype)
-    {
-        switch ($datatype) {
-            /* string type */
-            case 'varchar':
-            case 'char':
-            case 'text':
-            case 'mediumtext':
-            case 'longtext':
-                return 'string';
-
-            /* numeric type */
-            case 'int':
-            case 'tinyint':
-            case 'smallint':
-            case 'mediumint':
-            case 'bigint':
-            case 'float':
-            case 'double':
-            case 'decimal':
-            case 'timestamp':
-                return 'numeric';
-
-            /* time type */
-            case 'datetime':
-            case 'date':
-                return 'time';
-
-            /* enum */
-            case 'enum':
-                return 'enum';
-
-            /* set */
-            case 'set':
-                return 'set';
-
-            /* binary */
-            case 'varbinary':
-                return 'varbinary';
-
-            /* unknown type */
-            default:
-                return '';
-        }
-    }
-
-
-    /**
-     * Exports the specified schema to a schema directory.
+     * 导出指定的数据库
      *
      * @param string $schema
      * @param string $prefix  Default table prefix.
@@ -187,7 +42,7 @@ EOT;
         foreach ($tablenames as $table) {
             $info = [
                 'TABLE'   => $this->getTableInfo($schema, $table),
-                "COLUMNS" => $this->getColumnsInfo($schema, $table),
+                "COLUMNS" => $this->getAllColumnInfo($schema, $table),
             ];
             $this->saveContents($target_dir . "$table.php", $this->exportVar($info));
         }
@@ -228,45 +83,4 @@ EOT;
     }
 
 
-    /**
-     * Delete all files and subfolders in the specified directory.
-     *
-     * @param string $dir
-     * @return bool Returns TRUE on success or FALSE on failure.
-     */
-    public function clearDir($dir)
-    {
-        if (!file_exists($dir) || !is_dir($dir)) {
-            return false;
-        }
-
-        $dir = realpath($dir);
-        $files = scandir($dir);
-
-        foreach ($files as $file) {
-            if ($file === '.' || $file === '..') {
-                continue;
-            }
-
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
-
-            try {
-                // If it is a subfolder
-                if (is_dir($path)) {
-                    if (!$this->clearSchemaDir($path)) {
-                        return false;
-                    }
-                    rmdir($path);
-                    continue;
-                } else {
-                    // unlink this file
-                    unlink($path);
-                }
-            } catch (Exception $ex) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
