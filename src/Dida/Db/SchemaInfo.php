@@ -32,6 +32,13 @@ abstract class SchemaInfo implements SchemaInfoInterface
      */
     protected $schema = null;
 
+    /**
+     * 数据表前缀
+     *
+     * @var string
+     */
+    protected $prefix = '';
+
 
     /**
      * 类的构造函数。
@@ -44,21 +51,34 @@ abstract class SchemaInfo implements SchemaInfoInterface
 
         $cfg = $this->db->getConfig();
 
+        // 数据库名
         if (!isset($cfg['db.name'])) {
             throw new Exception('db.name 未配置');
         }
-        $this->schema  = $cfg['db.name'];
+        $this->schema = $cfg['db.name'];
 
+        // 默认的数据表前缀
+        if (isset($cfg['db.prefix'])) {
+            $this->prefix = $cfg['db.prefix'];
+        }
+
+        // SchemaInfo的缓存目录
         if (!isset($cfg['db.schemainfo_dir'])) {
             throw new Exception('db.schemainfo_dir 未配置');
         }
-
         if (!$this->setCacheDir($cfg['db.schemainfo_dir'])) {
             throw new Exception('db.schemainfo_dir 配置有误');
         }
     }
 
 
+    /**
+     * 设置缓存目录
+     *
+     * @param string $cacheDir
+     *
+     * @return boolean 成功返回true，失败返回false
+     */
     public function setCacheDir($cacheDir)
     {
         if (file_exists($cacheDir) && is_dir($cacheDir)) {
@@ -77,8 +97,11 @@ abstract class SchemaInfo implements SchemaInfoInterface
      * @param string $schema
      * @param string $prefix
      */
-    public function cacheAllTableInfo($schema, $prefix)
+    public function cacheAllTableInfo()
     {
+        $schema = $this->schema;
+        $prefix = $this->prefix;
+
         // 先检查缓存目录是否已经设置，是否可写入
         $dir = $this->cacheDir;
         if (!is_string($dir) || !file_exists($dir) || !is_dir($dir) || !is_writeable($dir)) {
@@ -104,8 +127,14 @@ abstract class SchemaInfo implements SchemaInfoInterface
 
             // 把这个数组缓存起来，供以后数据库脱机使用
             $DS = DIRECTORY_SEPARATOR;
+
+            $targetDir = $this->cacheDir . $DS . $schema;
+            if (!file_exists($targetDir)) {
+                @mkdir($targetDir, 0777);
+            }
+
             $filename = $this->cacheDir . $DS . $schema . $DS . $table . ".info.php";
-            $content = "<?php\nreturn " . var_export($array, true) . "\n";
+            $content = "<?php\nreturn " . var_export($array, true) . ";\n";
             file_put_contents($filename, $content);
         }
     }
@@ -157,14 +186,18 @@ abstract class SchemaInfo implements SchemaInfoInterface
      */
     public function readTableInfoFromCache($table)
     {
+        $schema = $this->schema;
+
         // 先检查缓存目录是否已经设置
         $dir = $this->cacheDir;
         if (!is_string($dir) || !file_exists($dir) || !is_dir($dir) || !is_writeable($dir)) {
             return false;
         }
 
+        $DS = DIRECTORY_SEPARATOR;
+
         // 从缓存中读取表信息
-        $file = $this->cacheDir . DIRECTORY_SEPARATOR . "$table.info.php";
+        $file = $this->cacheDir .  "{$DS}{$schema}{$DS}{$table}.info.php";
         if (file_exists($file)) {
             return include($file);
         }

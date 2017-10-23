@@ -6,6 +6,8 @@
 
 namespace Dida\Db\Mysql;
 
+use \PDO;
+
 /**
  * MysqlSchemaInfo
  */
@@ -95,7 +97,7 @@ WHERE
 ORDER BY
     `ORDINAL_POSITION`
 EOT;
-        $stmt = $this->getConnection()->prepare($sql);
+        $stmt = $this->db->getConnection()->prepare($sql);
         $stmt->execute([
             ':schema' => $schema,
             ':table'  => $table,

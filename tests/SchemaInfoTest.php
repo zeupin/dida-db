@@ -94,8 +94,20 @@ class SchemaInfoTest extends TestCase
         $this->assertEquals(1, $result['id']);
     }
 
+    /**
+     * 缓存所有表信息
+     */
     public function testCacheAllTableInfo()
     {
-        $this->db->getSchemaInfo()->cacheAllTableInfo('zeupin', 'zp_');
+        $this->db->getSchemaInfo()->cacheAllTableInfo();
+    }
+
+    /**
+     *
+     */
+    public function testReadTableInfo()
+    {
+        $data = $this->db->getSchemaInfo()->readTableInfoFromCache('zp_test');
+        var_dump($data);
     }
 }
