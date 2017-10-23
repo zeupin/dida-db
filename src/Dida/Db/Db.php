@@ -26,10 +26,10 @@ abstract class Db implements DbInterface
      */
     protected $cfg = [
         /* pdo 相关参数 */
-        'db.dsn'         => null,
-        'db.username'    => null,
-        'db.password'    => null,
-        'db.options'     => [],
+        'db.dsn'      => null,
+        'db.username' => null,
+        'db.password' => null,
+        'db.options'  => [], // pdo连接参数
 
         /* 必填参数 */
         'db.driver_type' => null, // 数据库驱动类型,如“Mysql”
@@ -64,9 +64,6 @@ abstract class Db implements DbInterface
     protected $builder = null;
 
 
-    /**
-     * 类初始化
-     */
     public function __construct(array $cfg = [])
     {
         foreach ($this->cfg as $key => $value) {
@@ -74,6 +71,12 @@ abstract class Db implements DbInterface
                 $this->cfg[$key] = $cfg[$key];
             }
         }
+    }
+
+
+    public function __destruct()
+    {
+        $this->pdo = null;
     }
 
 
