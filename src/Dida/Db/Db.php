@@ -64,7 +64,30 @@ abstract class Db implements DbInterface
     protected $builder = null;
 
 
+    /**
+     * 类构造函数
+     */
     public function __construct(array $cfg = [])
+    {
+        $this->setConfig($cfg);
+    }
+
+
+    /**
+     * 类析构函数
+     */
+    public function __destruct()
+    {
+        $this->pdo = null;
+    }
+
+
+    /**
+     * 设置$cfg
+     *
+     * @param array $cfg
+     */
+    public function setConfig(array &$cfg)
     {
         foreach ($this->cfg as $key => $value) {
             if (array_key_exists($key, $cfg)) {
@@ -74,9 +97,14 @@ abstract class Db implements DbInterface
     }
 
 
-    public function __destruct()
+    /**
+     * 返回实例的$cfg数组
+     *
+     * @return array
+     */
+    public function &getConfig()
     {
-        $this->pdo = null;
+        return $this->cfg;
     }
 
 
@@ -103,17 +131,6 @@ abstract class Db implements DbInterface
     public function &getBuilder()
     {
         return $this->builder;
-    }
-
-
-    /**
-     * 返回实例的$cfg数组
-     *
-     * @return array
-     */
-    public function &getConfig()
-    {
-        return $this->cfg;
     }
 
 
