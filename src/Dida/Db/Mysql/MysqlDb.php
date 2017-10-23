@@ -22,5 +22,8 @@ class MysqlDb extends \Dida\Db\Db
 
         // Set the dbtype
         $this->dbtype = 'Mysql';
+
+        // 配置Builder，使用标准的Builder
+        $this->builder = new \Dida\Db\Builder($this);
     }
 }

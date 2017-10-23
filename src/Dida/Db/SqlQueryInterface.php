@@ -16,9 +16,8 @@ interface SqlQueryInterface
      *
      * @param array $options
      * @param \Dida\Db\Db $db
-     * @param \Dida\Db\Builder $builder
      */
-    public function __construct(array $options, &$db, &$builder);
+    public function __construct(array $options, &$db);
 
 
     /**
@@ -27,14 +26,6 @@ interface SqlQueryInterface
      * @param \Dida\Db\Db $Db
      */
     public function setDb(&$db);
-
-
-    /**
-     * Set $builder for this object.
-     *
-     * @param \Dida\Db\Db $Db
-     */
-    public function setBuilder(&$builder);
 
 
     /**

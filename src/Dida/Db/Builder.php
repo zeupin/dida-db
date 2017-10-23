@@ -13,6 +13,18 @@ use \Exception;
  */
 class Builder implements BuilderInterface
 {
+    /**
+     * 指向Db实例的指针
+     *
+     * @var \Dida\Db\Db
+     */
+    protected $db = null;
+
+    /**
+     * 待处理数组
+     *
+     * @var array
+     */
     protected $todolist = [];
 
     /**
@@ -85,6 +97,12 @@ class Builder implements BuilderInterface
         'NOTNULL'     => 'ISNOTNULL',
         'NOT NULL'    => 'ISNOTNULL',
     ];
+
+
+    public function __construct(&$db)
+    {
+        $this->db = $db;
+    }
 
 
     /**

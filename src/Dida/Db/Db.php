@@ -56,6 +56,11 @@ abstract class Db implements DbInterface
      */
     public $dbtype = null;
 
+    /**
+     * @var \Dida\Db\Builder
+     */
+    protected $builder = null;
+
 
     /**
      * Class construct.
@@ -72,6 +77,32 @@ abstract class Db implements DbInterface
     public function __destruct()
     {
         $this->pdo = null;
+    }
+
+
+    /**
+     * 配置Builder实例
+     *
+     * @param \Dida\Db\Builder $builder
+     *
+     * @return $this
+     */
+    public function setBuilder(&$builder)
+    {
+        $this->builder = $builder;
+
+        return $this;
+    }
+
+
+    /**
+     * 获取配置的Builder实例
+     *
+     * @return \Dida\Db\Builder
+     */
+    public function &getBuilder()
+    {
+        return $this->builder;
     }
 
 
@@ -164,18 +195,6 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Get a Builder instance.
-     *
-     * @param \Dida\Db\Builder $builder
-     * @return $this
-     */
-    public function getBuilder()
-    {
-        return new Builder();
-    }
-
-
-    /**
      * Returns a new SQL class instance with necessary parameters.
      *
      * @return SqlQuery
@@ -184,12 +203,10 @@ abstract class Db implements DbInterface
      */
     protected function newQuery()
     {
-        $builder = $this->getBuilder();
-
         $sql = new SqlQuery([
             'prefix'      => $this->cfg['db.prefix'],
             'swap_prefix' => $this->cfg['db.swap_prefix'],
-            ], $this, $builder);
+            ], $this);
         return $sql;
     }
 

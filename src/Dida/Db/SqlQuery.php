@@ -86,12 +86,10 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      *
      * @param array $options
      * @param \Dida\Db\Db $db
-     * @param \Dida\Db\Builder $builder
      */
-    public function __construct(array $options, &$db, &$builder)
+    public function __construct(array $options, &$db)
     {
         $this->db = $db;
-        $this->builder = $builder;
 
         $this->base = array_merge($this->base, $options);
         $this->resetAll();
@@ -135,19 +133,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     }
 
 
-    /**
-     * Set $builder for this object.
-     *
-     * @param \Dida\Db\Db $Db
-     *
-     * @return $this
-     */
-    public function setBuilder(&$builder)
-    {
-        $this->builder = $builder;
 
-        return $this->changed();
-    }
 
 
     /**
@@ -745,6 +731,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         }
 
         $this->build_ok = false;
+
+        $this->builder = $this->db->getBuilder();
 
         if ($this->builder === null) {
             throw new Exception('Not specified a Builder object.');
