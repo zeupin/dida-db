@@ -36,6 +36,17 @@ class DbTest extends TestCase
 
 
     /**
+     * 执行一个SQL文件
+     */
+    public function resetMock($sql_file)
+    {
+        $sql = file_get_contents($sql_file);
+        $this->db->connect();
+        $this->db->pdo->exec($sql);
+    }
+
+
+    /**
      * 测试phpunit是否正常工作
      */
     public function testPhpUnitWorksWell()
@@ -67,48 +78,66 @@ class DbTest extends TestCase
 
 
     /**
-     * 测试能够正常build一个简单表达式
+     * 测试模拟数据能否正常使用
+     */
+    public function testResetMock()
+    {
+        $this->resetMock(__DIR__ . '/zp_test.sql');
+
+        $this->db->connect();
+        $sql = $this->db->table('test', null, 'zp_');
+        $result = $sql->select(["count(*)"])->execute()->getRow();
+        $this->assertEquals(1, $result['id']);
+    }
+
+
+    /**
+     * 测试能够正常build一个简单的数据表表达式
      */
     public function test0Table()
     {
-        $admin = $this->db->table('admin')
+        $admin = $this->db->table('test')
             ->build();
         $expected = <<<EOT
 SELECT
     *
 FROM
-    zp_admin
+    zp_test
 EOT;
         $this->assertEquals($expected, $admin->statement);
         $this->assertEquals([], $admin->parameters);
     }
 
 
+    /**
+     * 测试使用 getColumn() 方法时，用列号和列名是否能得到一致的结果
+     */
     public function test_getColumn()
     {
-        $admin = $this->db->table('admin');
+        $this->resetMock(__DIR__ . '/zp_test.sql');
 
-        $result1 = $admin->getColumn(2);
-        echo Debug::varDump($result1);
+        $t = $this->db->table('test');
 
-        $result2 = $admin->getColumn('mobile');
-        echo Debug::varDump($result2);
+        $result1 = $t->getColumn(1);
+        $result2 = $t->getColumn('name');
 
         // 期望$result1=$result2
         $this->assertEquals($result1, $result2);
     }
 
 
+    /**
+     * 测试使用 getColumn() 方法时，用列号和列名是否能得到一致的结果
+     */
     public function test_getColumn_1()
     {
+        $this->resetMock(__DIR__ . '/zp_test_truncate.sql');
+
         // user是个空表
-        $data = $this->db->table('user');
+        $t = $this->db->table('test');
 
-        $result1 = $data->getColumn(2);
-        echo Debug::varDump($result1);
-
-        $result2 = $data->getColumn('mobile');
-        echo Debug::varDump($result2);
+        $result1 = $t->getColumn(1);
+        $result2 = $t->getColumn('name');
 
         // 期望$result1=$result2
         $this->assertEquals($result1, $result2);

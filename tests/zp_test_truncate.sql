@@ -1,0 +1,1 @@
+TRUNCATE TABLE zp_test;
