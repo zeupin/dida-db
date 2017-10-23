@@ -15,68 +15,65 @@ use \Exception;
 abstract class Db implements DbInterface
 {
     /**
-     * Version
+     * 版本号
      */
     const VERSION = '0.1.5';
 
     /**
-     * Default configurations.
+     * 缺省设置
      *
      * @var array
      */
     protected $cfg = [
-        /* pdo parameters */
-        'db.dsn'      => null, // PDO DNS
-        'db.username' => null, // The database username
-        'db.password' => null, // The database password
-        'db.options'  => [], // PDO driver options
+        /* pdo 相关参数 */
+        'db.dsn'         => null,
+        'db.username'    => null,
+        'db.password'    => null,
+        'db.options'     => [],
 
-        /* required parameters */
-        'db.driver_type' => null, // Set the DB type to use, 'Mysql',
+        /* 必填参数 */
+        'db.driver_type' => null, // 数据库驱动类型,如“Mysql”
 
-        /* optional parameters */
-        'db.name'        => null, // the database name
-        'db.charset'     => 'utf8', // set the default connection charset.
-        'db.persistence' => false, // set if a persistence connection is persistence.
-        'db.prefix'      => '', // default table prefix
-        'db.swap_prefix' => '###_', // default table prefix string.
+        /* 可选参数 */
+        'db.name'        => null,
+        'db.charset'     => 'utf8',
+        'db.persistence' => false, // 是否用长连接
+        'db.prefix'      => '', // 默认的表前缀
+        'db.swap_prefix' => '###_', // 默认的形式表前缀
     ];
 
     /**
-     * Returns the PDO instance.
+     * PDO实例
      *
      * @var \PDO
      */
     public $pdo = null;
 
     /**
-     * Specifies the DB type
+     * 指明数据库类型
      *
      * @var string
      */
     public $dbtype = null;
 
     /**
+     * SqlBuilder实例
+     *
      * @var \Dida\Db\Builder
      */
     protected $builder = null;
 
 
     /**
-     * Class construct.
+     * 类初始化
      */
     public function __construct(array $cfg = [])
     {
-        $this->cfg = array_merge($this->cfg, $cfg);
-    }
-
-
-    /**
-     * Destructs this class.
-     */
-    public function __destruct()
-    {
-        $this->pdo = null;
+        foreach ($this->cfg as $key => $value) {
+            if (array_key_exists($key, $cfg)) {
+                $this->cfg[$key] = $cfg[$key];
+            }
+        }
     }
 
 
@@ -118,9 +115,9 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Connects the database driver.
+     * 连接数据库
      *
-     * @return boolean -- Returns TRUE on success or FALSE on failure.
+     * @return boolean 成功返回true，失败返回false
      */
     public function connect()
     {
@@ -142,7 +139,7 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Checks if the connection is already established.
+     * 检查是否已经连接数据库
      */
     public function isConnected()
     {
@@ -151,7 +148,8 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Checks if the connection works well.
+     * 连接是否还能正常工作。
+     * 检查是否已经连接数据库，且尚未被数据库断开，并能正常执行sql语句。
      *
      * @return boolean
      */
@@ -175,7 +173,7 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Disconnects the connection.
+     * 断开数据库连接
      */
     public function disconnect()
     {
@@ -184,7 +182,7 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Executes an SQL statement directly.
+     * 直接执行一条sql语句，返回一个结果集
      *
      * @param string $statement
      * @param array $parameters
@@ -206,13 +204,11 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Returns a new SQL class instance with necessary parameters.
+     * 创建一个新的SqlQuery实例对象
      *
      * @return SqlQuery
-     *
-     * @todo This method should be overwritted.
      */
-    protected function newQuery()
+    protected function newSqlQuery()
     {
         $sql = new SqlQuery($this);
         return $sql;
@@ -220,7 +216,7 @@ abstract class Db implements DbInterface
 
 
     /**
-     * Creates an SQL Statement <SqlQuery> object and sets it as the master table.
+     * 创建一个新的SqlQuery实例对象，然后设置主表
      *
      * @param string $table
      * @param string $alias
@@ -230,7 +226,7 @@ abstract class Db implements DbInterface
      */
     public function table($table, $alias = null, $prefix = null)
     {
-        $sql = $this->newQuery();
+        $sql = $this->newSqlQuery();
 
         $sql->table($table, $alias, $prefix);
 
