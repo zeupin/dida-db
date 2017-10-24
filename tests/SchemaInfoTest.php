@@ -45,8 +45,7 @@ class SchemaInfoTest extends TestCase
     public function resetMock($sql_file)
     {
         $sql = file_get_contents($sql_file);
-        $this->db->connect();
-        $this->db->pdo->exec($sql);
+        $this->db->getPDO()->exec($sql);
     }
 
 

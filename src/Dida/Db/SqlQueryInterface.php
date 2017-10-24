@@ -45,7 +45,7 @@ interface SqlQueryInterface
 
 
     /**
-     * Resets all todolist data.
+     * Resets all tasklist data.
      *
      * @return $this
      */

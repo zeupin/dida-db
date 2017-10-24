@@ -12,9 +12,9 @@ namespace Dida\Db;
 interface BuilderInterface
 {
     /**
-     * Builds the final SQL statement from $todolist array.
+     * Builds the final SQL statement from $tasklist array.
      *
-     * @param array $todolist
+     * @param array $tasklist
      */
-    public function build(&$todolist);
+    public function build(&$tasklist);
 }

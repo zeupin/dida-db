@@ -78,7 +78,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      *
      * @var array
      */
-    protected $todolist = [];
+    protected $tasklist = [];
 
 
     /**
@@ -167,13 +167,13 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
 
 
     /**
-     * Resets all todolist data.
+     * Resets all tasklist data.
      *
      * @return $this
      */
     public function resetAll()
     {
-        $this->todolist = $this->base;
+        $this->tasklist = $this->base;
 
         return $this->changed();
     }
@@ -187,7 +187,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function resetCount()
     {
-        unset($this->todolist['count'], $this->todolist['count_built']);
+        unset($this->tasklist['count'], $this->tasklist['count_built']);
 
         return $this->changed();
     }
@@ -206,12 +206,12 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     {
         $this->resetAll();
 
-        $this->todolist['table'] = [
+        $this->tasklist['table'] = [
             'name'   => $name,
             'alias'  => $alias,
             'prefix' => $prefix,
         ];
-        $this->todolist['table_built'] = false;
+        $this->tasklist['table_built'] = false;
 
         return $this->changed();
     }
@@ -234,8 +234,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
             $condition = [$condition, 'RAW', $data];
         }
 
-        $this->todolist['where'][] = $condition;
-        $this->todolist['where_built'] = false;
+        $this->tasklist['where'][] = $condition;
+        $this->tasklist['where_built'] = false;
 
         return $this->changed();
     }
@@ -257,8 +257,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->todolist['where'][] = $cond;
-        $this->todolist['where_built'] = false;
+        $this->tasklist['where'][] = $cond;
+        $this->tasklist['where_built'] = false;
 
         return $this->changed();
     }
@@ -275,12 +275,12 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->todolist['where_logic']) {
+        if ($logic === $this->tasklist['where_logic']) {
             return $this;
         }
 
-        $this->todolist['where_logic'] = $logic;
-        $this->todolist['where_built'] = false;
+        $this->tasklist['where_logic'] = $logic;
+        $this->tasklist['where_built'] = false;
 
         return $this->changed();
     }
@@ -314,17 +314,17 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function setValue($column, $value = null)
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
         if (is_string($column)) {
-            $this->todolist['set'][$column] = [
+            $this->tasklist['set'][$column] = [
                 'type'   => 'value',
                 'column' => $column,
                 'value'  => $value,
             ];
         } elseif (is_array($column)) {
             foreach ($column as $key => $value) {
-                $this->todolist['set'][$key] = [
+                $this->tasklist['set'][$key] = [
                     'type'   => 'value',
                     'column' => $key,
                     'value'  => $value,
@@ -349,9 +349,9 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function setExpr($column, $expr, array $parameters = [])
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
-        $this->todolist['set'][$column] = [
+        $this->tasklist['set'][$column] = [
             'type'       => 'expr',
             'column'     => $column,
             'expr'       => $expr,
@@ -376,9 +376,9 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function setFromTable($column, $tableB, $columnB, $colA, $colB, $checkExistsInWhere = true)
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
-        $this->todolist['set'][$column] = [
+        $this->tasklist['set'][$column] = [
             'type'               => 'from_table',
             'column'             => $column,
             'tableB'             => $tableB,
@@ -403,8 +403,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function join($tableB, $on, array $parameters = [])
     {
-        $this->todolist['join'][] = ['JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
+        $this->tasklist['join'][] = ['JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         return $this->changed();
     }
@@ -421,8 +421,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function innerJoin($tableB, $on, array $parameters = [])
     {
-        $this->todolist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
+        $this->tasklist['join'][] = ['INNER JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         return $this->changed();
     }
@@ -439,8 +439,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function leftJoin($tableB, $on, array $parameters = [])
     {
-        $this->todolist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
+        $this->tasklist['join'][] = ['LEFT JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         return $this->changed();
     }
@@ -457,8 +457,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function rightJoin($tableB, $on, array $parameters = [])
     {
-        $this->todolist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
-        $this->todolist['join_built'] = false;
+        $this->tasklist['join'][] = ['RIGHT JOIN', $tableB, $on, $parameters];
+        $this->tasklist['join_built'] = false;
 
         return $this->changed();
     }
@@ -472,7 +472,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function increment($column, $value = 1)
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
         $this->setExpr($column, "$column + $value");
 
@@ -488,7 +488,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function decrement($column, $value = 1)
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
         $this->setExpr($column, "$column - $value");
 
@@ -505,8 +505,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function groupBy(array $columns)
     {
-        $this->todolist['groupby'] = $columns;
-        $this->todolist['groupby_built'] = false;
+        $this->tasklist['groupby'] = $columns;
+        $this->tasklist['groupby_built'] = false;
 
         return $this->changed();
     }
@@ -529,8 +529,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
             $condition = [$condition, 'RAW', $parameters];
         }
 
-        $this->todolist['having'][] = $condition;
-        $this->todolist['having_built'] = false;
+        $this->tasklist['having'][] = $condition;
+        $this->tasklist['having_built'] = false;
 
         return $this->changed();
     }
@@ -552,8 +552,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         $cond->logic = $logic;
         $cond->items = $conditions;
 
-        $this->todolist['having'][] = $cond;
-        $this->todolist['having_built'] = false;
+        $this->tasklist['having'][] = $cond;
+        $this->tasklist['having_built'] = false;
 
         return $this->changed();
     }
@@ -570,12 +570,12 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     {
         $logic = strtoupper(trim($logic));
 
-        if ($logic === $this->todolist['having_logic']) {
+        if ($logic === $this->tasklist['having_logic']) {
             return $this;
         }
 
-        $this->todolist['having_logic'] = $logic;
-        $this->todolist['having_built'] = false;
+        $this->tasklist['having_logic'] = $logic;
+        $this->tasklist['having_built'] = false;
 
         return $this->changed();
     }
@@ -590,8 +590,8 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function distinct($distinct = true)
     {
-        $this->todolist['distinct'] = $distinct;
-        $this->todolist['distinct_built'] = false;
+        $this->tasklist['distinct'] = $distinct;
+        $this->tasklist['distinct_built'] = false;
 
         return $this->changed();
     }
@@ -606,12 +606,12 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function orderBy($columns)
     {
-        if (!isset($this->todolist['orderby'])) {
-            $this->todolist['orderby'] = [];
+        if (!isset($this->tasklist['orderby'])) {
+            $this->tasklist['orderby'] = [];
         }
 
-        $this->todolist['orderby'][] = $columns;
-        $this->todolist['orderby_built'] = false;
+        $this->tasklist['orderby'][] = $columns;
+        $this->tasklist['orderby_built'] = false;
 
         return $this->changed();
     }
@@ -627,10 +627,10 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function count(array $columns = null, $alias = null)
     {
-        $this->todolist['verb'] = 'SELECT';
+        $this->tasklist['verb'] = 'SELECT';
 
-        $this->todolist['count'] = [$columns, $alias];
-        $this->todolist['count_built'] = false;
+        $this->tasklist['count'] = [$columns, $alias];
+        $this->tasklist['count_built'] = false;
 
         return $this->changed();
     }
@@ -645,7 +645,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function limit($limit)
     {
-        $this->todolist['limit'] = $limit;
+        $this->tasklist['limit'] = $limit;
 
         return $this->changed();
     }
@@ -658,10 +658,10 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function select(array $arrayColumnAsAlias = [])
     {
-        $this->todolist['verb'] = 'SELECT';
+        $this->tasklist['verb'] = 'SELECT';
 
-        $this->todolist['select_column_list'] = $arrayColumnAsAlias;
-        $this->todolist['select_column_list_built'] = false;
+        $this->tasklist['select_column_list'] = $arrayColumnAsAlias;
+        $this->tasklist['select_column_list_built'] = false;
 
         return $this->changed();
     }
@@ -674,7 +674,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function delete()
     {
-        $this->todolist['verb'] = 'DELETE';
+        $this->tasklist['verb'] = 'DELETE';
 
         return $this->changed();
     }
@@ -687,9 +687,9 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function insert(array $record)
     {
-        $this->todolist['verb'] = 'INSERT';
+        $this->tasklist['verb'] = 'INSERT';
 
-        $this->todolist['record'] = $record;
+        $this->tasklist['record'] = $record;
 
         return $this->changed();
     }
@@ -702,7 +702,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function update()
     {
-        $this->todolist['verb'] = 'UPDATE';
+        $this->tasklist['verb'] = 'UPDATE';
 
         return $this->changed();
     }
@@ -715,7 +715,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function truncate()
     {
-        $this->todolist['verb'] = 'TRUNCATE';
+        $this->tasklist['verb'] = 'TRUNCATE';
 
         return $this->changed();
     }
@@ -740,7 +740,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
             throw new Exception('Not specified a Builder object.');
         }
 
-        $result = $this->builder->build($this->todolist);
+        $result = $this->builder->build($this->tasklist);
 
         if ($result === false) {
             $this->statement = null;
@@ -778,7 +778,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         }
 
         try {
-            $pdoStatement = $this->db->pdo->prepare($this->statement);
+            $pdoStatement = $this->db->getPDO()->prepare($this->statement);
             $success = $pdoStatement->execute($this->parameters);
             return new DataSet($this->db, $pdoStatement, $success);
         } catch (Exception $ex) {

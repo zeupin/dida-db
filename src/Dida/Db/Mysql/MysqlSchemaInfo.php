@@ -36,7 +36,7 @@ WHERE
 ORDER BY
     `TABLE_SCHEMA`, `TABLE_NAME`
 EOT;
-        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt = $this->db->getPDO()->prepare($sql);
         $stmt->execute([
             ':schema' => $schema,
             ':table'  => $prefix . '%',
@@ -69,7 +69,7 @@ FROM
 WHERE
     (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table)
 EOT;
-        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt = $this->db->getPDO()->prepare($sql);
         $stmt->execute([
             ':schema' => $schema,
             ':table'  => $table,
@@ -113,7 +113,7 @@ WHERE
 ORDER BY
     `ORDINAL_POSITION`
 EOT;
-        $stmt = $this->db->getConnection()->prepare($sql);
+        $stmt = $this->db->getPDO()->prepare($sql);
         $stmt->execute([
             ':schema' => $schema,
             ':table'  => $table,

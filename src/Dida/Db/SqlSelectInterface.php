@@ -7,7 +7,8 @@
 namespace Dida\Db;
 
 /**
- * Data Query Clause Interface
+ * 选择类的操作接口。
+ * 选择要操作的数据
  */
 interface SqlSelectInterface
 {

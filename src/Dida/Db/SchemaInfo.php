@@ -83,13 +83,35 @@ abstract class SchemaInfo implements SchemaInfoInterface
      */
     public function setCacheDir($cacheDir)
     {
-        if (file_exists($cacheDir) && is_dir($cacheDir)) {
-            $this->cacheDir = realpath($cacheDir);
-            return true;
-        } else {
+        // 检查参数是否合法
+        if (!is_string($cacheDir)) {
             $this->cacheDir = null;
             return false;
         }
+
+        // 如果目录不存在，先尝试创建目录
+        if (!file_exists($cacheDir)) {
+            $result = mkdir($cacheDir, 0777, true);
+            if ($result === true) {
+                // 如果创建成功
+                $this->cacheDir = realpath($cacheDir);
+                return true;
+            } else {
+                // 如果目录创建失败
+                $this->cacheDir = null;
+                return false;
+            }
+        }
+
+        // 如果不是目录，或者目录不可写，也返回失败
+        if (!is_dir($cacheDir) || !is_writable($cacheDir)) {
+            $this->cacheDir = null;
+            return false;
+        }
+
+        // 如果一切正常，返回成功
+        $this->cacheDir = realpath($cacheDir);
+        return true;
     }
 
 
@@ -116,6 +138,9 @@ abstract class SchemaInfo implements SchemaInfoInterface
         // 列出所有满足条件的数据表
         $tables = $this->listTableNames();
 
+        // 准备好缓存目录
+        $this->prepareColumnInfoCacheDir();
+
         // 依次把每个数据表资料都做一下缓存
         foreach ($tables as $table) {
             // 获取所有列的信息
@@ -127,16 +152,13 @@ abstract class SchemaInfo implements SchemaInfoInterface
                 $array[$column['COLUMN_NAME']] = $column;
             }
 
-            // 把这个数组缓存起来，供以后数据库脱机使用
-            $DS = DIRECTORY_SEPARATOR;
-
-            $targetDir = $this->cacheDir . $DS . $schema;
-            if (!file_exists($targetDir)) {
-                @mkdir($targetDir, 0777);
-            }
-
-            $filename = $this->cacheDir . $DS . $schema . $DS . $table . ".columninfo.php";
+            // 准备写入文件的内容
             $content = "<?php\nreturn " . var_export($array, true) . ";\n";
+
+            // 文件路径
+            $filename = $this->getColumnInfoCachePath($table);
+
+            // 保存文件
             file_put_contents($filename, $content);
         }
     }
@@ -196,15 +218,35 @@ abstract class SchemaInfo implements SchemaInfoInterface
             return false;
         }
 
-        $DS = DIRECTORY_SEPARATOR;
-
         // 从缓存中读取表信息
-        $file = $this->cacheDir . "{$DS}{$schema}{$DS}{$table}.columninfo.php";
+        $file = $this->getColumnInfoCachePath($table);
         if (file_exists($file)) {
             return include($file);
         }
 
         // 如果缓存不存在目标文件，则返回false
         return false;
+    }
+
+    /**
+     *
+     * @param string $table
+     */
+    protected function getColumnInfoCachePath($table)
+    {
+        $DS = DIRECTORY_SEPARATOR;
+        $schema = $this->schema;
+        $file = $this->cacheDir . "{$DS}{$schema}{$DS}{$table}.columninfo.php";
+        return $file;
+    }
+
+    protected function prepareColumnInfoCacheDir()
+    {
+        $DS = DIRECTORY_SEPARATOR;
+        $schema = $this->schema;
+        $dir = $this->cacheDir . "{$DS}{$schema}";
+        if (!file_exists($dir)) {
+            mkdir($dir, 0777, true);
+        }
     }
 }

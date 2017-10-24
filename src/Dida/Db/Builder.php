@@ -9,7 +9,9 @@ namespace Dida\Db;
 use \Exception;
 
 /**
- * SQL statement Builder
+ * SQL表达式构造器。
+ *
+ * 每次调用build()，只会生成一条SQL语句。
  */
 class Builder implements BuilderInterface
 {
@@ -21,14 +23,14 @@ class Builder implements BuilderInterface
     protected $db = null;
 
     /**
-     * 待处理数组
+     * 任务列表
      *
      * @var array
      */
-    protected $todolist = [];
+    protected $tasklist = [];
 
     /**
-     * Stores some temporary variables.
+     * 用于保存build时临时数据的字典
      *
      * @var array
      */
@@ -37,68 +39,81 @@ class Builder implements BuilderInterface
     ];
 
     /**
-     * Final statement clause.
+     * 最终的表达式数组(statement array)
      *
      * @var array
      */
     protected $ST = [];
 
     /**
-     * Final parameters.
+     * 最终的参数数组(parameter array)
      *
      * @var array
      */
     protected $PA = [];
 
     /**
-     * All supported operater set.
+     * 支持的操作符集合
      */
     protected static $opertor_set = [
         /* Raw SQL */
-        'RAW'         => 'RAW',
-        /* equal */
-        'EQ'          => 'EQ',
-        '='           => 'EQ',
-        '=='          => 'EQ',
-        /* not equal */
-        'NEQ'         => 'NEQ',
-        '<>'          => 'NEQ',
-        '!='          => 'NEQ',
+        'RAW' => 'RAW', //
+
+        /* 等于 */
+        'EQ' => 'EQ',
+        '='  => 'EQ',
+        '==' => 'EQ', //
+
+        /* 不等于 */
+        'NEQ' => 'NEQ',
+        '<>'  => 'NEQ',
+        '!='  => 'NEQ', //
+
         /* <,>,<=,>= */
-        'GT'          => 'GT',
-        '>'           => 'GT',
-        'EGT'         => 'EGT',
-        '>='          => 'EGT',
-        'LT'          => 'LT',
-        '<'           => 'LT',
-        'ELT'         => 'ELT',
-        '<='          => 'ELT',
+        'GT'  => 'GT',
+        '>'   => 'GT',
+        'EGT' => 'EGT',
+        '>='  => 'EGT',
+        'LT'  => 'LT',
+        '<'   => 'LT',
+        'ELT' => 'ELT',
+        '<='  => 'ELT', //
+
         /* LIKE */
-        'LIKE'        => 'LIKE',
-        'NOT LIKE'    => 'NOTLIKE',
-        'NOTLIKE'     => 'NOTLIKE',
+        'LIKE'     => 'LIKE',
+        'NOT LIKE' => 'NOTLIKE',
+        'NOTLIKE'  => 'NOTLIKE', //
+
         /* IN */
-        'IN'          => 'IN',
-        'NOT IN'      => 'NOTIN',
-        'NOTIN'       => 'NOTIN',
+        'IN'     => 'IN',
+        'NOT IN' => 'NOTIN',
+        'NOTIN'  => 'NOTIN', //
+
         /* BETWEEN */
         'BETWEEN'     => 'BETWEEN',
         'NOT BETWEEN' => 'NOTBETWEEN',
-        'NOTBETWEEN'  => 'NOTBETWEEN',
+        'NOTBETWEEN'  => 'NOTBETWEEN', //
+
         /* EXISTS */
-        'EXISTS'      => 'EXISTS',
-        'NOT EXISTS'  => 'NOTEXISTS',
-        'NOTEXISTS'   => 'NOTEXISTS',
+        'EXISTS'     => 'EXISTS',
+        'NOT EXISTS' => 'NOTEXISTS',
+        'NOTEXISTS'  => 'NOTEXISTS', //
+
         /* ISNULL */
         'ISNULL'      => 'ISNULL',
         'NULL'        => 'ISNULL',
         'ISNOTNULL'   => 'ISNOTNULL',
         'IS NOT NULL' => 'ISNOTNULL',
         'NOTNULL'     => 'ISNOTNULL',
-        'NOT NULL'    => 'ISNOTNULL',
+        'NOT NULL'    => 'ISNOTNULL', //
     ];
 
 
+    /**
+     * 类的构造函数
+     *
+     * @param \Dida\Db\Db $db
+     */
     public function __construct(&$db)
     {
         $this->db = $db;
@@ -106,17 +121,29 @@ class Builder implements BuilderInterface
 
 
     /**
-     * Builds the final SQL statement from $todolist array.
+     * 根据给出的$tasklist数组，构造出对应的SQL表达式
      *
-     * @param array $todolist
+     * @param array $tasklist
+     *
+     * @return array
+     *      [
+     *          'statement'  => ...,
+     *          'parameters' => ...,
+     *      ]
      */
-    public function build(&$todolist)
+    public function build(&$tasklist)
     {
         $this->done = null;
 
-        $this->todolist = &$todolist;
+        $this->tasklist = $tasklist;
 
-        switch ($this->todolist['verb']) {
+        // 重置字典
+        $this->dict = [
+            'table' => '',
+        ];
+
+        // 根据verb不同，选择对应的模板进行构建
+        switch ($this->tasklist['verb']) {
             case 'SELECT':
                 return $this->build_SELECT();
             case 'DELETE':
@@ -128,7 +155,7 @@ class Builder implements BuilderInterface
             case 'TRUNCATE':
                 return $this->build_TRUNCATE();
             default:
-                throw new Exception("Invalid build verb: {$this->todolist['verb']}");
+                throw new Exception("Invalid build verb: {$this->tasklist['verb']}");
         }
     }
 
@@ -325,7 +352,7 @@ class Builder implements BuilderInterface
         $this->clause_GROUP_BY();
         $this->clause_HAVING();
 
-        $record = &$this->todolist['record'];
+        $record = &$this->tasklist['record'];
         $record = $this->pickItemsWithKey($record);
         $columns = array_keys($record);
         $values = array_values($record);
@@ -402,12 +429,12 @@ class Builder implements BuilderInterface
 
     protected function dict_SELECT_COLUMN_LIST()
     {
-        if (!isset($this->todolist['columnlist'])) {
+        if (!isset($this->tasklist['columnlist'])) {
             $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
             return;
         }
 
-        $columns = $this->todolist['columnlist'];
+        $columns = $this->tasklist['columnlist'];
         $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
     }
 
@@ -432,10 +459,10 @@ class Builder implements BuilderInterface
     protected function clause_TABLE()
     {
         // built, name, alias, prefix
-        extract($this->todolist['table']);
+        extract($this->tasklist['table']);
 
         if (!is_string($prefix)) {
-            $prefix = $this->todolist['prefix'];
+            $prefix = $this->tasklist['prefix'];
         }
 
         $name = $prefix . $name;
@@ -453,7 +480,7 @@ class Builder implements BuilderInterface
         $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
 
         /* ST */
-        switch ($this->todolist['verb']) {
+        switch ($this->tasklist['verb']) {
             case 'SELECT':
                 $this->ST['table'] = $this->dict['table']['name_as_alias'];
                 break;
@@ -461,7 +488,7 @@ class Builder implements BuilderInterface
                 $this->ST['table'] = $this->dict['table']['name'];
         }
 
-        $this->todolist['table_built'] = true;
+        $this->tasklist['table_built'] = true;
         return;
     }
 
@@ -487,8 +514,8 @@ class Builder implements BuilderInterface
      */
     protected function replaceSwapPrefix($swapsql)
     {
-        $prefix = $this->todolist['prefix'];
-        $swap_prefix = $this->todolist['swap_prefix'];
+        $prefix = $this->tasklist['prefix'];
+        $swap_prefix = $this->tasklist['swap_prefix'];
         if ($swap_prefix) {
             return str_replace($swap_prefix, $prefix, $swapsql);
         } else {
@@ -751,14 +778,14 @@ class Builder implements BuilderInterface
         if (!$this->has('where')) {
             $this->ST['where'] = '';
             $this->PA['where'] = [];
-            $this->todolist['where_built'] = true;
+            $this->tasklist['where_built'] = true;
             return;
         }
 
-        $conditions = $this->todolist['where'];
+        $conditions = $this->tasklist['where'];
 
         if ($this->has('where_logic')) {
-            $logic = $this->todolist['where_logic'];
+            $logic = $this->tasklist['where_logic'];
         } else {
             $logic = 'AND';
         }
@@ -776,7 +803,7 @@ class Builder implements BuilderInterface
             $this->PA['where'] = $parameters;
         }
 
-        $this->todolist['where_built'] = true;
+        $this->tasklist['where_built'] = true;
         return;
     }
 
@@ -807,7 +834,7 @@ class Builder implements BuilderInterface
             return;
         }
 
-        $set = $this->todolist['set'];
+        $set = $this->tasklist['set'];
 
         $parts = [];
         foreach ($set as $item) {
@@ -869,7 +896,7 @@ class Builder implements BuilderInterface
         $statement = "$column = $target";
 
         if ($checkExistsInWhere) {
-            $this->todolist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
+            $this->tasklist['where']['insert_if_exists'] = ["(EXISTS $target)", 'RAW', []];
         }
 
         return [
@@ -888,14 +915,14 @@ class Builder implements BuilderInterface
         if (!$this->has('join')) {
             $this->ST['join'] = '';
             $this->PA['join'] = [];
-            $this->todolist['join_built'] = true;
+            $this->tasklist['join_built'] = true;
             return;
         }
 
         $stmts = [];
         $params = [];
 
-        $joins = $this->todolist['join'];
+        $joins = $this->tasklist['join'];
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
@@ -907,7 +934,7 @@ class Builder implements BuilderInterface
         }
         $this->ST["join"] = implode("", $stmts);
         $this->PA['join'] = $this->combineParameterArray($params);
-        $this->todolist['join_built'] = true;
+        $this->tasklist['join_built'] = true;
     }
 
 
@@ -919,11 +946,11 @@ class Builder implements BuilderInterface
 
         if (!$this->has('groupby')) {
             $this->ST['groupby'] = '';
-            $this->todolist['groupby_built'] = true;
+            $this->tasklist['groupby_built'] = true;
             return;
         }
 
-        $columns = $this->todolist['groupby'];
+        $columns = $this->tasklist['groupby'];
         $columnlist = $this->process_SelectColumnList($columns);
 
         if ($columnlist) {
@@ -932,21 +959,21 @@ class Builder implements BuilderInterface
             $this->ST['groupby'] = '';
         }
 
-        $this->todolist['groupby_built'] = true;
+        $this->tasklist['groupby_built'] = true;
         return;
     }
 
 
     protected function has($key)
     {
-        return array_key_exists($key, $this->todolist);
+        return array_key_exists($key, $this->tasklist);
     }
 
 
     protected function isBuilt($key)
     {
         $built = $key . '_built';
-        return ($this->has($built) && $this->todolist[$built] === true);
+        return ($this->has($built) && $this->tasklist[$built] === true);
     }
 
 
@@ -962,14 +989,14 @@ class Builder implements BuilderInterface
         if (!$this->has('having')) {
             $this->ST['having'] = '';
             $this->PA['having'] = [];
-            $this->todolist['having_built'] = true;
+            $this->tasklist['having_built'] = true;
             return;
         }
 
-        $conditions = $this->todolist['having'];
+        $conditions = $this->tasklist['having'];
 
         if ($this->has('having_logic')) {
-            $logic = $this->todolist['having_logic'];
+            $logic = $this->tasklist['having_logic'];
         } else {
             $logic = 'AND';
         }
@@ -987,7 +1014,7 @@ class Builder implements BuilderInterface
             $this->PA['having'] = $parameters;
         }
 
-        $this->todolist['having_built'] = true;
+        $this->tasklist['having_built'] = true;
         return;
     }
 
@@ -999,7 +1026,7 @@ class Builder implements BuilderInterface
             return;
         }
 
-        $flag = $this->todolist['distinct'];
+        $flag = $this->tasklist['distinct'];
         if ($flag) {
             $this->dict['distinct'] = "DISTINCT ";
         } else {
@@ -1018,12 +1045,12 @@ class Builder implements BuilderInterface
 
         if (!$this->has('orderby')) {
             $this->ST['orderby'] = '';
-            $this->todolist['orderby_built'] = true;
+            $this->tasklist['orderby_built'] = true;
             return;
         }
 
         $array = [];
-        $orders = $this->todolist['orderby'];
+        $orders = $this->tasklist['orderby'];
         foreach ($orders as $order) {
             if (is_string($order)) {
                 $array[] = $this->process_OrderBy($order);
@@ -1049,7 +1076,7 @@ class Builder implements BuilderInterface
         } else {
             $this->ST['orderby'] = '';
         }
-        $this->todolist['orderby_built'] = true;
+        $this->tasklist['orderby_built'] = true;
     }
 
 
@@ -1081,7 +1108,7 @@ class Builder implements BuilderInterface
 
     protected function clause_COUNT()
     {
-        list($columns, $alias) = $this->todolist['count'];
+        list($columns, $alias) = $this->tasklist['count'];
 
         if (is_string($alias) && $alias) {
             $asAlias = " AS $alias";
@@ -1126,13 +1153,13 @@ class Builder implements BuilderInterface
 
         if (!$this->has('limit')) {
             $this->ST['limit'] = '';
-            $this->todolist['limit_built'] = true;
+            $this->tasklist['limit_built'] = true;
             return;
         }
 
-        $limit = $this->todolist['limit'];
+        $limit = $this->tasklist['limit'];
         $this->ST['limit'] = "\nLIMIT\n    $limit";
 
-        $this->todolist['limit_built'] = true;
+        $this->tasklist['limit_built'] = true;
     }
 }

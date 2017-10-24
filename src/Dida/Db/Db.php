@@ -48,7 +48,7 @@ abstract class Db implements DbInterface
      *
      * @var \PDO
      */
-    public $pdo = null;
+    protected $pdo = null;
 
     /**
      * 指明数据库类型
@@ -171,8 +171,10 @@ abstract class Db implements DbInterface
 
     /**
      * 立即连接数据库，并返回PDO实例
+     *
+     * @return \PDO|false
      */
-    public function getConnection()
+    public function getPDO()
     {
         if ($this->connect()) {
             return $this->pdo;
@@ -259,10 +261,8 @@ abstract class Db implements DbInterface
      */
     public function execute($statement, array $parameters = [])
     {
-        $this->connect();
-
         try {
-            $stmt = $this->pdo->prepare($statement);
+            $stmt = $this->getPDO()->prepare($statement);
             $success = $stmt->execute($parameters);
             return new DataSet($this, $stmt, $success);
         } catch (Exception $ex) {
