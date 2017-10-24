@@ -142,4 +142,23 @@ EOT;
         // 期望$result1=$result2
         $this->assertEquals($result1, $result2);
     }
+
+
+    /**
+     * 缓存所有表信息
+     */
+    public function testCacheAllTableInfo()
+    {
+        $this->db->getSchemaInfo()->cacheAllTableColumnInfo();
+    }
+
+
+    /**
+     * 读取表信息
+     */
+    public function testReadTableInfo()
+    {
+        $data = $this->db->getSchemaInfo()->readColumnInfoFromCache('zp_test');
+        var_dump($data);
+    }
 }

@@ -65,7 +65,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     /**
      * @var array
      */
-    protected $base = [
+    protected $taskbase = [
         'verb'         => 'SELECT',
         'prefix'       => '',
         'swap_prefix'  => '###_',
@@ -74,7 +74,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     ];
 
     /**
-     * Todo list.
+     * 任务清单
      *
      * @var array
      */
@@ -93,11 +93,26 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
 
         $cfg = $db->getConfig();
 
-        $this->base = array_merge($this->base, [
+        $this->taskbase = array_merge($this->taskbase, [
             'prefix'      => $cfg['db.prefix'],
             'swap_prefix' => $cfg['db.swap_prefix'],
         ]);
+
+        // 重置任务列表为空
         $this->resetAll();
+    }
+
+
+    /**
+     * 重置任务列表为空
+     *
+     * @return $this
+     */
+    public function resetAll()
+    {
+        $this->tasklist = $this->taskbase;
+
+        return $this->changed();
     }
 
 
@@ -120,21 +135,6 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         }
 
         throw new Exception(sprintf('Method %s::%s does not exist.', __CLASS__, $name));
-    }
-
-
-    /**
-     * Set $db for this object.
-     *
-     * @param \Dida\Db\Db $Db
-     *
-     * @return $this
-     */
-    public function setDb(&$db)
-    {
-        $this->db = $db;
-
-        return $this->changed();
     }
 
 
@@ -163,19 +163,6 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         $this->built = false;
 
         return $this;
-    }
-
-
-    /**
-     * Resets all tasklist data.
-     *
-     * @return $this
-     */
-    public function resetAll()
-    {
-        $this->tasklist = $this->base;
-
-        return $this->changed();
     }
 
 
@@ -648,6 +635,28 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         $this->tasklist['limit'] = $limit;
 
         return $this->changed();
+    }
+
+
+    /**
+     * 导出当前的tasklist
+     *
+     * @return array
+     */
+    public function exportTaskList()
+    {
+        return $this->tasklist;
+    }
+
+
+    /**
+     * 导入一个tasklist
+     *
+     * @param array $tasklist
+     */
+    public function importTaskList(array $tasklist)
+    {
+        $this->tasklist = $tasklist;
     }
 
 

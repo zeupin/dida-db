@@ -21,14 +21,6 @@ interface SqlQueryInterface
 
 
     /**
-     * Set $db for this object.
-     *
-     * @param \Dida\Db\Db $Db
-     */
-    public function setDb(&$db);
-
-
-    /**
      * Enable Pull-Execution feature.
      *
      * @return $this
