@@ -203,6 +203,29 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         return $this->changed();
     }
 
+    /**
+     * 设置tablelist到SqlQuery
+     *
+     * @param $tablelist
+     *      @@string
+     *          "表名 别名, 表名 别名， ..."
+     *          推荐用这种形式，使用比较方便，但是不支持prefix
+     *      @@array
+     *      [
+     *          [$name, $alias, $prefix],
+     *          [$name, $alias, $prefix],
+     *      ]
+     */
+    public function tablelist(array $tablelist)
+    {
+        $this->resetAll();
+
+        // 设置tablelist项目
+        $this->tasklist['tablelist'] = $tablelist;
+
+        return $this->changed();
+    }
+
 
     /**
      * Adds a WHERE condition.

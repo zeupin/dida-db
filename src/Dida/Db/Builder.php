@@ -23,6 +23,22 @@ class Builder implements BuilderInterface
     protected $db = null;
 
     /**
+     * 环境上下文
+     *
+     * [
+     *     表名 => [
+     *          'columnlist' =>[], // 全部列名的列表
+     *          'columns' => ,   // 列的详细信息
+     *          'pri' => ,       // 主键字段名
+     *          'uni' => [],     // 唯一索引的字段
+     *          ],
+     * ]
+     *
+     * @var array
+     */
+    protected $context = [];
+
+    /**
      * 任务列表
      *
      * @var array
@@ -30,7 +46,18 @@ class Builder implements BuilderInterface
     protected $tasklist = [];
 
     /**
-     * 用于保存build时临时数据的字典
+     * 本次build用到的数据表
+     *
+     * [
+     *   [name=>, alias=>, nameAsAlias=>],
+     * ]
+     *
+     * @var array
+     */
+    protected $tables = [];
+
+    /**
+     * build时，用于保存临时数据的字典
      *
      * @var array
      */
@@ -119,13 +146,31 @@ class Builder implements BuilderInterface
         $this->db = $db;
     }
 
+    protected function reset()
+    {
+        // 重置数据表
+        $this->table = [];
+
+        // 重置字典
+        $this->dict = [
+            'table' => '',
+        ];
+
+        // 重置ST和PA
+        $this->ST = [];
+        $this->PA = [];
+
+        // 完成标志
+        $this->done = null;
+    }
 
     /**
      * 根据给出的$tasklist数组，构造出对应的SQL表达式
      *
      * @param array $tasklist
      *
-     * @return array
+     * @return
+     * @@array
      *      [
      *          'statement'  => ...,
      *          'parameters' => ...,
@@ -133,14 +178,14 @@ class Builder implements BuilderInterface
      */
     public function build(&$tasklist)
     {
-        $this->done = null;
+        // 重置内部变量
+        $this->reset();
 
+        // 保存传过来的任务列表
         $this->tasklist = $tasklist;
 
-        // 重置字典
-        $this->dict = [
-            'table' => '',
-        ];
+        // 准备context
+        $this->prepareContext();
 
         // 根据verb不同，选择对应的模板进行构建
         switch ($this->tasklist['verb']) {
@@ -157,6 +202,144 @@ class Builder implements BuilderInterface
             default:
                 throw new Exception("Invalid build verb: {$this->tasklist['verb']}");
         }
+    }
+
+    protected function prepareContext()
+    {
+        $this->tables = [];
+        $this->process_tablelist();
+        $this->process_table();
+
+        // 检查context中是否已经有table对应的数据，没有的话，就调入数据
+        foreach ($this->tables as $table) {
+            extract($table);
+
+            // 如果没有表格元数据，则先去载入进来
+            if (!array_key_exists($name, $this->context)) {
+                $this->db->getSchemaInfo()->readTableInfoFromCache($name);
+            }
+        }
+    }
+
+    /**
+     * 把 $this->tasklist[tablelist]，按照标准格式导入到 $this->tables
+     *
+     * @throws Exception
+     */
+    protected function process_tablelist()
+    {
+        // 如果没有设置tablelist，直接退出
+        if (!array_key_exists('tablelist', $this->tasklist)) {
+            return;
+        }
+
+        $tablelist = $this->tasklist['tablelist'];
+
+        // 如果$tablelist是字符串形式："表名 别名,表名 别名，..."
+        if (is_string($tablelist)) {
+            $prefix = $this->tasklist['prefix'];
+
+            $arrTemp = explode(',', $tablelist);
+            foreach ($arrTemp as $item) {
+                $item = trim($item);
+                if ($item === '') {
+                    continue;
+                }
+
+                $data = $this->splitNameAlias($item); // name=>,alias=>
+                $realname = $prefix . $data['name'];
+                $alias = $data['alias'];
+                if ($alias) {
+                    $nameAsAlias = "$realname AS $alias";
+                } else {
+                    $nameAsAlias = $realname;
+                }
+                $this->tables[] = [
+                    'name'        => $realname,
+                    'alias'       => $alias,
+                    'nameAsAlias' => $nameAsAlias,
+                ];
+            }
+
+            // 完成
+            return;
+        }
+
+        // 如果$tablelist是数组
+        if (is_array($tablelist)) {
+            foreach ($tablelist as $table) {
+                $alias = null;
+                $prefix = null;
+                switch (count($tablelist)) {
+                    case 1:
+                        list($name) = $tablelist;
+                        break;
+                    case 2:
+                        list($name, $alias) = $tablelist;
+                        break;
+                    case 3:
+                        list($name, $alias, $prefix) = $tablelist;
+                        break;
+                    default:
+                        throw new Exception('tablelist的表格式非法，必须为 [name必填, alias选填, prefix选填] ');
+                }
+
+                // 表前缀
+                if (!is_string($prefix)) {
+                    $prefix = $this->tasklist['prefix'];
+                }
+                $realname = $prefix . $name;
+
+                if (is_string($alias) && $alias) {
+                    $nameAsAlias = "$realname AS $alias";
+                } else {
+                    $alias = null;
+                    $nameAsAlias = $realname;
+                }
+                $this->tables[] = [
+                    'name'        => $realname,
+                    'alias'       => $alias,
+                    'nameAsAlias' => $nameAsAlias,
+                ];
+
+                // 完成
+                return;
+            }
+        }
+    }
+
+
+    /**
+     * 把 $this->tasklist[table]，按照标准格式导入到 $this->tables
+     */
+    protected function process_table()
+    {
+        // 如果没有设置table，直接退出
+        if (!array_key_exists('table', $this->tasklist)) {
+            return;
+        }
+
+        // $name, $alias, $prefix
+        extract($this->tasklist['table']);
+
+        if (!is_string($prefix)) {
+            $prefix = $this->tasklist['prefix'];
+        }
+
+        $realname = $prefix . $name;
+
+        if (is_string($alias) && $alias) {
+            $nameAsAlias = "$realname AS $alias";
+        } else {
+            $alias = null;
+            $nameAsAlias = $realname;
+        }
+
+        $this->tables[] = [
+            'name'        => $realname,
+            'alias'       => $alias,
+            'nameAsAlias' => $nameAsAlias,
+        ];
     }
 
 
@@ -320,6 +503,12 @@ class Builder implements BuilderInterface
     }
 
 
+    protected function clause_TABLELIST()
+    {
+
+    }
+
+
     protected function prepare_SELECT()
     {
         $this->clause_TABLE();
@@ -458,14 +647,14 @@ class Builder implements BuilderInterface
 
     protected function clause_TABLE()
     {
-        // built, name, alias, prefix
+        // $name, $alias, $prefix
         extract($this->tasklist['table']);
 
         if (!is_string($prefix)) {
             $prefix = $this->tasklist['prefix'];
         }
 
-        $name = $prefix . $name;
+        $realname = $prefix . $name;
 
         if (!is_string($alias)) {
             $alias = null;
@@ -473,7 +662,7 @@ class Builder implements BuilderInterface
 
         /* dict */
         $this->dict['table'] = [
-            'name'  => $name,
+            'name'  => $realname,
             'alias' => $alias,
         ];
         $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
@@ -972,6 +1161,9 @@ class Builder implements BuilderInterface
 
     protected function isBuilt($key)
     {
+        // 先临时屏蔽掉这个功能，后期根据需要可能会删除掉这个函数
+        return false;
+
         $built = $key . '_built';
         return ($this->has($built) && $this->tasklist[$built] === true);
     }
@@ -1127,9 +1319,10 @@ class Builder implements BuilderInterface
 
 
     /**
-     * Converts a table/column name string to an array of a fixed format.
+     * 把一个 “name alias”形式或者“name AS alias”形式的字符串解析成数组形式。
      *
-     * @param string $string Format:"NAME" or "name AS alias"
+     * @param string $string 格式可为：
+     *      "name" 或者 "name AS alias" 或者 "name alias"
      */
     protected function splitNameAlias($string)
     {

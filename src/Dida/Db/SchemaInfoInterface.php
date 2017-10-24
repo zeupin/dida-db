@@ -35,4 +35,16 @@ interface SchemaInfoInterface
      * 把驱动相关的数据类型转换为驱动无关的通用类型
      */
     public function getBaseType($datatype);
+
+
+    /**
+     * 获取<schema.table>的主键列名
+     */
+    public function getPrimaryKey($table, $schema = null);
+
+
+    /**
+     * 获取<schema.table>的所有UNIQUE约束的列名数组
+     */
+    public function getUniqueColumns($table, $schema = null);
 }

@@ -87,7 +87,7 @@ EOT;
         if ($schema === null) {
             $schema = $this->schema;
         }
-        
+
         $sql = <<<'EOT'
 SELECT
     `COLUMN_NAME`,
@@ -173,6 +173,75 @@ EOT;
             /* unknown type */
             default:
                 return '';
+        }
+    }
+
+    /**
+     * 获取<schema.table>的主键列名
+     *
+     * @return string|null
+     */
+    public function getPrimaryKey($table, $schema = null)
+    {
+        if ($schema === null) {
+            $schema = $this->schema;
+        }
+
+        $sql = <<<'EOT'
+SELECT
+    `COLUMN_NAME`
+FROM
+    `information_schema`.`COLUMNS`
+WHERE
+    (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table) AND (`COLUMN_KEY` LIKE 'PRI')
+ORDER BY
+    `ORDINAL_POSITION`
+EOT;
+        $stmt = $this->db->getPDO()->prepare($sql);
+        $stmt->execute([
+            ':schema' => $schema,
+            ':table'  => $table,
+        ]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return $row['COLUMN_NAME'];
+        } else {
+            return null;
+        }
+    }
+
+
+    /**
+     * 获取<schema.table>的所有UNIQUE约束的列名数组
+     *
+     * @return array
+     */
+    public function getUniqueColumns($table, $schema = null)
+    {
+        if ($schema === null) {
+            $schema = $this->schema;
+        }
+
+        $sql = <<<'EOT'
+SELECT
+    `COLUMN_NAME`
+FROM
+    `information_schema`.`COLUMNS`
+WHERE
+    (`TABLE_SCHEMA` LIKE :schema) AND (`TABLE_NAME` LIKE :table) AND (`COLUMN_KEY` LIKE 'UNI')
+ORDER BY
+    `ORDINAL_POSITION`
+EOT;
+        $stmt = $this->db->getPDO()->prepare($sql);
+        $stmt->execute([
+            ':schema' => $schema,
+            ':table'  => $table,
+        ]);
+        $result = $stmt->fetchAll(PDO::FETCH_COLUMN,0);
+        if ($result) {
+            return $result;
+        } else {
+            return [];
         }
     }
 }

@@ -121,7 +121,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
      * @param string $schema
      * @param string $prefix
      */
-    public function cacheAllTableColumnInfo()
+    public function saveAllTableInfo()
     {
         $schema = $this->schema;
         $prefix = $this->prefix;
@@ -143,20 +143,26 @@ abstract class SchemaInfo implements SchemaInfoInterface
 
         // 依次把每个数据表资料都做一下缓存
         foreach ($tables as $table) {
-            // 获取所有列的信息
-            $allColumnMetas = $this->getAllColumnInfo($table);
-
-            // 把列名作为数组的key
-            $array = [];
+            // 准备保存所有列的数据
+            $columns = [];
+            $allColumnMetas = $this->getAllColumnInfo($table); // 获取所有列的信息
             foreach ($allColumnMetas as $column) {
-                $array[$column['COLUMN_NAME']] = $column;
+                // 把列名作为数组的key
+                $columns[$column['COLUMN_NAME']] = $column;
             }
 
+            // 要保存的数据
+            $data = [
+                'pri'     => $this->getPrimaryKey($table),
+                'uni'     => $this->getUniqueColumns($table),
+                'columns' => $columns,
+            ];
+
             // 准备写入文件的内容
-            $content = "<?php\nreturn " . var_export($array, true) . ";\n";
+            $content = "<?php\nreturn " . var_export($data, true) . ";\n";
 
             // 文件路径
-            $filename = $this->getColumnInfoCachePath($table);
+            $filename = $this->tableInfoCachePath($table);
 
             // 保存文件
             file_put_contents($filename, $content);
@@ -208,7 +214,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
      *
      * @return array|false 成功返回表信息数组，失败返回false
      */
-    public function readColumnInfoFromCache($table)
+    public function readTableInfoFromCache($table)
     {
         $schema = $this->schema;
 
@@ -219,7 +225,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
         }
 
         // 从缓存中读取表信息
-        $file = $this->getColumnInfoCachePath($table);
+        $file = $this->tableInfoCachePath($table);
         if (file_exists($file)) {
             return include($file);
         }
@@ -228,17 +234,19 @@ abstract class SchemaInfo implements SchemaInfoInterface
         return false;
     }
 
+
     /**
      *
      * @param string $table
      */
-    protected function getColumnInfoCachePath($table)
+    protected function tableInfoCachePath($table)
     {
         $DS = DIRECTORY_SEPARATOR;
         $schema = $this->schema;
-        $file = $this->cacheDir . "{$DS}{$schema}{$DS}{$table}.columninfo.php";
+        $file = $this->cacheDir . "{$DS}{$schema}{$DS}{$table}.php";
         return $file;
     }
+
 
     protected function prepareColumnInfoCacheDir()
     {
