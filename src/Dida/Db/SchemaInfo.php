@@ -58,7 +58,9 @@ abstract class SchemaInfo implements SchemaInfoInterface
         $this->schema = $cfg['db.name'];
 
         // 默认的数据表前缀
-        if (isset($cfg['db.prefix'])) {
+        if (!isset($cfg['db.prefix']) || !is_string($cfg['db.prefix'])) {
+            $this->prefix = '';
+        } else {
             $this->prefix = $cfg['db.prefix'];
         }
 
@@ -97,7 +99,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
      * @param string $schema
      * @param string $prefix
      */
-    public function cacheAllTableInfo()
+    public function cacheAllTableColumnInfo()
     {
         $schema = $this->schema;
         $prefix = $this->prefix;
@@ -112,17 +114,17 @@ abstract class SchemaInfo implements SchemaInfoInterface
         $this->clearDir($this->cacheDir);
 
         // 列出所有满足条件的数据表
-        $tables = $this->listTableNames($schema, $prefix);
+        $tables = $this->listTableNames();
 
         // 依次把每个数据表资料都做一下缓存
         foreach ($tables as $table) {
             // 获取所有列的信息
-            $allColumnInfo = $this->getAllColumnInfo($schema, $table);
+            $allColumnMetas = $this->getAllColumnInfo($table);
 
             // 把列名作为数组的key
             $array = [];
-            foreach ($allColumnInfo as $columnInfo) {
-                $array[$columnInfo['COLUMN_NAME']] = $columnInfo;
+            foreach ($allColumnMetas as $column) {
+                $array[$column['COLUMN_NAME']] = $column;
             }
 
             // 把这个数组缓存起来，供以后数据库脱机使用
@@ -133,7 +135,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
                 @mkdir($targetDir, 0777);
             }
 
-            $filename = $this->cacheDir . $DS . $schema . $DS . $table . ".info.php";
+            $filename = $this->cacheDir . $DS . $schema . $DS . $table . ".columninfo.php";
             $content = "<?php\nreturn " . var_export($array, true) . ";\n";
             file_put_contents($filename, $content);
         }
@@ -178,13 +180,13 @@ abstract class SchemaInfo implements SchemaInfoInterface
 
 
     /**
-     * 从缓存中读取一个数据表的信息
+     * 从缓存中读取一个数据表的表元信息和列元信息
      *
      * @param string $table
      *
      * @return array|false 成功返回表信息数组，失败返回false
      */
-    public function readTableInfoFromCache($table)
+    public function readColumnInfoFromCache($table)
     {
         $schema = $this->schema;
 
@@ -197,7 +199,7 @@ abstract class SchemaInfo implements SchemaInfoInterface
         $DS = DIRECTORY_SEPARATOR;
 
         // 从缓存中读取表信息
-        $file = $this->cacheDir .  "{$DS}{$schema}{$DS}{$table}.info.php";
+        $file = $this->cacheDir . "{$DS}{$schema}{$DS}{$table}.columninfo.php";
         if (file_exists($file)) {
             return include($file);
         }

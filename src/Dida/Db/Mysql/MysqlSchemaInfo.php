@@ -7,6 +7,7 @@
 namespace Dida\Db\Mysql;
 
 use \PDO;
+use \Exception;
 
 /**
  * MysqlSchemaInfo
@@ -16,8 +17,15 @@ class MysqlSchemaInfo extends \Dida\Db\SchemaInfo
     /**
      * 列出指定数据库中的所有数据表的表名.
      */
-    public function listTableNames($schema, $prefix = '')
+    public function listTableNames($prefix = null, $schema = null)
     {
+        if ($prefix === null) {
+            $prefix = $this->prefix;
+        }
+        if ($schema === null) {
+            $schema = $this->schema;
+        }
+
         $sql = <<<'EOT'
 SELECT
     `TABLE_NAME`
@@ -41,8 +49,12 @@ EOT;
     /**
      * 获取<schema.table>的表信息
      */
-    public function getTableInfo($schema, $table)
+    public function getTableInfo($table, $schema = null)
     {
+        if ($schema === null) {
+            $schema = $this->schema;
+        }
+
         $sql = <<<'EOT'
 SELECT
     `TABLE_SCHEMA`,
@@ -70,8 +82,12 @@ EOT;
     /**
      * 获取<schema.table>所有列的信息
      */
-    public function getAllColumnInfo($schema, $table)
+    public function getAllColumnInfo($table, $schema = null)
     {
+        if ($schema === null) {
+            $schema = $this->schema;
+        }
+        
         $sql = <<<'EOT'
 SELECT
     `COLUMN_NAME`,

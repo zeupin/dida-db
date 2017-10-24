@@ -30,7 +30,7 @@ class SchemaInfoTest extends TestCase
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_PERSISTENT         => false
             ],
-            'db.schemainfo_dir' => __DIR__ . '/cache',
+            'db.schemainfo_dir' => __DIR__ . '/cache/schemainfo',
             'db.name'           => 'zeupin',
             'db.type'           => 'mysql',
             'db.prefix'         => 'zp_',
@@ -94,20 +94,22 @@ class SchemaInfoTest extends TestCase
         $this->assertEquals(1, $result['id']);
     }
 
+
     /**
      * 缓存所有表信息
      */
     public function testCacheAllTableInfo()
     {
-        $this->db->getSchemaInfo()->cacheAllTableInfo();
+        $this->db->getSchemaInfo()->cacheAllTableColumnInfo();
     }
 
+
     /**
-     *
+     * 读取表信息
      */
     public function testReadTableInfo()
     {
-        $data = $this->db->getSchemaInfo()->readTableInfoFromCache('zp_test');
+        $data = $this->db->getSchemaInfo()->readColumnInfoFromCache('zp_test');
         var_dump($data);
     }
 }

@@ -81,6 +81,4 @@ trait MysqlSchemaTrait
         }
         return file_put_contents($file, $data);
     }
-
-
 }

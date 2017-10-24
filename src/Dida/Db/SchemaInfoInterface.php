@@ -7,24 +7,32 @@
 namespace Dida\Db;
 
 /**
- * Schema Interface
+ * SchemaInfo Interface
+ *
+ * 查询指定数据库的表元信息和列元信息。
  */
 interface SchemaInfoInterface
 {
     /**
-     * List all table names of the <schema>.
+     * 列出<schema>中的所有表名
      */
-    public function listTableNames($schema, $prefix = '');
+    public function listTableNames($prefix = null, $schema = null);
 
 
     /**
-     * Get all metadata about the <schema.table>.
+     * 获取<schema.table>的表元信息。
      */
-    public function getTableInfo($schema, $table);
+    public function getTableInfo($table, $schema = null);
 
 
     /**
-     * Get all column information about the <schema.table>.
+     * 获取指定的<schema.table>的所有列元信息。
      */
-    public function getAllColumnInfo($schema, $table);
+    public function getAllColumnInfo($table, $schema = null);
+
+
+    /**
+     * 把驱动相关的数据类型转换为驱动无关的通用类型
+     */
+    public function getBaseType($datatype);
 }

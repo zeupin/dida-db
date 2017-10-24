@@ -9,4 +9,3 @@ Autoloader::init();
 Autoloader::addPsr4('Dida\\', __DIR__ . '/../src/Dida');
 
 require(__DIR__ . '/../../composer/vendor/autoload.php');
-
