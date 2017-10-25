@@ -139,24 +139,12 @@ abstract class SchemaInfo implements SchemaInfoInterface
         $tables = $this->listTableNames();
 
         // 准备好缓存目录
-        $this->prepareColumnInfoCacheDir();
+        $this->prepareCacheDir();
 
         // 依次把每个数据表资料都做一下缓存
         foreach ($tables as $table) {
-            // 准备保存所有列的数据
-            $columns = [];
-            $allColumnMetas = $this->getAllColumnInfo($table); // 获取所有列的信息
-            foreach ($allColumnMetas as $column) {
-                // 把列名作为数组的key
-                $columns[$column['COLUMN_NAME']] = $column;
-            }
-
-            // 要保存的数据
-            $data = [
-                'pri'     => $this->getPrimaryKey($table),
-                'uni'     => $this->getUniqueColumns($table),
-                'columns' => $columns,
-            ];
+            // 准备要写入的数据
+            $data = $this->prepareTableInfo($table);
 
             // 准备写入文件的内容
             $content = "<?php\nreturn " . var_export($data, true) . ";\n";
@@ -171,39 +159,29 @@ abstract class SchemaInfo implements SchemaInfoInterface
 
 
     /**
-     * 清空指定目录，包括其下所有文件和所有子目录。
+     * 准备要缓存的TableInfo数据
      *
-     * @return boolean 成功返回true，失败返回false
+     * @param string $table
      */
-    protected function clearDir($dir)
+    public function prepareTableInfo($table)
     {
-        // 如果非法，返回false
-        if (!is_string($dir) || !file_exists($dir) || !is_dir($dir)) {
-            return false;
+        // 准备保存所有列的数据
+        $columns = [];
+        $allColumnMetas = $this->getAllColumnInfo($table); // 获取所有列的信息
+        foreach ($allColumnMetas as $column) {
+            // 把列名作为数组的key
+            $columns[$column['COLUMN_NAME']] = $column;
         }
 
-        $dir = realpath($dir);
-        $files = scandir($dir);
+        // 要保存的数据
+        $data = [
+            'pri'        => $this->getPrimaryKey($table),
+            'uni'        => $this->getUniqueColumns($table),
+            'columnlist' => array_keys($columns),
+            'columns'    => $columns,
+        ];
 
-        foreach ($files as $file) {
-            if ($file === '.' || $file === '..') {
-                continue;
-            }
-
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
-
-            try {
-                if (is_dir($path)) {
-                    $this->clearDir($path);
-                } else {
-                    unlink($path);
-                }
-            } catch (Exception $ex) {
-                return false;
-            }
-        }
-
-        return true;
+        return $data;
     }
 
 
@@ -248,7 +226,10 @@ abstract class SchemaInfo implements SchemaInfoInterface
     }
 
 
-    protected function prepareColumnInfoCacheDir()
+    /**
+     * 准备好缓存目录
+     */
+    protected function prepareCacheDir()
     {
         $DS = DIRECTORY_SEPARATOR;
         $schema = $this->schema;
@@ -256,5 +237,42 @@ abstract class SchemaInfo implements SchemaInfoInterface
         if (!file_exists($dir)) {
             mkdir($dir, 0777, true);
         }
+    }
+
+
+    /**
+     * 清空指定目录，包括其下所有文件和所有子目录。
+     *
+     * @return boolean 成功返回true，失败返回false
+     */
+    protected function clearDir($dir)
+    {
+        // 如果非法，返回false
+        if (!is_string($dir) || !file_exists($dir) || !is_dir($dir)) {
+            return false;
+        }
+
+        $dir = realpath($dir);
+        $files = scandir($dir);
+
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+
+            try {
+                if (is_dir($path)) {
+                    $this->clearDir($path);
+                } else {
+                    unlink($path);
+                }
+            } catch (Exception $ex) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
