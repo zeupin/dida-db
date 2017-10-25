@@ -37,24 +37,15 @@ interface SqlQueryInterface
 
 
     /**
-     * Resets all tasklist data.
+     * 初始化任务列表
      *
      * @return $this
      */
-    public function resetAll();
+    public function init();
 
 
     /**
-     * Resets the COUNT(...) relative data.
-     * See count()
-     *
-     * @return $this
-     */
-    public function resetCount();
-
-
-    /**
-     * Changes the master table.
+     * 设置默认操作的数据表
      *
      * @param string $name
      * @param string $alias
@@ -63,57 +54,6 @@ interface SqlQueryInterface
      * @return $this
      */
     public function table($name, $alias = null, $prefix = null);
-
-
-    /**
-     * SELECT COUNT(...)
-     *
-     * @param array $columns
-     * @param string $alias
-     *
-     * @return $this
-     */
-    public function count(array $columns = null, $alias = null);
-
-
-    /**
-     * SELECT
-     *
-     * @return $this
-     */
-    public function select(array $arrayColumnAsAlias = []);
-
-
-    /**
-     * DELETE
-     *
-     * @return $this
-     */
-    public function delete();
-
-
-    /**
-     * INSERT
-     *
-     * @return $this
-     */
-    public function insert(array $record);
-
-
-    /**
-     * UPDATE
-     *
-     * @return $this
-     */
-    public function update();
-
-
-    /**
-     * TRUNCATE
-     *
-     * @return $this
-     */
-    public function truncate();
 
 
     /**

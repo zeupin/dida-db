@@ -9,9 +9,9 @@ namespace Dida\Db;
 use \Exception;
 
 /**
- * SQL Statement Query
+ * SQL查询
  */
-class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterface
+class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterface, SqlExecutionInterface
 {
     /**
      * Version
