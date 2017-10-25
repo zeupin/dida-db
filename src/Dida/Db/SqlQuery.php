@@ -99,7 +99,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         ]);
 
         // 重置任务列表为空
-        $this->resetAll();
+        $this->init();
     }
 
 
@@ -108,7 +108,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      *
      * @return $this
      */
-    public function resetAll()
+    public function init()
     {
         $this->tasklist = $this->taskbase;
 
@@ -191,7 +191,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function table($name, $alias = null, $prefix = null)
     {
-        $this->resetAll();
+        $this->init();
 
         $this->tasklist['table'] = [
             'name'   => $name,
@@ -218,7 +218,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
      */
     public function tablelist(array $tablelist)
     {
-        $this->resetAll();
+        $this->init();
 
         // 设置tablelist项目
         $this->tasklist['tablelist'] = $tablelist;
