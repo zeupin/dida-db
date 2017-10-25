@@ -229,7 +229,7 @@ abstract class Db implements DbInterface
             return false;
         }
 
-        // Checks if a simple SQL could be executed successfully,
+        // 检查是否能执行简单的SQL语句
         try {
             if ($this->pdo->query('SELECT 1') === false) {
                 return false;
