@@ -78,6 +78,26 @@ class DbTest extends TestCase
 
 
     /**
+     * 测试多表表名
+     */
+    public function testMultiTables()
+    {
+        $sql = $this->db->table('test as a, test as b', 'zp_');
+        $result = $sql->select()->build();
+    }
+
+
+    /**
+     * 测试单表表名
+     */
+    public function testSingleTables()
+    {
+        $sql = $this->db->table('test as t', 'zp_');
+        $result = $sql->select()->build();
+    }
+
+
+    /**
      * 测试模拟数据能否正常使用
      */
     public function testResetMock()
@@ -85,7 +105,7 @@ class DbTest extends TestCase
         $this->resetMock(__DIR__ . '/zp_test.sql');
 
         $this->db->connect();
-        $sql = $this->db->table('test', null, 'zp_');
+        $sql = $this->db->table('test', 'zp_');
         $result = $sql->select(["count(*)"])->execute()->getRow();
         $this->assertEquals(1, $result['id']);
     }
@@ -159,6 +179,6 @@ EOT;
     public function testReadTableInfo()
     {
         $data = $this->db->getSchemaInfo()->readTableInfoFromCache('zp_test');
-        var_dump($data);
+        //var_dump($data);
     }
 }

@@ -45,15 +45,16 @@ interface SqlQueryInterface
 
 
     /**
-     * 设置默认操作的数据表
+     * 设置要操作的数据表
+     * 表名和别名用as或AS分隔，如：“products AS p”
+     * 也可设置多个表，各个表之间以逗号分隔，如：“products AS p, orders AS o, users AS u”
      *
-     * @param string $name
-     * @param string $alias
-     * @param string $prefix
+     * @param string $name_as_alias
+     * @param string $prefix 如果不设置，则认为是$cfg["prefix"]的值。
      *
      * @return $this
      */
-    public function table($name, $alias = null, $prefix = null);
+    public function table($name_as_alias, $prefix = null);
 
 
     /**

@@ -288,16 +288,15 @@ abstract class Db implements DbInterface
      * 创建一个新的SqlQuery实例对象，然后设置主表
      *
      * @param string $table
-     * @param string $alias
      * @param string $prefix
      *
      * @return \Dida\Db\SqlQuery
      */
-    public function table($table, $alias = null, $prefix = null)
+    public function table($table, $prefix = null)
     {
         $sql = $this->newSqlQuery();
 
-        $sql->table($table, $alias, $prefix);
+        $sql->table($table, $prefix);
 
         return $sql;
     }

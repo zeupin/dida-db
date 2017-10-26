@@ -23,7 +23,8 @@ class Builder implements BuilderInterface
     protected $db = null;
 
     /**
-     * 环境上下文
+     * 常驻的数据库的数据表信息。
+     * 和本对象的生存期一致，会一直保存相关的数据表的表元信息。
      *
      * [
      *     表名 => [
@@ -36,7 +37,14 @@ class Builder implements BuilderInterface
      *
      * @var array
      */
-    protected $context = [];
+    protected $globalSchemaInfo = [];
+
+    /**
+     * 临时的数据库的数据表信息。
+     * 只在一个build期间存在，build完了就消失了。
+     * 每次build的最初，这个值就被初始化做掉了。
+     */
+    protected $localSchemaInfo = [];
 
     /**
      * 任务列表
@@ -46,7 +54,16 @@ class Builder implements BuilderInterface
     protected $tasklist = [];
 
     /**
-     * 本次build用到的数据表
+     * 主表
+     *
+     * [name=>, alias=>, nameAsAlias=>]
+     *
+     * @var array
+     */
+    protected $mainTable = [];
+
+    /**
+     * 多个主表
      *
      * [
      *   [name=>, alias=>, nameAsAlias=>],
@@ -54,7 +71,7 @@ class Builder implements BuilderInterface
      *
      * @var array
      */
-    protected $tables = [];
+    protected $mainTables = [];
 
     /**
      * build时，用于保存临时数据的字典
@@ -146,10 +163,14 @@ class Builder implements BuilderInterface
         $this->db = $db;
     }
 
-    protected function reset()
+
+    /**
+     * 初始化所有的变量，准备开始一次全新的build。
+     */
+    protected function init()
     {
-        // 重置数据表
-        $this->table = [];
+        // 重置本此的所有数据表
+        $this->tableDict = [];
 
         // 重置字典
         $this->dict = [
@@ -163,6 +184,7 @@ class Builder implements BuilderInterface
         // 完成标志
         $this->done = null;
     }
+
 
     /**
      * 根据给出的$tasklist数组，构造出对应的SQL表达式
@@ -179,13 +201,10 @@ class Builder implements BuilderInterface
     public function build(&$tasklist)
     {
         // 重置内部变量
-        $this->reset();
+        $this->init();
 
         // 保存传过来的任务列表
         $this->tasklist = $tasklist;
-
-        // 准备context
-        $this->prepareContext();
 
         // 根据verb不同，选择对应的模板进行构建
         switch ($this->tasklist['verb']) {
@@ -204,113 +223,47 @@ class Builder implements BuilderInterface
         }
     }
 
-    protected function prepareContext()
-    {
-        $this->tables = [];
-        $this->process_tablelist();
-        $this->process_table();
-
-        // 检查context中是否已经有table对应的数据，没有的话，就调入数据
-        foreach ($this->tables as $table) {
-            extract($table);
-
-            // 如果没有表格元数据，则先去载入进来
-            if (!array_key_exists($name, $this->context)) {
-                $this->db->getSchemaInfo()->readTableInfoFromCache($name);
-            }
-        }
-    }
 
     /**
-     * 把 $this->tasklist[tablelist]，按照标准格式导入到 $this->tables
+     * 登记一个数据表到 $globalSchemaInfo 和 $locaSchemaInfo
      *
-     * @throws Exception
+     * @param string $name
+     * @param string $alias
      */
-    protected function process_tablelist()
+    protected function util_register_table($name, $alias, $prefix = null)
     {
-        // 如果没有设置tablelist，直接退出
-        if (!array_key_exists('tablelist', $this->tasklist)) {
-            return;
-        }
+        // 实际的表名
+        $realname = $this->util_join_table_prefix($name, $prefix);
 
-        $tablelist = $this->tasklist['tablelist'];
-
-        // 如果$tablelist是字符串形式："表名 别名,表名 别名，..."
-        if (is_string($tablelist)) {
-            $prefix = $this->tasklist['prefix'];
-
-            $arrTemp = explode(',', $tablelist);
-            foreach ($arrTemp as $item) {
-                $item = trim($item);
-                if ($item === '') {
-                    continue;
-                }
-
-                $data = $this->splitNameAlias($item); // name=>,alias=>
-                $realname = $prefix . $data['name'];
-                $alias = $data['alias'];
-                if ($alias) {
-                    $nameAsAlias = "$realname AS $alias";
-                } else {
-                    $nameAsAlias = $realname;
-                }
-                $this->tables[] = [
-                    'name'        => $realname,
-                    'alias'       => $alias,
-                    'nameAsAlias' => $nameAsAlias,
-                ];
+        // 如果 $globalSchemaInfo 还没有这个数据表的表元数据，则先从读取表元数据
+        if (!array_key_exists($realname, $this->globalSchemaInfo)) {
+            if (!$tableinfo = $this->db->getSchemaInfo()->readTableInfoFromCache($realname)) {
+                throw new Exception("数据表{$realname}的表元信息不存在");
             }
-
-            // 完成
-            return;
+            $this->globalSchemaInfo[$realname] = $tableinfo;
         }
 
-        // 如果$tablelist是数组
-        if (is_array($tablelist)) {
-            foreach ($tablelist as $table) {
-                $alias = null;
-                $prefix = null;
-                switch (count($tablelist)) {
-                    case 1:
-                        list($name) = $tablelist;
-                        break;
-                    case 2:
-                        list($name, $alias) = $tablelist;
-                        break;
-                    case 3:
-                        list($name, $alias, $prefix) = $tablelist;
-                        break;
-                    default:
-                        throw new Exception('tablelist的表格式非法，必须为 [name必填, alias选填, prefix选填] ');
-                }
+        // 限制$alias只能为字符串或者null
+        if (!is_string($alias)) {
+            $alias = null;
+        }
 
-                // 表前缀
-                if (!is_string($prefix)) {
-                    $prefix = $this->tasklist['prefix'];
-                }
-                $realname = $prefix . $name;
+        // 本地info指向到全局对应的info
+        if (!isset($this->localSchemaInfo[$realname])) {
+            $this->localSchemaInfo[$realname] = &$this->globalSchemaInfo[$realname];
+        }
 
-                if (is_string($alias) && $alias) {
-                    $nameAsAlias = "$realname AS $alias";
-                } else {
-                    $alias = null;
-                    $nameAsAlias = $realname;
-                }
-                $this->tables[] = [
-                    'name'        => $realname,
-                    'alias'       => $alias,
-                    'nameAsAlias' => $nameAsAlias,
-                ];
-
-                // 完成
-                return;
+        // 本地alias的info也指向到全局对应的info
+        if ($alias) {
+            if (!isset($this->localSchemaInfo[$alias])) {
+                $this->localSchemaInfo[$alias] = &$this->globalSchemaInfo[$realname];
             }
         }
     }
 
 
     /**
-     * 把 $this->tasklist[table]，按照标准格式导入到 $this->tables
+     * 处理 $this->tasklist[table]
      */
     protected function process_table()
     {
@@ -319,27 +272,95 @@ class Builder implements BuilderInterface
             return;
         }
 
-        // $name, $alias, $prefix
+        // $name, $prefix
         extract($this->tasklist['table']);
+        $name = trim($name);
 
-        if (!is_string($prefix)) {
-            $prefix = $this->tasklist['prefix'];
-        }
-
-        $realname = $prefix . $name;
-
-        if (is_string($alias) && $alias) {
-            $nameAsAlias = "$realname AS $alias";
+        // 检查是一个表还是多个表
+        if (strpos($name, ',') === false) {
+            $this->sub_table_one($name, $prefix);
         } else {
-            $alias = null;
-            $nameAsAlias = $realname;
+            $this->sub_table_many($name, $prefix);
+        }
+    }
+
+
+    /**
+     * 处理 $tasklist['table']是单表的情况。
+     *
+     * @param string $name
+     * @param string $prefix
+     */
+    protected function sub_table_one($name, $prefix)
+    {
+        // 分离name和alias
+        $t = $this->util_split_name_alias($name);
+        $name = $t['name'];
+        $alias = $t['alias'];
+
+        // 注册数据表。如果有错误，会抛异常出来
+        $this->util_register_table($name, $alias, $prefix);
+
+        // 加上prefix的表名
+        $realname = $this->util_join_table_prefix($name, $prefix);
+
+        // 设置为主表
+        $this->mainTable = [
+            'name'  => $realname,
+            'alias' => $alias,
+        ];
+
+        // 设置ST字典
+        $this->ST['table'] = $realname;
+        $this->ST['table_with_alias'] = $this->util_join_table_alias($realname, $alias);
+        $this->ST['selectfrom'] = $this->util_join_table_alias($realname, $alias);
+    }
+
+
+    /**
+     * 处理 $tasklist['table']是多表的情况。
+     *
+     * @param string $name
+     * @param string $prefix
+     */
+    protected function sub_table_many($name, $prefix)
+    {
+        $firstTable = null;
+        $selectfrom = [];
+        $tables = explode(',', $name);
+        foreach ($tables as $table) {
+            $table = trim($table);
+            if ($table === '') continue;
+
+            // 分离name和alias
+            $t = $this->util_split_name_alias($table);
+            $name = $t['name'];
+            $alias = $t['alias'];
+
+            // 注册数据表。如果有错误，会抛异常出来
+            $this->util_register_table($name, $alias, $prefix);
+
+            // 加上prefix的表名
+            $realname = $this->util_join_table_prefix($name, $prefix);
+
+            // 记录第一个表
+            if ($firstTable === null) {
+                $firstTable = [
+                    'name'  => $realname,
+                    'alias' => $alias,
+                ];
+            }
+
+            $selectfrom[] = $this->util_join_table_alias($realname, $alias);
         }
 
-        $this->tables[] = [
-            'name'        => $realname,
-            'alias'       => $alias,
-            'nameAsAlias' => $nameAsAlias,
-        ];
+        // 主表设为第一个表
+        $this->mainTable = $firstTable;
+
+        // 设置ST字典
+        $this->ST['table'] = $firstTable['name'];
+        $this->ST['table_with_alias'] = $this->util_join_table_alias($firstTable['name'], $firstTable['alias']);
+        $this->ST['selectfrom'] = implode(',', $selectfrom);
     }
 
 
@@ -351,7 +372,7 @@ class Builder implements BuilderInterface
             "SELECT\n    ",
             'columnlist' => &$this->ST['columnlist'],
             "\nFROM\n    ",
-            'table'      => &$this->ST['table'],
+            'table'      => &$this->ST['selectfrom'],
             'join'       => &$this->ST['join'],
             'where'      => &$this->ST['where'],
             'groupby'    => &$this->ST['groupby'],
@@ -503,15 +524,9 @@ class Builder implements BuilderInterface
     }
 
 
-    protected function clause_TABLELIST()
-    {
-
-    }
-
-
     protected function prepare_SELECT()
     {
-        $this->clause_TABLE();
+        $this->process_table();
 
         /* Prepares the column list expression. */
         $this->dict_SELECT_COLUMN_LIST();
@@ -535,7 +550,7 @@ class Builder implements BuilderInterface
 
     protected function prepare_INSERT()
     {
-        $this->clause_TABLE();
+        $this->process_table();
         $this->clause_JOIN();
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
@@ -554,7 +569,7 @@ class Builder implements BuilderInterface
 
     protected function prepare_UPDATE()
     {
-        $this->clause_TABLE();
+        $this->process_table();
         $this->clause_SET();
         $this->clause_JOIN();
         $this->clause_WHERE();
@@ -566,7 +581,7 @@ class Builder implements BuilderInterface
 
     protected function prepare_DELETE()
     {
-        $this->clause_TABLE();
+        $this->process_table();
         $this->clause_JOIN();
         $this->clause_WHERE();
         $this->clause_GROUP_BY();
@@ -577,7 +592,7 @@ class Builder implements BuilderInterface
 
     protected function prepare_TRUNCATE()
     {
-        $this->clause_TABLE();
+        $this->process_table();
     }
 
 
@@ -616,15 +631,55 @@ class Builder implements BuilderInterface
     }
 
 
-    protected function dict_SELECT_COLUMN_LIST()
+//    protected function dict_SELECT_COLUMN_LIST()
+//    {
+//        if (!isset($this->tasklist['columnlist'])) {
+//            $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
+//            return;
+//        }
+//
+//        $columns = $this->tasklist['columnlist'];
+//        $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
+//    }
+
+    protected function process_select_column_list()
     {
-        if (!isset($this->tasklist['columnlist'])) {
-            $this->dict['select_column_list'] = $this->process_SelectColumnList(null);
+        // 如果 tasklist 没有设置 select_column_list，直接退出。
+        if (!array_key_exists('select_column_list', $this->tasklist)) {
             return;
         }
 
-        $columns = $this->tasklist['columnlist'];
-        $this->dict['select_column_list'] = $this->process_SelectColumnList($columns);
+        if (is_null($this->tasklist['select_column_list'])) {
+            $this->sub_select_column_list_null();
+        } elseif (is_string($this->tasklist['select_column_list'])) {
+            $this->sub_select_column_list_string($select_column_list);
+        } elseif (is_array($this->tasklist['select_column_list'])) {
+            $this->sub_select_column_list_array($select_column_list);
+        }
+    }
+
+
+    protected function sub_select_column_list_null()
+    {
+        $table = $this->mainTable['name'];
+        $columnlist = $this->localSchemaInfo[$table]['columnlist'];
+        $this->ST['select_column_list'] = implode(',', $columnlist);
+    }
+
+
+    protected function sub_select_column_list_string($select_column_list)
+    {
+
+    }
+
+
+    protected function sub_select_column_list_array($select_column_list)
+    {
+        $array = $select_column_list;
+        foreach ($array as $item) {
+            $this->
+        }
+        $this->ST['select_column_list'] = implode(',', $select_column_list);
     }
 
 
@@ -645,71 +700,50 @@ class Builder implements BuilderInterface
     }
 
 
-    protected function clause_TABLE()
-    {
-        // $name, $alias, $prefix
-        extract($this->tasklist['table']);
+//
+//    protected function process_table()
+//    {
+//        // $name, $alias, $prefix
+//        extract($this->tasklist['table']);
+//
+//        if (!is_string($prefix)) {
+//            $prefix = $this->tasklist['prefix'];
+//        }
+//
+//        $realname = $prefix . $name;
+//
+//        if (!is_string($alias)) {
+//            $alias = null;
+//        }
+//
+//        /* dict */
+//        $this->dict['table'] = [
+//            'name'  => $realname,
+//            'alias' => $alias,
+//        ];
+//        $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
+//        $this->dict['table']['name_as_alias'] = $this->util_join_table_alias($this->dict['table']['name'], $this->dict['table']['alias']);
+//
+//        /* ST */
+//        switch ($this->tasklist['verb']) {
+//            case 'SELECT':
+//                $this->ST['table'] = $this->dict['table']['name_as_alias'];
+//                break;
+//            default:
+//                $this->ST['table'] = $this->dict['table']['name'];
+//        }
+//
+//        $this->tasklist['table_built'] = true;
+//        return;
+//    }
 
-        if (!is_string($prefix)) {
-            $prefix = $this->tasklist['prefix'];
-        }
 
-        $realname = $prefix . $name;
 
-        if (!is_string($alias)) {
-            $alias = null;
-        }
-
-        /* dict */
-        $this->dict['table'] = [
-            'name'  => $realname,
-            'alias' => $alias,
-        ];
-        $this->dict['table']['ref'] = $this->tableRef($this->dict['table']['name'], $this->dict['table']['alias']);
-        $this->dict['table']['name_as_alias'] = $this->tableNameAsAlias($this->dict['table']['name'], $this->dict['table']['alias']);
-
-        /* ST */
-        switch ($this->tasklist['verb']) {
-            case 'SELECT':
-                $this->ST['table'] = $this->dict['table']['name_as_alias'];
-                break;
-            default:
-                $this->ST['table'] = $this->dict['table']['name'];
-        }
-
-        $this->tasklist['table_built'] = true;
-        return;
-    }
 
 
     protected function tableRef($name, $alias)
     {
         return ($alias) ? $alias : $name;
-    }
-
-
-    protected function tableNameAsAlias($name, $alias)
-    {
-        if ($alias) {
-            return $name . ' AS ' . $alias;
-        } else {
-            return $name;
-        }
-    }
-
-
-    /**
-     * Replaces a swapped SQL to a normal SQL.
-     */
-    protected function replaceSwapPrefix($swapsql)
-    {
-        $prefix = $this->tasklist['prefix'];
-        $swap_prefix = $this->tasklist['swap_prefix'];
-        if ($swap_prefix) {
-            return str_replace($swap_prefix, $prefix, $swapsql);
-        } else {
-            return $swapsql;
-        }
     }
 
 
@@ -797,7 +831,7 @@ class Builder implements BuilderInterface
 
     protected function cond_COMPARISON($column, $op, $data)
     {
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $part = [
             'statement'  => "($column $op ?)",
             'parameters' => [$data],
@@ -856,7 +890,7 @@ class Builder implements BuilderInterface
             throw new Exception('An empty array not allowed use in a IN statement');
         }
 
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $marks = implode(', ', array_fill(0, count($data), '?'));
         $part = [
             'statement'  => "($column $op ($marks))",
@@ -877,7 +911,7 @@ class Builder implements BuilderInterface
 
     protected function cond_LIKE($column, $op, $data)
     {
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $part = [
             'statement'  => "$column $op ?",
             'parameters' => $data,
@@ -894,7 +928,7 @@ class Builder implements BuilderInterface
 
     protected function cond_BETWEEN($column, $op, $data)
     {
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $part = [
             'statement'  => "($column $op ? AND ?)",
             'parameters' => $data,
@@ -911,7 +945,7 @@ class Builder implements BuilderInterface
 
     protected function cond_ISNULL($column, $op, $data = null)
     {
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $part = [
             'statement'  => "$column IS NULL",
             'parameters' => [],
@@ -922,7 +956,7 @@ class Builder implements BuilderInterface
 
     protected function cond_ISNOTNULL($column, $op, $data = null)
     {
-        $column = $this->replaceSwapPrefix($column);
+        $column = $this->util_replace_swap_prefix($column);
         $part = [
             'statement'  => "$column IS NOT NULL",
             'parameters' => [],
@@ -1077,7 +1111,7 @@ class Builder implements BuilderInterface
     protected function setFromTable($item)
     {
         extract($item);
-        $tableB = $this->replaceSwapPrefix($tableB);
+        $tableB = $this->util_replace_swap_prefix($tableB);
 
         $tableRef = $this->dict['table']['ref'];
 
@@ -1115,8 +1149,8 @@ class Builder implements BuilderInterface
         foreach ($joins as $join) {
             list($jointype, $table, $on, $parameters) = $join;
 
-            $table = $this->replaceSwapPrefix($table);
-            $on = $this->replaceSwapPrefix($on);
+            $table = $this->util_replace_swap_prefix($table);
+            $on = $this->util_replace_swap_prefix($on);
 
             $stmts[] = "\n$jointype {$table}\n    ON $on";
             $params[] = $parameters;
@@ -1251,7 +1285,7 @@ class Builder implements BuilderInterface
                     if (is_int($key)) {
                         $array[] = $this->process_OrderBy($value);
                     } else {
-                        $key = $this->replaceSwapPrefix($key);
+                        $key = $this->util_replace_swap_prefix($key);
                         $value = strtoupper(trim($value));
                         if ($value === 'ASC' || $value === 'DESC') {
                             $array[] = "$key $value";
@@ -1284,7 +1318,7 @@ class Builder implements BuilderInterface
         ];
 
         $return = [];
-        $string = $this->replaceSwapPrefix($string);
+        $string = $this->util_replace_swap_prefix($string);
         $array = explode(',', $string);
         foreach ($array as $item) {
             $item = trim($item);
@@ -1318,26 +1352,6 @@ class Builder implements BuilderInterface
     }
 
 
-    /**
-     * 把一个 “name alias”形式或者“name AS alias”形式的字符串解析成数组形式。
-     *
-     * @param string $string 格式可为：
-     *      "name" 或者 "name AS alias" 或者 "name alias"
-     */
-    protected function splitNameAlias($string)
-    {
-        // Finds the first ' AS ' string, then split it.
-        $result = preg_split('/\s+(AS)\s+/i', $string, 2);
-        $name = $result[0];
-        $alias = (isset($result[1])) ? $result[1] : null;
-
-        return [
-            'name'  => $name,
-            'alias' => $alias,
-        ];
-    }
-
-
     protected function clause_LIMIT()
     {
         if ($this->isBuilt('limit')) {
@@ -1354,5 +1368,146 @@ class Builder implements BuilderInterface
         $this->ST['limit'] = "\nLIMIT\n    $limit";
 
         $this->tasklist['limit_built'] = true;
+    }
+
+
+    /**
+     * 返回数组中指定的一列。
+     * 参考PHP的array_column()函数，但是array_column()在PHP 5.5后才引入。
+     *
+     * @param array $input
+     * @param string|int $column_key
+     * @param string|int $index_key
+     *
+     * @return array
+     */
+    protected function util_array_column(array &$input, $column_key, $index_key = null)
+    {
+        if (version_compare(phpversion(), '5.5.0', '>=')) {
+            return array_column($input, $column_key, $index_key);
+        }
+
+        $result = [];
+        foreach ($input as $item) {
+            if ($input_key === null) {
+                $result[] = $item[$column_key];
+            } else {
+                $result[$item[$index_key]] = $item[$column_key];
+            }
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * 把表名和前缀拼接起来。
+     *
+     * @param type $name
+     * @param type $prefix
+     * @return type
+     */
+    protected function util_join_table_prefix($name, $prefix)
+    {
+        if (!is_string($prefix)) {
+            $prefix = $this->tasklist['prefix'];
+        }
+        return $prefix . $name;
+    }
+
+
+    /**
+     * 把一个“name AS alias”形式的字符串解析出来。
+     *
+     * 注意：参数必须以“AS”为分隔符才能被识别出来。
+     *
+     * @param string $name_as_alias
+     *      可能的取值为："name" 或者 "name AS alias"
+     */
+    protected function util_split_name_alias($name_as_alias)
+    {
+        $name_as_alias = trim($name_as_alias);
+
+        // 找到第一个“空白+AS+空白”，前部分是name，后部分是alias
+        $i = strripos($name_as_alias, ' AS ');
+
+        // 如果没有别名
+        if ($i === false) {
+            return [
+                'name'  => $name_as_alias,
+                'alias' => null,
+            ];
+        }
+
+        // 如果找到了别名部分
+        $name = substr($name_as_alias, 0, $i);
+        $alias = substr($name_as_alias, $i + 4);
+
+        // 去除空白，代码强壮性更好
+        $name = trim($name);
+        $alias = trim($alias);
+
+        // 返回
+        return [
+            'name'  => $name,
+            'alias' => $alias,
+        ];
+    }
+
+
+    /**
+     * 把表名和别名拼接起来。
+     *
+     * 别名存在时，返回“表名 AS 别名”。
+     * 别名不存在时，只返回“表名”。
+     *
+     * @param string $name
+     * @param string $alias
+     *
+     * @return string
+     */
+    protected function util_join_table_alias($table, $alias)
+    {
+        if (is_string($alias) && $alias) {
+            return $table . ' AS ' . $alias;
+        } else {
+            return $table;
+        }
+    }
+
+
+    /**
+     * 把列表达式和别名拼接起来。
+     *
+     * 别名存在时，返回“列表达式名 AS 别名”。
+     * 别名不存在时，只返回“列表达式名”。
+     *
+     * @param string $col_expr
+     * @param string $alias
+     *
+     * @return string
+     */
+    protected function util_join_col_alias($col_expr, $alias)
+    {
+        if (is_string($alias) && $alias) {
+            return $col_expr . ' AS ' . $alias;
+        } else {
+            return $col_expr;
+        }
+    }
+
+
+    /**
+     * 把SQL表达式中的 ###_XXX 替换为 prefix_XXX
+     */
+    protected function util_replace_swap_prefix($swapsql)
+    {
+        $prefix = $this->tasklist['prefix'];
+        $swap_prefix = $this->tasklist['swap_prefix'];
+        if ($swap_prefix) {
+            return str_replace($swap_prefix, $prefix, $swapsql);
+        } else {
+            return $swapsql;
+        }
     }
 }

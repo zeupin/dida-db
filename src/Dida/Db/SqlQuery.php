@@ -10,6 +10,11 @@ use \Exception;
 
 /**
  * SQL查询
+ *
+ * SqlQueryInterface      基本接口
+ * SqlSelectInterface     选择集相关的接口
+ * SqlUpdateInterface     更新相关的接口
+ * SqlExecutionInterface  执行相关的接口
  */
 class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterface, SqlExecutionInterface
 {
@@ -181,47 +186,24 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
 
 
     /**
-     * Changes the master table.
+     * 设置要操作的数据表
+     * 表名和别名用as或AS分隔，如：“products AS p”
+     * 也可设置多个表，各个表之间以逗号分隔，如：“products AS p, orders AS o, users AS u”
      *
-     * @param string $name
-     * @param string $alias
-     * @param string $prefix
+     * @param string $name_as_alias
+     * @param string $prefix 如果不设置，则认为是$cfg["prefix"]的值。
      *
      * @return $this
      */
-    public function table($name, $alias = null, $prefix = null)
+    public function table($name_as_alias, $prefix = null)
     {
         $this->init();
 
         $this->tasklist['table'] = [
-            'name'   => $name,
-            'alias'  => $alias,
+            'name'   => $name_as_alias,
             'prefix' => $prefix,
         ];
         $this->tasklist['table_built'] = false;
-
-        return $this->changed();
-    }
-
-    /**
-     * 设置tablelist到SqlQuery
-     *
-     * @param $tablelist
-     *      @@string
-     *          "表名 别名, 表名 别名， ..."
-     *          推荐用这种形式，使用比较方便，但是不支持prefix
-     *      @@array
-     *      [
-     *          [$name, $alias, $prefix],
-     *          [$name, $alias, $prefix],
-     *      ]
-     */
-    public function tablelist(array $tablelist)
-    {
-        $this->init();
-
-        // 设置tablelist项目
-        $this->tasklist['tablelist'] = $tablelist;
 
         return $this->changed();
     }
@@ -647,7 +629,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
 
 
     /**
-     * LIMIT clause.
+     * LIMIT 子句。
      *
      * @param int|string $limit
      *
@@ -686,14 +668,22 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
     /**
      * SELECT
      *
+     * @param $column_list
+     *      @@array 数组形式的列表。
+     *          复杂的表达式推荐用这种形式，这种兼容性比较好。
+     *          如：["列表达式一 AS A", "列表达式二 AS B"]
+     *      @@string 字符串形式的列表。
+     *          多个列表达式之间用逗号分隔
+     *          注意：如果列表达式中包含有逗号，如 CONCAT(A,B,C) AS fullname，则这种情况一定要用数组形式，
+     *          此时，字符串形式无法区分逗号是函数参数分隔符还是字段间的分隔符。
+     *
      * @return $this
      */
-    public function select(array $arrayColumnAsAlias = [])
+    public function select($column_list = null)
     {
         $this->tasklist['verb'] = 'SELECT';
 
-        $this->tasklist['select_column_list'] = $arrayColumnAsAlias;
-        $this->tasklist['select_column_list_built'] = false;
+        $this->tasklist['select_column_list'] = $column_list;
 
         return $this->changed();
     }
@@ -769,7 +759,7 @@ class SqlQuery implements SqlQueryInterface, SqlSelectInterface, SqlUpdateInterf
         $this->builder = $this->db->getBuilder();
 
         if ($this->builder === null) {
-            throw new Exception('Not specified a Builder object.');
+            throw new Exception('必须要指定一个Builder对象');
         }
 
         $result = $this->builder->build($this->tasklist);
