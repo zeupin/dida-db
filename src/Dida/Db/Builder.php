@@ -13,6 +13,8 @@ use \Exception;
 
 class Builder
 {
+    const VERSION = '20171113';
+
     protected $db = null;
 
     protected $localSchemaInfo = [];

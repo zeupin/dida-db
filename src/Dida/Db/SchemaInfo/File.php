@@ -13,6 +13,8 @@ use \Exception;
 
 abstract class File extends \Dida\Db\SchemaInfo
 {
+    const VERSION = '20171113';
+
     protected $cacheDir = null;
 
 

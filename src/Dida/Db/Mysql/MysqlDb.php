@@ -11,6 +11,8 @@ namespace Dida\Db\Mysql;
 
 class MysqlDb extends \Dida\Db\Db
 {
+    const VERSION = '20171113';
+
     public function __construct(array $cfg = array())
     {
         parent::__construct($cfg);

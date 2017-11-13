@@ -13,6 +13,8 @@ use \Dida\Db\SchemaInfo;
 
 class MysqlSchemaInfo extends \Dida\Db\SchemaInfo\File
 {
+    const VERSION = '20171113';
+
     use MysqlSchemaInfoTrait;
 
 

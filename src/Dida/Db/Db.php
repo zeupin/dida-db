@@ -11,7 +11,7 @@ namespace Dida\Db;
 
 class Db
 {
-    const VERSION = '0.1.5';
+    const VERSION = '20171113';
 
     protected $connection = null;
 

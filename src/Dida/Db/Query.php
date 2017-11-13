@@ -13,7 +13,7 @@ use \Exception;
 
 class Query
 {
-    const VERSION = '0.1.5';
+    const VERSION = '20171113';
 
     const INSERT_RETURN_COUNT = 1;
     const INSERT_RETURN_ID = 2;

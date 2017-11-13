@@ -13,7 +13,7 @@ use \PDO;
 
 class DataSet
 {
-    const VERSION = '0.1.5';
+    const VERSION = '20171113';
 
     public $pdoStatement = null;
 

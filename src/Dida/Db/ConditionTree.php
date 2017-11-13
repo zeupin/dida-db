@@ -11,6 +11,8 @@ namespace Dida\Db;
 
 class ConditionTree
 {
+    const VERSION = '20171113';
+
     public $name = null;
 
     public $logic = 'AND';

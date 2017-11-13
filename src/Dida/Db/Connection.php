@@ -14,6 +14,8 @@ use \Exception;
 
 class Connection
 {
+    const VERSION = '20171113';
+
     protected $db = null;
 
     protected $pdo = null;

@@ -11,6 +11,8 @@ namespace Dida\Db;
 
 class Util
 {
+    const VERSION = '20171113';
+
     public static function arrayAssocBy(array &$array, $keyN)
     {
         if (!$array) {
