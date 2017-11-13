@@ -1,26 +1,29 @@
 <?php
 /**
- * Dida Framework --Powered by Zeupin LLC
- * http://dida.zeupin.com
+ * Dida Framework  -- A Rapid Development Framework
+ * Copyright (c) Zeupin LLC. (http://zeupin.com)
+ *
+ * Licensed under The MIT License
+ * Redistributions of files MUST retain the above copyright notice.
  */
 
 namespace Dida\Db\Mysql;
 
-/**
- * MysqlDb
- */
 class MysqlDb extends \Dida\Db\Db
 {
-    /**
-     * Class construct.
-     *
-     * @param array $cfg
-     */
     public function __construct(array $cfg = array())
     {
         parent::__construct($cfg);
 
-        // Set the dbtype
-        $this->dbtype = 'Mysql';
+        $this->cfg['db.driver'] = 'Mysql';
+
+        $conn = new \Dida\Db\Connection($this->getConfig());
+        $this->connection = &$conn;
+
+        $schemainfo = new MysqlSchemaInfo($this);
+        $this->schemainfo = &$schemainfo;
+
+        $builder = new \Dida\Db\Builder($this);
+        $this->builder = &$builder;
     }
 }

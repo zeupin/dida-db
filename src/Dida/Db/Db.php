@@ -1,216 +1,130 @@
 <?php
 /**
- * Dida Framework --Powered by Zeupin LLC
- * http://dida.zeupin.com
+ * Dida Framework  -- A Rapid Development Framework
+ * Copyright (c) Zeupin LLC. (http://zeupin.com)
+ *
+ * Licensed under The MIT License
+ * Redistributions of files MUST retain the above copyright notice.
  */
 
 namespace Dida\Db;
 
-use \PDO;
-use \Exception;
-
-/**
- * Db
- */
-abstract class Db implements DbInterface
+class Db
 {
-    /**
-     * Version
-     */
     const VERSION = '0.1.5';
 
-    /**
-     * Default configurations.
-     *
-     * @var array
-     */
+    protected $connection = null;
+
+    protected $schemainfo = null;
+
+    protected $builder = null;
+
     protected $cfg = [
-        /* pdo parameters */
-        'db.dsn'      => null, // PDO DNS
-        'db.username' => null, // The database username
-        'db.password' => null, // The database password
-        'db.options'  => [], // PDO driver options
+        'db.name'   => null,
+        'db.driver' => null,
 
-        /* required parameters */
-        'db.driver_type' => null, // Set the DB type to use, 'Mysql',
+        'db.dsn'      => null,
+        'db.username' => null,
+        'db.password' => null,
+        'db.options'  => [],
 
-        /* optional parameters */
-        'db.name'        => null, // the database name
-        'db.charset'     => 'utf8', // set the default connection charset.
-        'db.persistence' => false, // set if a persistence connection is persistence.
-        'db.prefix'      => '', // default table prefix
-        'db.swap_prefix' => '###_', // default table prefix string.
+        'db.charset'     => 'utf8',
+        'db.persistence' => false,
+        'db.prefix'      => '',
+        'db.swap_prefix' => '###_',
     ];
 
-    /**
-     * Returns the PDO instance.
-     *
-     * @var \PDO
-     */
-    public $pdo = null;
 
-    /**
-     * Specifies the DB type
-     *
-     * @var string
-     */
-    public $dbtype = null;
+    use Traits\DbTrait;
 
 
-    /**
-     * Class construct.
-     */
-    public function __construct(array $cfg = [])
+    public function __construct(array $cfg)
     {
-        $this->cfg = array_merge($this->cfg, $cfg);
+        $this->setConfig($cfg);
     }
 
 
-    /**
-     * Destructs this class.
-     */
-    public function __destruct()
+    protected function setConfig(array &$cfg)
     {
-        $this->pdo = null;
-    }
-
-
-    /**
-     * Connects the database driver.
-     *
-     * @return boolean -- Returns TRUE on success or FALSE on failure.
-     */
-    public function connect()
-    {
-        // If connection exists
-        if ($this->pdo !== null) {
-            return true;
-        }
-
-        // Try to make a connection
-        try {
-            $this->pdo = new PDO(
-                $this->cfg['db.dsn'], $this->cfg['db.username'], $this->cfg['db.password'], $this->cfg['db.options']
-            );
-            return true;
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-
-
-    /**
-     * Checks if the connection is already established.
-     */
-    public function isConnected()
-    {
-        if ($this->pdo === null) {
-            return false;
-        }
-    }
-
-
-    /**
-     * Checks if the connection works well.
-     *
-     * @return boolean
-     */
-    public function worksWell()
-    {
-        if ($this->pdo === null) {
-            return false;
-        }
-
-        // Checks if a simple SQL could be executed successfully,
-        try {
-            if ($this->pdo->query('SELECT 1') === false) {
-                return false;
-            } else {
-                return true;
+        foreach ($cfg as $key => $value) {
+            if (substr($key, 0, 3) === 'db.') {
+                $this->cfg[$key] = $value;
             }
-        } catch (Exception $e) {
-            return false;
         }
-    }
 
-
-    /**
-     * Disconnects the connection.
-     */
-    public function disconnect()
-    {
-        $this->pdo = null;
-    }
-
-
-    /**
-     * Executes an SQL statement directly.
-     *
-     * @param string $statement
-     * @param array $parameters
-     *
-     * @return DataSet
-     */
-    public function execute($statement, array $parameters = [])
-    {
-        $this->connect();
-
-        try {
-            $stmt = $this->pdo->prepare($statement);
-            $success = $stmt->execute($parameters);
-            return new DataSet($this, $stmt, $success);
-        } catch (Exception $ex) {
-            return false;
+        if (!array_key_exists('db.options', $this->cfg)) {
+            $this->cfg['db.options'] = [];
         }
+        if (!array_key_exists(\PDO::ATTR_DEFAULT_FETCH_MODE, $this->cfg['db.options'])) {
+            $this->cfg['db.options'][\PDO::ATTR_DEFAULT_FETCH_MODE] = \PDO::FETCH_ASSOC;
+        }
+
+        return $this;
     }
 
 
-    /**
-     * Get a Builder instance.
-     *
-     * @param \Dida\Db\Builder $builder
-     * @return $this
-     */
-    public function getBuilder()
+    public function getConfig()
     {
-        return new Builder();
+        return $this->cfg;
     }
 
 
-    /**
-     * Returns a new SQL class instance with necessary parameters.
-     *
-     * @return Query
-     *
-     * @todo This method should be overwritted.
-     */
+    public function setConnection($connection)
+    {
+        $this->connection = $connection;
+
+        return $this;
+    }
+
+
+    public function &getConnection()
+    {
+        return $this->connection;
+    }
+
+
+    public function setBuilder($builder)
+    {
+        $this->builder = $builder;
+
+        return $this;
+    }
+
+
+    public function &getBuilder()
+    {
+        return $this->builder;
+    }
+
+
+    public function setSchemaInfo($schemainfo)
+    {
+        $this->schemainfo = $schemainfo;
+
+        return $this;
+    }
+
+
+    public function &getSchemaInfo()
+    {
+        return $this->schemainfo;
+    }
+
+
     protected function newQuery()
     {
-        $builder = $this->getBuilder();
-        
-        $sql = new Query([
-            'prefix'      => $this->cfg['db.prefix'],
-            'swap_prefix' => $this->cfg['db.swap_prefix'],
-            ], $this, $builder);
-        return $sql;
+        $query = new Query($this);
+
+        return $query;
     }
 
 
-    /**
-     * Creates an SQL Statement <Query> object and sets it as the master table.
-     *
-     * @param string $table
-     * @param string $alias
-     * @param string $prefix
-     *
-     * @return \Dida\Db\Query
-     */
-    public function table($table, $alias = null, $prefix = null)
+    public function table($table, $prefix = null)
     {
-        $sql = $this->newQuery();
+        $query = $this->newQuery();
 
-        $sql->table($table, $alias, $prefix);
+        $query->table($table, $prefix);
 
-        return $sql;
+        return $query;
     }
 }

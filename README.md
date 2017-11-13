@@ -1,46 +1,48 @@
 # dida-db
 
-Dida\Db is a tiny database management package that contains most of the common features. It's a part of Dida Framework.
+`Dida\Db` 的目标是做一个轻巧、包含常用数据库管理特性、易于编码、没有复杂依赖关系的数据库管理包，适用于大多数常见的数据库操作场景。它属于 [Dida框架](http://dida.zeupin.com) 的一部分。
 
-It extends PDO and PDOStatement classes and adds some advanced features such as SQL query builder, fluent-styled  function call and so on.
+## 特点
 
-* Friendly MIT License.
-* Supports various SQL database, including MySQL, MariaDB, MSSQL, Oracle, PostgreSQL, SQLite and more.
-* Lazy database connection. Connects to the database only on method calls that require a connection. You can create an instance and not incur the cost of a connection if you never make a query.
+* MIT协议。
+* 支持常见的网站数据库，MySQL, MariaDB, SQLite, MS SQL Server, Oracle, PostgreSQL等等。
+* 最低支持 PHP 5.5。
+* 不依赖任何其它的外部包。
+* 懒加载。只有当要用到连接时，才会开始初始化数据库连接。
+* 灵活的条件树机制（ConditionTree），可以在不脱离流式操作的情况下，方便设置各种查询条件。
 
-## Requires
+## 运行要求
 
-* PHP: ^5.4 || ^7.0
-* Make sure the relative database systems are correctly installed and work well.
-* Make sure php_pdo_xxx extensions are correctly installed and enabled.
+* PHP: ^5.5 || ^7.0。
+* 确保相关的数据库驱动扩展(php_pdo_xxx)已经安装，且在 `php.ini` 里面已经正确地配置好。
+* Mbstring扩展，用于Unicode字符串的处理。
 
-## Installation
+## 安装
 
-### Composer require
+### Composer方式安装
 
 ```bash
 composer require dida/db
 ```
 
-### Update
+### 升级
 
 ```bash
 composer update
 ```
 
-## Documents
+## 项目文档
 
-* [API](docs/README.md)
+* <https://github.com/zeupin/dida-db/wiki>
 
-
-## Authors
+## 作者
 
 * [Macc Liu](https://github.com/maccliu)
 
-## Credits
+## 鸣谢
 
-* [Zeupin LLC](http://zeupin.com) , especially [Dida Team](http://dida.zeupin.com)
+* [宙品科技，Zeupin LLC](http://zeupin.com) , 尤其是 [Dida 框架团队](http://dida.zeupin.com)
 
-## License
+## 版权协议
 
-Copyright (c) 2017 Zeupin LLC. Released under the [MIT license](LICENSE).
+Copyright (c) 2017 Zeupin LLC. Released under the [MIT license](LICENSE)。

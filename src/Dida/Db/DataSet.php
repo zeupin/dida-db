@@ -1,275 +1,210 @@
 <?php
 /**
- * Dida Framework --Powered by Zeupin LLC
- * http://dida.zeupin.com
+ * Dida Framework  -- A Rapid Development Framework
+ * Copyright (c) Zeupin LLC. (http://zeupin.com)
+ *
+ * Licensed under The MIT License
+ * Redistributions of files MUST retain the above copyright notice.
  */
 
 namespace Dida\Db;
 
 use \PDO;
-use \PDOStatement;
-use \Exception;
 
-/**
- * DataSet
- */
-class DataSet implements DataSetInterface
+class DataSet
 {
-    /**
-     * Version
-     */
     const VERSION = '0.1.5';
 
-    /**
-     * Reference of a \Dida\Db\Db instance.
-     *
-     * @var \Dida\Db\Db
-     */
-    protected $db = null;
-
-    /**
-     * PDOStatement instance.
-     *
-     * @var \PDOStatement
-     */
     public $pdoStatement = null;
 
-    /**
-     * Statement execution result.
-     *
-     * @var boolean
-     */
-    public $success = false;
+    public $columnCount = null;
 
-    /**
-     * Statement String.
-     *
-     * @var string
-     */
-    public $statement = '';
-
-    /**
-     * Statement parameters.
-     *
-     * @var array
-     */
-    public $parameters = [];
+    public $columnMetas = null;
 
 
-    /**
-     * Class construct.
-     *
-     * @param \Dida\Db\Db $db
-     * @param \PDOStatement $pdoStatement
-     * @param boolean $success
-     */
-    public function __construct(&$db, \PDOStatement $pdoStatement = null, $success = true)
+    public function __construct(\PDOStatement $pdoStatement = null)
     {
-        $this->db = $db;
         $this->pdoStatement = $pdoStatement;
-        $this->success = $success;
+
+        $this->columnCount = $pdoStatement->columnCount();
+
+        $this->columnMetas = [];
+        for ($i = 0; $i < $this->columnCount; $i++) {
+            $this->columnMetas[$i] = $pdoStatement->getColumnMeta($i);
+        }
     }
 
 
-    /**
-     * Call PDOStatement::setFetchMode()
-     *
-     * bool PDOStatement::setFetchMode ( int $mode )
-     * bool PDOStatement::setFetchMode ( int $PDO::FETCH_COLUMN , int $colno )
-     * bool PDOStatement::setFetchMode ( int $PDO::FETCH_CLASS , string $classname , array $ctorargs )
-     * bool PDOStatement::setFetchMode ( int $PDO::FETCH_INTO , object $object )
-     *
-     * @param int $mode
-     * @param int|string|object $arg1
-     * @param array $arg2
-     */
     public function setFetchMode()
     {
-        switch (func_num_args()) {
-            case 1:
-            case 2:
-            case 3:
-                call_user_func_array([&$this->pdoStatement, 'setFetchMode'], func_get_args());
-                return $this;
-            default:
-                throw new Exception('Invalid argument number. See PDOStatement::setFetchMode()');
-        }
+        return call_user_func_array([$this->pdoStatement, 'setFetchMode'], func_get_args());
     }
 
 
-    /**
-     * Fetches the next row from a result set.
-     *
-     * @return mixed|false
-     */
     public function fetch()
     {
-        if (!$this->success) {
-            return false;
-        }
-
-        return $this->pdoStatement->fetch();
+        return call_user_func_array([$this->pdoStatement, 'fetch'], func_get_args());
     }
 
 
-    /**
-     * Returns an array containing all of the result set rows.
-     *
-     * @return array|false
-     */
     public function fetchAll()
     {
-        if (!$this->success) {
-            return false;
-        }
-
-        return $this->pdoStatement->fetchAll();
+        return call_user_func_array([$this->pdoStatement, 'fetchAll'], func_get_args());
     }
 
 
-    /**
-     * Returns the specified column value of the next row.
-     *
-     * @param int $column_number
-     */
     public function fetchColumn($column_number = 0)
     {
-        if (!$this->success) {
-            return false;
-        }
-
         return $this->pdoStatement->fetchColumn($column_number);
     }
 
 
-    /**
-     * Represents PDOStatement::errorCode()
-     *
-     * @return string
-     */
     public function errorCode()
     {
         return $this->pdoStatement->errorCode();
     }
 
 
-    /**
-     * Represents PDOStatement::errorInfo()
-     *
-     * @return array
-     */
     public function errorInfo()
     {
         return $this->pdoStatement->errorInfo();
     }
 
 
-    /**
-     * Represents PDO::lastInsertId()
-     * Notice! The type returned is a string!
-     *
-     * @param string $name
-     */
-    public function lastInsertId($name = null)
-    {
-        return $this->db->pdo->lastInsertId($name);
-    }
-
-
-    /**
-     * Represents PDOStatement::rowCount()
-     */
     public function rowCount()
     {
         return $this->pdoStatement->rowCount();
     }
 
 
-    /**
-     * Represents PDOStatement::columnCount()
-     */
     public function columnCount()
     {
         return $this->pdoStatement->columnCount();
     }
 
 
-    /**
-     * Represents PDOStatement::debugDumpParams()
-     */
     public function debugDumpParams()
     {
         return $this->pdoStatement->debugDumpParams();
     }
 
 
-    /**
-     * Gets the next row from the dataset.
-     *
-     * @return array
-     */
     public function getRow()
     {
-        if (!$this->success) {
-            return false;
-        }
-
         return $this->pdoStatement->fetch();
     }
 
 
-    /**
-     * Gets all rest row from the dataset.
-     *
-     * @return array(array)
-     */
     public function getRows()
     {
-        if (!$this->success) {
-            return false;
-        }
-
-        return $this->pdoStatement->fetchAll();
+        $array = $this->pdoStatement->fetchAll();
+        return $array;
     }
 
 
-    /**
-     * Returns all rows of the specified column.
-     * The first column number is 0.
-     *
-     * @param int|string $column
-     *      @@int    column number
-     *      @@string column name
-     * @return array
-     */
-    public function getColumn($column)
+    public function getRowsAssocBy($colN)
     {
-        if (!$this->success) {
+        $array = $this->pdoStatement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (is_array($colN)) {
+            return Util::arrayAssocBy($array, $colN);
+        } else {
+            return Util::arrayAssocBy($array, func_get_args());
+        }
+    }
+
+
+    public function getRowsGroupBy($colN)
+    {
+        $array = $this->pdoStatement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (is_array($colN)) {
+            return Util::arrayGroupBy($array, $colN);
+        } else {
+            return Util::arrayGroupBy($array, func_get_args());
+        }
+    }
+
+
+    public function getColumnNumber($column)
+    {
+        if (is_string($column)) {
+            for ($i = 0; $i < $this->columnCount; $i++) {
+                $column_meta = $this->columnMetas[$i];
+                if ($column === $column_meta['name']) {
+                    return $i;
+                }
+            }
+
             return false;
         }
 
-        $column_count = $this->pdoStatement->columnCount();
-
-        /* if $column is string */
-        if (is_string($column)) {
-            for ($i=0; $i<$column_count; $i++) {
-                $column_meta = $this->pdoStatement->getColumnMeta($i);
-                if ($column_meta['name'] === $column) {
-                    return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $i);
-                }
+        if (is_int($column)) {
+            if (($column < 0) || ($column >= $this->columnCount)) {
+                return false;
             }
+
+            return $column;
         }
 
-        /* if $column is int */
-        if (is_int($column)) {
-            if ($column_count > $column) {
-                return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $column);
-            } else {
+        return false;
+    }
+
+
+    public function getColumn($column, $key = null)
+    {
+        $colnum = $this->getColumnNumber($column);
+        if ($colnum === false) {
+            return false;
+        }
+
+        if (!is_null($key)) {
+            $key = $this->getColumnNumber($key);
+            if ($key === false) {
                 return false;
             }
         }
 
-        /* invalid $column type */
-        return false;
+        if (is_null($key)) {
+            return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN, $colnum);
+        } else {
+            $array = $this->pdoStatement->fetchAll(PDO::FETCH_NUM);
+            return array_column($input, $colnum, $key);
+        }
+    }
+
+
+    public function getColumnDistinct($column)
+    {
+        $colnum = $this->getColumnNumber($column);
+        if ($colnum === false) {
+            return false;
+        }
+
+        return $this->pdoStatement->fetchAll(PDO::FETCH_COLUMN | PDO::FETCH_UNIQUE, $colnum);
+    }
+
+
+    public function getValue($column = 0, $returnType = null)
+    {
+        $colnum = $this->getColumnNumber($column);
+        if ($colnum === false) {
+            return false;
+        }
+
+        $v = $this->pdoStatement->fetchColumn($colnum);
+
+        if (is_null($v)) {
+            return null;
+        }
+
+        switch ($returnType) {
+            case 'int':
+                return (is_numeric($v)) ? intval($v) : false;
+            case 'float':
+                return (is_numeric($v)) ? floatval($v) : false;
+            default:
+                return $v;
+        }
     }
 }
