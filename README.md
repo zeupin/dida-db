@@ -1,6 +1,6 @@
-# dida-db
+# Dida\Db 组件
 
-`Dida\Db` 的目标是做一个轻巧、包含常用数据库管理特性、易于编码、没有复杂依赖关系的数据库管理包，适用于大多数常见的数据库操作场景。它属于 [Dida框架](http://dida.zeupin.com) 的一部分。
+`Dida\Db` 的目标是做一个轻巧、包含常用数据库管理特性、易于编码、没有复杂依赖关系的数据库管理组件，适用于大多数常见的数据库操作场景。它是 [宙品科技](http://zeupin.com) 开源的 [Dida框架](http://dida.zeupin.com) 的一个功能组件。
 
 ## 特点
 
@@ -33,13 +33,13 @@ composer update
 
 ## 项目文档
 
-* <https://github.com/zeupin/dida-db/wiki>
+* Wiki <https://github.com/zeupin/dida-db/wiki>
 
 ## 作者
 
 * [Macc Liu](https://github.com/maccliu)
 
-## 鸣谢
+## 感谢
 
 * [宙品科技，Zeupin LLC](http://zeupin.com) , 尤其是 [Dida 框架团队](http://dida.zeupin.com)
 
