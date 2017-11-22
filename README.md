@@ -2,6 +2,9 @@
 
 `Dida\Db` 的目标是做一个轻巧、包含常用数据库管理特性、易于编码、没有复杂依赖关系的数据库管理组件，适用于大多数常见的数据库操作场景。它是 [宙品科技](http://zeupin.com) 开源的 [Dida框架](http://dida.zeupin.com) 的一个功能组件库。
 
+* Home <https://github.com/zeupin/dida-db>
+* Wiki <https://github.com/zeupin/dida-db/wiki>
+
 ## 特点
 
 * MIT协议。
