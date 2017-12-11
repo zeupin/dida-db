@@ -13,7 +13,7 @@ use \Exception;
 
 abstract class File extends \Dida\Db\SchemaInfo
 {
-    const VERSION = '20171113';
+    const VERSION = '20171127';
 
     protected $cacheDir = null;
 
@@ -51,7 +51,7 @@ abstract class File extends \Dida\Db\SchemaInfo
     }
 
 
-    public function &getTable($table)
+    public function getTable($table)
     {
         if (!$this->tableExists($table)) {
             return false;

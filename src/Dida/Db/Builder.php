@@ -472,9 +472,11 @@ class Builder
             list($jointype, $table, $on, $parameters) = $join;
 
             $table_alias = $this->util_split_name_alias($table);
+
             $this->util_register_table($table_alias['name'], $table_alias['alias']);
 
-            $table = $this->util_table_with_alias($table_alias['name'], $table_alias['alias']);
+            $tablename_with_prefix = $this->util_table_with_prefix($table_alias['name']);
+            $table = $this->util_table_with_alias($tablename_with_prefix, $table_alias['alias']);
 
             $st[] = "\n{$jointype} {$table}\n    ON $on";
             $pa[] = $parameters;
@@ -685,6 +687,10 @@ class Builder
 
     protected function cond_LIKE($column, $op, $data)
     {
+        if (is_scalar($data)) {
+            $data = [$data];
+        }
+
         $part = [
             'statement'  => "($column $op ?)",
             'parameters' => $data,
@@ -956,7 +962,7 @@ class Builder
     }
 
 
-    protected function util_table_with_prefix($name, $prefix)
+    protected function util_table_with_prefix($name, $prefix = null)
     {
         if (!is_string($prefix)) {
             $prefix = $this->tasklist['prefix'];

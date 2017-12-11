@@ -13,17 +13,17 @@ use \Exception;
 
 class Query
 {
-    const VERSION = '20171113';
+    const VERSION = '20171205';
 
-    const INSERT_RETURN_COUNT = 1;
-    const INSERT_RETURN_ID = 2;
+    const INSERT_RETURN_COUNT = 'count';
+    const INSERT_RETURN_ID = 'id';
 
-    const INSERT_MANY_RETURN_SUCC_COUNT = 1;
-    const INSERT_MANY_RETURN_SUCC_LIST = 2;
+    const INSERT_MANY_RETURN_SUCC_COUNT = 'succ_count';
+    const INSERT_MANY_RETURN_SUCC_LIST = 'succ_list';
 
-    const INSERT_MANY_RETURN_FAIL_COUNT = -1;
-    const INSERT_MANY_RETURN_FAIL_LIST = -2;
-    const INSERT_MANY_RETURN_FAIL_REPORT = -3;
+    const INSERT_MANY_RETURN_FAIL_COUNT = 'fail_count';
+    const INSERT_MANY_RETURN_FAIL_LIST = 'fail_list';
+    const INSERT_MANY_RETURN_FAIL_REPORT = 'fail_report';
 
     protected $db = null;
 
@@ -85,28 +85,6 @@ class Query
     }
 
 
-    private function _________________________BUILD()
-    {
-    }
-
-
-    public function build($verb = null)
-    {
-        $builder = $this->db->getBuilder();
-        if ($builder === null) {
-            throw new \Dida\Db\Exceptions\InvalidBuilderException;
-        }
-
-        if (is_string($verb)) {
-            $verb = trim($verb);
-            $verb = strtoupper($verb);
-            $this->tasklist['verb'] = $verb;
-        }
-
-        return $builder->build($this->tasklist);
-    }
-
-
     private function _________________________TABLE()
     {
     }
@@ -154,7 +132,7 @@ class Query
     }
 
 
-    public function count(array $columns = null, $alias = null)
+    public function count($columns = null, $alias = null)
     {
         $this->initArrayItem('columnlist');
 
@@ -635,12 +613,78 @@ class Query
     }
 
 
+    private function _________________________BUILD()
+    {
+    }
+
+
+    public function build($verb = null)
+    {
+        $builder = $this->db->getBuilder();
+        if ($builder === null) {
+            throw new \Dida\Db\Exceptions\InvalidBuilderException;
+        }
+
+        if (is_string($verb)) {
+            $verb = trim($verb);
+            $verb = strtoupper($verb);
+            $this->tasklist['verb'] = $verb;
+        }
+
+        return $builder->build($this->tasklist);
+    }
+
+
+    public function select($columnlist = null)
+    {
+        if (!is_null($columnlist)) {
+            $this->columnlist($columnlist);
+        }
+
+        $this->tasklist['verb'] = 'SELECT';
+
+        return $this;
+    }
+
+
+    public function insert()
+    {
+        $this->tasklist['verb'] = 'INSERT';
+
+        return $this;
+    }
+
+
+    public function update()
+    {
+        $this->tasklist['verb'] = 'UPDATE';
+
+        return $this;
+    }
+
+
+    public function delete()
+    {
+        $this->tasklist['verb'] = 'DELETE';
+
+        return $this;
+    }
+
+
+    public function truncate()
+    {
+        $this->tasklist['verb'] = 'TRUNCATE';
+
+        return $this;
+    }
+
+
     private function _________________________EXECUTIONS()
     {
     }
 
 
-    public function select($columnlist = null)
+    public function doSelect($columnlist = null)
     {
         if (!is_null($columnlist)) {
             $this->columnlist($columnlist);
@@ -656,7 +700,99 @@ class Query
     }
 
 
-    public function insertOne(array $record, $insertReturn = self::INSERT_RETURN_COUNT)
+    public function doCount($columns = null, $alias = null)
+    {
+        if ($columns) {
+            $this->tasklist['columnlist'] = [];
+            $this->tasklist['columnlist'][] = ['count', $columns, $alias];
+        } else {
+            $this->count(null, null);
+        }
+
+        $conn = $this->db->getConnection();
+
+        $this->tasklist['verb'] = 'SELECT';
+        $sql = $this->build();
+        $dataset = $conn->executeRead($sql['statement'], $sql['parameters']);
+
+        if (!$dataset) {
+            return false;
+        }
+
+        return $dataset->getValue(0, 'int');
+    }
+
+
+    public function doUpdate()
+    {
+        $conn = $this->db->getConnection();
+
+        $this->tasklist['verb'] = 'UDATE';
+        $sql = $this->build();
+        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
+        return $rowsAffected;
+    }
+
+
+    public function doDelete()
+    {
+        $conn = $this->db->getConnection();
+
+        $this->tasklist['verb'] = 'DELETE';
+        $sql = $this->build();
+        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
+        return $rowsAffected;
+    }
+
+
+    public function doTruncate()
+    {
+        $conn = $this->db->getConnection();
+
+        $this->tasklist['verb'] = 'TRUNCATE';
+        $sql = $this->build();
+        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
+        return $rowsAffected;
+    }
+
+
+    public function doGetRow($columnlist = null)
+    {
+        $dataset = $this->doSelect($columnlist);
+
+        if (!$dataset) {
+            return false;
+        }
+
+        return $dataset->getRow();
+    }
+
+
+    public function doGetRows($columnlist = null)
+    {
+        $dataset = $this->doSelect($columnlist);
+
+        if (!$dataset) {
+            return false;
+        }
+
+        return $dataset->getRows();
+    }
+
+
+    public function doGetValue($column = 0, $returnType = null)
+    {
+        $dataset = $this->doSelect();
+
+        if (!$dataset) {
+            return false;
+        }
+
+        return $dataset->getValue($column, $returnType);
+    }
+
+
+    public function doInsertOne(array $record, $insertReturn = self::INSERT_RETURN_COUNT)
     {
         if (empty($record)) {
             return 0;
@@ -688,7 +824,7 @@ class Query
     }
 
 
-    public function insertMany(array $records, $returnType = self::INSERT_RETURN_COUNT)
+    public function doInsertMany(array $records, $returnType = self::INSERT_MANY_RETURN_SUCC_COUNT)
     {
         if (empty($records)) {
             return 0;
@@ -783,48 +919,45 @@ class Query
     }
 
 
-    public function update()
-    {
-        $conn = $this->db->getConnection();
-
-        $sql = $this->build('UPDATE');
-
-        $result = $conn->executeWrite($sql['statement'], $sql['parameters']);
-
-        return $result;
-    }
-
-
-    public function insertOrUpdateOne(array $record, $pri_col)
+    public function doInsertOrUpdateOne(array $record, $unique_col)
     {
         $this->clear();
 
         $pdo = $this->db->getConnection()->getPDO();
 
-        $sql = $this->record($record)->build('INSERT');
-        $stmt = $pdo->prepare($sql['statement']);
-        $result = $stmt->execute($sql['parameters']);
+        $entry = $this->where($unique_col, '=' , $record[$unique_col])
+            ->select($unique_col)
+            ->doGetRow();
 
-        if ($result) {
-            return true;
-        }
+        if ($entry) {
+            $this->clear();
+            $sql = $this->where($unique_col, '=', $record[$unique_col])
+                ->setValue($record)
+                ->build('UPDATE');
+            $stmt = $pdo->prepare($sql['statement']);
+            $result = $stmt->execute($sql['parameters']);
 
-        $this->clear();
-        $sql = $this->where($pri_col, '=', $record[$pri_col])
-            ->setValue($record)
-            ->build('UPDATE');
-        $stmt = $pdo->prepare($sql['statement']);
-        $result = $stmt->execute($sql['parameters']);
-
-        if ($result && $stmt->rowCount()) {
-            return true;
+            if ($result && $stmt->rowCount()) {
+                return true;
+            } else {
+                return false;
+            }
         } else {
-            return false;
+            $this->clear();
+            $sql = $this->record($record)->build('INSERT');
+            $stmt = $pdo->prepare($sql['statement']);
+            $result = $stmt->execute($sql['parameters']);
+
+            if ($result) {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
 
-    public function insertOrUpdateMany(array $records, $pri_col)
+    public function doInsertOrUpdateMany(array $records, $pri_col)
     {
         $succ = [];
         $fail = [];
@@ -870,37 +1003,20 @@ class Query
     }
 
 
-    public function delete()
-    {
-        $conn = $this->db->getConnection();
-
-        $this->tasklist['verb'] = 'DELETE';
-        $sql = $this->build();
-        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
-        return $rowsAffected;
-    }
-
-
-    public function truncate()
-    {
-        $conn = $this->db->getConnection();
-
-        $this->tasklist['verb'] = 'TRUNCATE';
-        $sql = $this->build();
-        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
-        return $rowsAffected;
-    }
-
-
     public function __call($name, $arguments)
     {
-        if (method_exists('\Dida\Db\DataSet', $name)) {
-            switch ($name) {
-                case 'not support':
-                    break;
-                default:
-                    $dataset = $this->select();
-                    return call_user_func_array([$dataset, $name], $arguments);
+        if (substr($name, 0, 2) === 'do') {
+            $action = substr($name, 2);
+            $action = lcfirst($action);
+
+            if (method_exists('\Dida\Db\DataSet', $action)) {
+                switch ($action) {
+                    case 'not support':
+                        break;
+                    default:
+                        $dataset = $this->doSelect();
+                        return call_user_func_array([$dataset, $action], $arguments);
+                }
             }
         }
 
