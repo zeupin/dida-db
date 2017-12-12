@@ -727,8 +727,26 @@ class Query
     {
         $conn = $this->db->getConnection();
 
-        $this->tasklist['verb'] = 'UDATE';
+        $this->tasklist['verb'] = 'UPDATE';
         $sql = $this->build();
+        $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
+        return $rowsAffected;
+    }
+
+
+    public function doUpdateBy(array $record, $key_col)
+    {
+        if (!array_key_exists($key_col, $record)) {
+            return false;
+        }
+
+        $this->clear();
+        $this->setValue($record);
+        $this->where($key_col, '=', $record[$key_col]);
+        $this->tasklist['verb'] = 'UPDATE';
+        $sql = $this->build();
+
+        $conn = $this->db->getConnection();
         $rowsAffected = $conn->executeWrite($sql['statement'], $sql['parameters']);
         return $rowsAffected;
     }
@@ -925,7 +943,7 @@ class Query
 
         $pdo = $this->db->getConnection()->getPDO();
 
-        $entry = $this->where($unique_col, '=' , $record[$unique_col])
+        $entry = $this->where($unique_col, '=', $record[$unique_col])
             ->select($unique_col)
             ->doGetRow();
 
