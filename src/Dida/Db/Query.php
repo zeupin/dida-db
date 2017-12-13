@@ -813,7 +813,7 @@ class Query
     public function doInsertOne(array $record, $insertReturn = self::INSERT_RETURN_COUNT)
     {
         if (empty($record)) {
-            return 0;
+            return false;
         }
 
         if (!$this->isAssociateArray($record)) {
@@ -838,7 +838,20 @@ class Query
                 }
 
                 return $conn->getPDO()->lastInsertId();
+
+            default:
+                return $rowsAffected;
         }
+    }
+
+
+    public function doInsertOneThenGet(array $record, $id_col)
+    {
+        $id = $this->doInsertOne($record, self::INSERT_RETURN_ID);
+
+        $this->clear();
+        $row = $this->where($id_col, '=', $id)->doGetRow();
+        return $row;
     }
 
 
