@@ -1062,11 +1062,15 @@ class Query
 
     public function backupTaskList()
     {
+        $whereActiveName = (is_null($this->whereActive)) ? null : $this->whereActive->name;
+        $havingActiveName = (is_null($this->havingActive)) ? null : $this->havingActive->name;
+
         $data = [
             'tasklist'     => $this->tasklist,
-            'whereActive'  => $this->whereActive->name,
-            'havingActive' => $this->havingActive->name,
+            'whereActive'  => $whereActiveName,
+            'havingActive' => $havingActiveName,
         ];
+
         return $data;
     }
 

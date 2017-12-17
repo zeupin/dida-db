@@ -822,7 +822,7 @@ class Builder
         }
 
         $limit = $this->tasklist['limit'];
-        $this->ST['limit'] = "LIMIT $limit";
+        $this->ST['limit'] = "\nLIMIT $limit";
         return;
     }
 
