@@ -384,13 +384,7 @@ class Builder
     protected function clause_COLUMNLIST()
     {
         if (!$this->has('columnlist')) {
-            $columnlist = $this->localSchemaInfo[$this->mainTable['name']]['columnlist'];
-            if ($columnlist) {
-                $this->ST['columnlist'] = implode(', ', $columnlist);
-            } else {
-                $this->ST['columnlist'] = '*';
-            }
-
+            $this->ST['columnlist'] = "{$this->mainTable["name"]}.*";
             return;
         }
 
@@ -1049,19 +1043,5 @@ class Builder
 
     protected function util_register_table($name, $alias, $prefix = null)
     {
-        $realname = $this->util_table_with_prefix($name, $prefix);
-
-        $tableinfo = $this->db->getSchemaInfo()->getTable($realname);
-        if (!$tableinfo) {
-            throw new Exception("SchemaInfo中没有找到数据表{$realname}的相关信息");
-        }
-
-        $this->localSchemaInfo[$realname] = $tableinfo;
-
-        if ($alias) {
-            if (!isset($this->localSchemaInfo[$alias])) {
-                $this->localSchemaInfo[$alias] = $tableinfo;
-            }
-        }
     }
 }
